@@ -1,0 +1,38 @@
+export '../../../flutter_flow/lat_lng.dart';
+export 'package:supabase_flutter/supabase_flutter.dart' hide Provider;
+
+export '../supabase.dart';
+export 'row.dart';
+export 'table.dart';
+
+export 'tables/announcements.dart';
+export 'tables/attendance.dart';
+export 'tables/attendance_view.dart';
+export 'tables/branches.dart';
+export 'tables/comments.dart';
+export 'tables/course_enrollments.dart';
+export 'tables/courses.dart';
+export 'tables/department_requests.dart';
+export 'tables/department_summary_view.dart';
+export 'tables/departments.dart';
+export 'tables/events.dart';
+export 'tables/events_attendance_view.dart';
+export 'tables/global_admins.dart';
+export 'tables/leaders.dart';
+export 'tables/membershipcode.dart';
+export 'tables/penalties.dart';
+export 'tables/post_reactions.dart';
+export 'tables/posts.dart';
+export 'tables/posts_with_comments.dart';
+export 'tables/profile_attendance_view.dart';
+export 'tables/profile_view.dart';
+export 'tables/profiles.dart';
+export 'tables/profiles_priv_info.dart';
+export 'tables/profileverification.dart';
+export 'tables/roles.dart';
+export 'tables/roletypes.dart';
+export 'tables/systemreports.dart';
+export 'tables/weekly_attendance_summary.dart';
+export 'tables/weekly_branch_stats.dart';
+export 'tables/worker_profiles.dart';
+export 'tables/workers.dart';
