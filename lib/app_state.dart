@@ -86,19 +86,17 @@ class FFAppState extends ChangeNotifier {
 
   Future initializeDepartments() async {
     try {
-      _allDepartments = await DepartmentSummaryViewTable().queryRows(
-        queryFn: (q) => q.order('department_name', ascending: true),
+      final departments = await DepartmentSummaryViewTable().queryRows(
+        queryFn: (q) => q,
       );
-      notifyListeners();
+      _allDepartments = departments;
     } catch (e) {
       print('Error initializing departments: $e');
     }
   }
 
-  void clearAllRequestCache() {
-    clearListOfEventsCache();
-    clearWorkforceCache();
-    initializeDepartments();
+  Future clearAllRequestCache() async {
+    await initializeDepartments();
   }
 }
 

@@ -8,7 +8,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-Future<String> uploadimage(
+Future<String?> uploadimage(
   BuildContext context, {
   required String? filename,
   required FFUploadedFile? uploadedfile,
@@ -16,11 +16,41 @@ Future<String> uploadimage(
   ApiCallResponse? presignuploadurl;
   ApiCallResponse? uploadfile;
 
+  // Generate a unique filename with timestamp to avoid collision and caching issues
+  final String timestamp = DateTime.now().millisecondsSinceEpoch.toString();
+  final String sanitizedFilename =
+      (filename ?? 'image').replaceAll(RegExp(r'\s+'), '_');
+  
+  // Ensure currentUserUid is available, default to "anon" if not
+  final String uid = currentUserUid != null && currentUserUid.isNotEmpty ? currentUserUid : 'anon';
+  
+  final String finalKey = 'pfp/$uid/${timestamp}_$sanitizedFilename';
+
+  // Detect content type based on extension
+  String contentType = 'application/octet-stream';
+  if (filename != null) {
+    String ext = filename.toLowerCase();
+    if (ext.endsWith('.jpg') || ext.endsWith('.jpeg')) {
+      contentType = 'image/jpeg';
+    } else if (ext.endsWith('.png')) {
+      contentType = 'image/png';
+    } else if (ext.endsWith('.gif')) {
+      contentType = 'image/gif';
+    } else if (ext.endsWith('.webp')) {
+      contentType = 'image/webp';
+    }
+  }
+
   // PRESIGN R2 URL
   presignuploadurl = await PresignRtwoStorageCall.call(
     bucket: 'wpcc',
-    objectKey: 'pfp/${currentUserUid}/${filename}.jpg',
+    objectKey: finalKey,
+    contentType: contentType,
   );
+
+  if (!(presignuploadurl?.succeeded ?? false)) {
+    return null;
+  }
 
   ScaffoldMessenger.of(context).clearSnackBars();
   ScaffoldMessenger.of(context).showSnackBar(
@@ -33,6 +63,7 @@ Future<String> uploadimage(
       backgroundColor: FlutterFlowTheme.of(context).secondary,
     ),
   );
+  
   uploadfile = await UploadToStorageCall.call(
     url: PresignRtwoStorageCall.url(
       (presignuploadurl?.jsonBody ?? ''),
@@ -40,6 +71,10 @@ Future<String> uploadimage(
     file: uploadedfile,
     jwt: currentJwtToken,
   );
+
+  if (!(uploadfile?.succeeded ?? false)) {
+    return null;
+  }
 
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
@@ -51,7 +86,5 @@ Future<String> uploadimage(
       backgroundColor: FlutterFlowTheme.of(context).secondary,
     ),
   );
-  return UploadToStorageCall.uploadURL(
-    (uploadfile?.jsonBody ?? ''),
-  ).toString();
+  return '${FFAppState().storagpuburl}$finalKey';
 }

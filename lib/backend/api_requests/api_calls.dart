@@ -15,6 +15,7 @@ class PresignRtwoStorageCall {
   static Future<ApiCallResponse> call({
     String? bucket = '',
     String? objectKey = '',
+    String? contentType = 'application/octet-stream',
     String? jwt = '',
   }) async {
     return ApiManager.instance.makeApiCall(
@@ -29,6 +30,7 @@ class PresignRtwoStorageCall {
       params: {
         'bucket': bucket,
         'objectKey': objectKey,
+        'contentType': contentType,
       },
       returnBody: true,
       encodeBodyUtf8: false,

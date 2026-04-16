@@ -14,6 +14,7 @@ import 'dart:async';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'eventlist_model.dart';
@@ -206,18 +207,6 @@ class _EventlistWidgetState extends State<EventlistWidget> {
                               ].divide(SizedBox(width: 4.0)),
                             ),
                           ),
-                          FlutterFlowIconButton(
-                            borderRadius: 8.0,
-                            buttonSize: 40.0,
-                            icon: Icon(
-                              FFIcons.ksetting,
-                              color: FlutterFlowTheme.of(context).secondaryText,
-                              size: 20.0,
-                            ),
-                            onPressed: () async {
-                              context.pushNamed(SettingsWidget.routeName);
-                            },
-                          ),
                         ],
                       ),
                       Align(
@@ -382,403 +371,185 @@ class _EventlistWidgetState extends State<EventlistWidget> {
                                   borderRadius: BorderRadius.circular(16.0),
                                   child: Container(
                                     width: double.infinity,
+                                    height: 180.0,
                                     decoration: BoxDecoration(
-                                      gradient: LinearGradient(
-                                        colors: [
-                                          Color(0xFF242424),
-                                          Color(0xFF181818)
-                                        ],
-                                        stops: [0.0, 1.0],
-                                        begin: AlignmentDirectional(0.0, -1.0),
-                                        end: AlignmentDirectional(0, 1.0),
-                                      ),
                                       borderRadius: BorderRadius.circular(16.0),
-                                      border: Border.all(
-                                        color: FlutterFlowTheme.of(context)
-                                            .divider,
-                                        width: 1.0,
+                                      image: DecorationImage(
+                                        fit: BoxFit.cover,
+                                        image: listViewEventsAttendanceViewRow.featuredImage != null &&
+                                                listViewEventsAttendanceViewRow.featuredImage != ''
+                                            ? CachedNetworkImageProvider(
+                                                listViewEventsAttendanceViewRow.featuredImage!)
+                                            : AssetImage(
+                                                'assets/images/image-placeholder2.jpg') as ImageProvider,
                                       ),
                                     ),
-                                    alignment: AlignmentDirectional(0.0, 0.0),
-                                    child: Align(
-                                      alignment: AlignmentDirectional(0.0, 0.0),
-                                      child: Padding(
-                                        padding: EdgeInsets.all(12.0),
-                                        child: Column(
-                                          mainAxisSize: MainAxisSize.max,
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.center,
-                                          children: [
-                                            Row(
-                                              mainAxisSize: MainAxisSize.max,
-                                              mainAxisAlignment:
-                                                  MainAxisAlignment
-                                                      .spaceBetween,
-                                              children: [
-                                                Expanded(
-                                                  flex: 2,
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.max,
-                                                    children: [
-                                                      Icon(
-                                                        FFIcons.kpieChart,
-                                                        color:
-                                                            FlutterFlowTheme.of(
-                                                                    context)
-                                                                .primaryText,
-                                                        size: 16.0,
-                                                      ),
-                                                      Expanded(
-                                                        child: FutureBuilder<
-                                                            List<
-                                                                EventsAttendanceViewRow>>(
-                                                          future:
-                                                              EventsAttendanceViewTable()
-                                                                  .queryRows(
-                                                            queryFn: (q) =>
-                                                                q.eqOrNull(
-                                                              'is_active',
-                                                              true,
-                                                            ),
-                                                          ),
-                                                          builder: (context,
-                                                              snapshot) {
-                                                            // Customize what your widget looks like when it's loading.
-                                                            if (!snapshot
-                                                                .hasData) {
-                                                              return Center(
-                                                                child: SizedBox(
-                                                                  width: 20.0,
-                                                                  height: 20.0,
-                                                                  child:
-                                                                      SpinKitFoldingCube(
-                                                                    color: FlutterFlowTheme.of(
-                                                                            context)
-                                                                        .primary,
-                                                                    size: 20.0,
-                                                                  ),
-                                                                ),
-                                                              );
-                                                            }
-                                                            List<EventsAttendanceViewRow>
-                                                                textEventsAttendanceViewRowList =
-                                                                snapshot.data!;
-
-                                                            return AutoSizeText(
-                                                              valueOrDefault<
-                                                                  String>(
-                                                                listViewEventsAttendanceViewRow
-                                                                    .title,
-                                                                '{{event title}}',
-                                                              ),
-                                                              maxLines: 2,
-                                                              minFontSize: 12.0,
-                                                              style: FlutterFlowTheme
-                                                                      .of(context)
-                                                                  .labelLarge
-                                                                  .override(
-                                                                    font: GoogleFonts
-                                                                        .nunito(
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                      fontStyle: FlutterFlowTheme.of(
-                                                                              context)
-                                                                          .labelLarge
-                                                                          .fontStyle,
-                                                                    ),
-                                                                    color: FlutterFlowTheme.of(
-                                                                            context)
-                                                                        .primaryText,
-                                                                    fontSize:
-                                                                        14.0,
-                                                                    letterSpacing:
-                                                                        0.0,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .w600,
-                                                                    fontStyle: FlutterFlowTheme.of(
-                                                                            context)
-                                                                        .labelLarge
-                                                                        .fontStyle,
-                                                                  ),
-                                                            );
-                                                          },
-                                                        ),
-                                                      ),
-                                                    ].divide(
-                                                        SizedBox(width: 4.0)),
-                                                  ),
-                                                ),
-                                                Container(
-                                                  decoration: BoxDecoration(
-                                                    color: FlutterFlowTheme.of(
-                                                            context)
-                                                        .accent1,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                            12.0),
-                                                  ),
-                                                  child: Padding(
-                                                    padding:
-                                                        EdgeInsetsDirectional
-                                                            .fromSTEB(8.0, 6.0,
-                                                                8.0, 6.0),
-                                                    child: Text(
-                                                      valueOrDefault<String>(
-                                                        'Ends ${dateTimeFormat("relative", listViewEventsAttendanceViewRow.eventEndTime)}',
-                                                        '{{end time}}',
-                                                      ),
-                                                      style: FlutterFlowTheme
-                                                              .of(context)
-                                                          .bodyMedium
-                                                          .override(
-                                                            font: GoogleFonts
-                                                                .roboto(
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .w500,
-                                                              fontStyle:
-                                                                  FlutterFlowTheme.of(
-                                                                          context)
-                                                                      .bodyMedium
-                                                                      .fontStyle,
-                                                            ),
-                                                            color: FlutterFlowTheme
-                                                                    .of(context)
-                                                                .primaryBackground,
-                                                            fontSize: 8.0,
-                                                            letterSpacing: 0.0,
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            fontStyle:
-                                                                FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .bodyMedium
-                                                                    .fontStyle,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                ),
-                                              ],
+                                    child: Stack(
+                                      children: [
+                                        Align(
+                                          alignment: AlignmentDirectional(0.0, 1.0),
+                                          child: Container(
+                                            width: double.infinity,
+                                            height: 120.0,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.transparent,
+                                                  Colors.black.withOpacity(0.8),
+                                                  Colors.black
+                                                ],
+                                                stops: [0.0, 0.7, 1.0],
+                                                begin: AlignmentDirectional(0.0, -1.0),
+                                                end: AlignmentDirectional(0, 1.0),
+                                              ),
                                             ),
-                                            Divider(
-                                              thickness: 1.0,
-                                              color:
-                                                  FlutterFlowTheme.of(context)
-                                                      .alternate,
-                                            ),
-                                            Padding(
-                                              padding: EdgeInsetsDirectional
-                                                  .fromSTEB(0.0, 8.0, 0.0, 0.0),
-                                              child: Row(
+                                          ),
+                                        ),
+                                        Padding(
+                                          padding: EdgeInsets.all(16.0),
+                                          child: Column(
+                                            mainAxisSize: MainAxisSize.max,
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
                                                 mainAxisSize: MainAxisSize.max,
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment
-                                                        .spaceBetween,
                                                 children: [
-                                                  Expanded(
-                                                    flex: 2,
-                                                    child: Column(
-                                                      mainAxisSize:
-                                                          MainAxisSize.max,
-                                                      crossAxisAlignment:
-                                                          CrossAxisAlignment
-                                                              .start,
-                                                      children: [
-                                                        Text(
-                                                          valueOrDefault<
-                                                              String>(
-                                                            listViewEventsAttendanceViewRow
-                                                                .description,
-                                                            '{{Event Title}}',
-                                                          ),
-                                                          textAlign:
-                                                              TextAlign.start,
-                                                          maxLines: 2,
-                                                          style: FlutterFlowTheme
-                                                                  .of(context)
-                                                              .titleLarge
-                                                              .override(
-                                                                font:
-                                                                    GoogleFonts
-                                                                        .nunito(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .normal,
-                                                                  fontStyle: FlutterFlowTheme.of(
-                                                                          context)
-                                                                      .titleLarge
-                                                                      .fontStyle,
-                                                                ),
-                                                                color: FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .primaryText,
-                                                                fontSize: 12.0,
-                                                                letterSpacing:
-                                                                    0.0,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .normal,
-                                                                fontStyle: FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .titleLarge
-                                                                    .fontStyle,
-                                                                lineHeight: 1.0,
-                                                              ),
-                                                        ),
-                                                        Text(
-                                                          valueOrDefault<
-                                                              String>(
-                                                            dateTimeFormat(
-                                                                "EE dd MMMM",
-                                                                listViewEventsAttendanceViewRow
-                                                                    .eventStartDate),
-                                                            '{{Event Title}}',
-                                                          ),
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          style: FlutterFlowTheme
-                                                                  .of(context)
-                                                              .titleLarge
-                                                              .override(
-                                                                font:
-                                                                    GoogleFonts
-                                                                        .nunito(
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .normal,
-                                                                  fontStyle: FlutterFlowTheme.of(
-                                                                          context)
-                                                                      .titleLarge
-                                                                      .fontStyle,
-                                                                ),
-                                                                color: FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .secondaryText,
-                                                                fontSize: 9.0,
-                                                                letterSpacing:
-                                                                    0.0,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .normal,
-                                                                fontStyle: FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .titleLarge
-                                                                    .fontStyle,
-                                                                lineHeight: 1.3,
-                                                              ),
-                                                        ),
-                                                      ].divide(SizedBox(
-                                                          height: 6.0)),
+                                                  Container(
+                                                    width: 32.0,
+                                                    height: 32.0,
+                                                    decoration: BoxDecoration(
+                                                      color: FlutterFlowTheme.of(context).primary,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                      FFIcons.kcalendarFill,
+                                                      color: FlutterFlowTheme.of(context)
+                                                          .primaryBackground,
+                                                      size: 16.0,
                                                     ),
                                                   ),
-                                                  Expanded(
-                                                    flex: 1,
-                                                    child: Container(
-                                                      decoration:
-                                                          BoxDecoration(),
-                                                      child: Column(
-                                                        mainAxisSize:
-                                                            MainAxisSize.max,
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .end,
-                                                        children: [
-                                                          Container(
-                                                            height: 25.0,
-                                                            decoration:
-                                                                BoxDecoration(
-                                                              color: FlutterFlowTheme
-                                                                      .of(context)
-                                                                  .alternate,
-                                                              borderRadius:
-                                                                  BorderRadius
-                                                                      .circular(
-                                                                          14.0),
-                                                            ),
-                                                            child: Padding(
-                                                              padding:
-                                                                  EdgeInsets
-                                                                      .all(6.0),
-                                                              child:
-                                                                  CustomprogressbarWidget(
-                                                                key: Key(
-                                                                    'Keyg21_${listViewIndex}_of_${listViewEventsAttendanceViewRowList.length}'),
-                                                                 progress: (int
-                                                                            total,
-                                                                        int active) {
-                                                                  return total ==
-                                                                          0
-                                                                      ? 0.0
-                                                                      : ((active / total * 100) * 100)
-                                                                              .round() /
-                                                                          100;
-                                                                }(
-                                                                    listViewEventsAttendanceViewRow
-                                                                        .totalWorkers!,
-                                                                    listViewEventsAttendanceViewRow
-                                                                        .activeWorker!),
+                                                  Container(
+                                                    decoration: BoxDecoration(
+                                                      color: FlutterFlowTheme.of(context)
+                                                          .primaryBackground,
+                                                      borderRadius: BorderRadius.circular(20.0),
+                                                    ),
+                                                    child: Padding(
+                                                      padding: EdgeInsetsDirectional.fromSTEB(
+                                                          10.0, 6.0, 10.0, 6.0),
+                                                      child: Text(
+                                                        dateTimeFormat(
+                                                            "d MMM yyyy",
+                                                            listViewEventsAttendanceViewRow
+                                                                .eventStartDate),
+                                                        style: FlutterFlowTheme.of(context)
+                                                            .bodyMedium
+                                                            .override(
+                                                              font: GoogleFonts.roboto(
+                                                                fontWeight: FontWeight.bold,
                                                               ),
+                                                              color: FlutterFlowTheme.of(context)
+                                                                  .primaryText,
+                                                              fontSize: 10.0,
+                                                              letterSpacing: 0.0,
                                                             ),
-                                                          ),
-                                                          Padding(
-                                                            padding:
-                                                                EdgeInsetsDirectional
-                                                                    .fromSTEB(
-                                                                        0.0,
-                                                                        0.0,
-                                                                        0.0,
-                                                                        4.0),
-                                                            child: Text(
-                                                              '${listViewEventsAttendanceViewRow.activeWorker} of ${listViewEventsAttendanceViewRow.totalWorkers} active',
-                                                              style: FlutterFlowTheme
-                                                                      .of(context)
-                                                                  .labelLarge
-                                                                  .override(
-                                                                    font: GoogleFonts
-                                                                        .nunito(
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .normal,
-                                                                      fontStyle: FlutterFlowTheme.of(
-                                                                              context)
-                                                                          .labelLarge
-                                                                          .fontStyle,
-                                                                    ),
-                                                                    color: FlutterFlowTheme.of(
-                                                                            context)
-                                                                        .secondaryText,
-                                                                    fontSize:
-                                                                        10.0,
-                                                                    letterSpacing:
-                                                                        0.0,
-                                                                    fontWeight:
-                                                                        FontWeight
-                                                                            .normal,
-                                                                    fontStyle: FlutterFlowTheme.of(
-                                                                            context)
-                                                                        .labelLarge
-                                                                        .fontStyle,
-                                                                    lineHeight:
-                                                                        1.3,
-                                                                  ),
-                                                            ),
-                                                          ),
-                                                        ].divide(SizedBox(
-                                                            height: 2.0)),
                                                       ),
                                                     ),
                                                   ),
                                                 ].divide(SizedBox(width: 8.0)),
                                               ),
-                                            ),
-                                          ],
+                                              Row(
+                                                mainAxisSize: MainAxisSize.max,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.spaceBetween,
+                                                crossAxisAlignment: CrossAxisAlignment.end,
+                                                children: [
+                                                  Expanded(
+                                                    child: Column(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                                      children: [
+                                                        Text(
+                                                          valueOrDefault<String>(
+                                                            listViewEventsAttendanceViewRow.title,
+                                                            'Event Title',
+                                                          ),
+                                                          style: FlutterFlowTheme.of(context)
+                                                              .headlineSmall
+                                                              .override(
+                                                                font: GoogleFonts.roboto(
+                                                                  fontWeight: FontWeight.bold,
+                                                                ),
+                                                                color: Colors.white,
+                                                                fontSize: 18.0,
+                                                                letterSpacing: 0.0,
+                                                              ),
+                                                        ),
+                                                        Text(
+                                                          valueOrDefault<String>(
+                                                            listViewEventsAttendanceViewRow.description,
+                                                            'Event Description',
+                                                          ),
+                                                          maxLines: 1,
+                                                          overflow: TextOverflow.ellipsis,
+                                                          style: FlutterFlowTheme.of(context)
+                                                              .bodySmall
+                                                              .override(
+                                                                font: GoogleFonts.roboto(),
+                                                                color: Color(0xFFE0E0E0),
+                                                                fontSize: 12.0,
+                                                              ),
+                                                        ),
+                                                      ].divide(SizedBox(height: 4.0)),
+                                                    ),
+                                                  ),
+                                                  Container(
+                                                    width: 44.0,
+                                                    height: 44.0,
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white,
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    alignment: AlignmentDirectional(0.0, 0.0),
+                                                    child: RichText(
+                                                      text: TextSpan(
+                                                        children: [
+                                                          TextSpan(
+                                                            text:
+                                                                '${listViewEventsAttendanceViewRow.activeWorker}',
+                                                            style: TextStyle(
+                                                              color: Colors.black,
+                                                              fontWeight: FontWeight.bold,
+                                                              fontSize: 12.0,
+                                                            ),
+                                                          ),
+                                                          TextSpan(
+                                                            text: '/',
+                                                            style: TextStyle(
+                                                              color: Color(0xFF757575),
+                                                              fontSize: 14.0,
+                                                            ),
+                                                          ),
+                                                          TextSpan(
+                                                            text:
+                                                                '${listViewEventsAttendanceViewRow.totalWorkers}',
+                                                            style: TextStyle(
+                                                              color: Color(0xFF757575),
+                                                              fontSize: 8.0,
+                                                            ),
+                                                          ),
+                                                        ],
+                                                        style: FlutterFlowTheme.of(context)
+                                                            .bodyMedium,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
+                                      ],
                                     ),
                                   ),
                                 ),

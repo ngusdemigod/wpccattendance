@@ -341,6 +341,22 @@ class _CreateEVENTWidgetState extends State<CreateEVENTWidget> {
                                 _model.uploadedLocalFile_uploadDataUcr,
                           );
 
+                          if (_model.uploadurl == null || _model.uploadurl == '') {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  'Upload failed. Please try again.',
+                                  style: TextStyle(
+                                    color: FlutterFlowTheme.of(context).info,
+                                  ),
+                                ),
+                                duration: Duration(milliseconds: 4000),
+                                backgroundColor:
+                                    FlutterFlowTheme.of(context).error,
+                              ),
+                            );
+                          }
+
                           safeSetState(() {});
                         },
                         child: ClipRRect(
@@ -1079,6 +1095,24 @@ class _CreateEVENTWidgetState extends State<CreateEVENTWidget> {
                             ),
                             FFButtonWidget(
                               onPressed: () async {
+                                if (_model.datePicked1 == null ||
+                                    _model.datePicked2 == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Please select both start and end dates.',
+                                        style: TextStyle(
+                                          color: FlutterFlowTheme.of(context)
+                                              .info,
+                                        ),
+                                      ),
+                                      duration: Duration(milliseconds: 4000),
+                                      backgroundColor:
+                                          FlutterFlowTheme.of(context).error,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 await EventsTable().insert({
                                   'title': _model.textController1.text,
                                   'description': _model.textController2.text,
@@ -1090,7 +1124,7 @@ class _CreateEVENTWidgetState extends State<CreateEVENTWidget> {
                                         .decodeSupabaseJWT(currentJwtToken),
                                     r'''$.wpbranch_id''',
                                   ).toString(),
-                                  'created_by': '',
+                                  'created_by': currentUserDisplayName,
                                   'created_at': supaSerialize<DateTime>(
                                       getCurrentTimestamp),
                                   'isactive':
@@ -1102,6 +1136,21 @@ class _CreateEVENTWidgetState extends State<CreateEVENTWidget> {
                                       _model.datePicked2),
                                   'featured_url': _model.uploadurl,
                                 });
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Event created successfully!',
+                                      style: TextStyle(
+                                        color: FlutterFlowTheme.of(context)
+                                            .info,
+                                      ),
+                                    ),
+                                    duration: Duration(milliseconds: 4000),
+                                    backgroundColor:
+                                        FlutterFlowTheme.of(context).success,
+                                  ),
+                                );
                                 Navigator.pop(context);
                               },
                               text: 'Create event',
