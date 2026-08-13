@@ -1,0 +1,18 @@
+"use client";
+
+import { useEffect } from "react";
+
+export function ServiceWorkerRegistration() {
+  useEffect(() => {
+    if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") return;
+    const register = () => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).catch(() => {
+        // Installation remains optional; the dashboard still works as a normal web app.
+      });
+    };
+    if (document.readyState === "complete") register();
+    else window.addEventListener("load", register, { once: true });
+    return () => window.removeEventListener("load", register);
+  }, []);
+  return null;
+}

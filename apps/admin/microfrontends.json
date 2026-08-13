@@ -1,0 +1,19 @@
+{
+  "$schema": "https://openapi.vercel.sh/microfrontends.json",
+  "applications": {
+    "web": {
+      "development": {
+        "fallback": "https://my.wisdompowercc.org"
+      }
+    },
+    "wpcc-admin": {
+      "packageName": "admin",
+      "routing": [
+        {
+          "group": "admin",
+          "paths": ["/admin", "/admin/:path*"]
+        }
+      ]
+    }
+  }
+}
