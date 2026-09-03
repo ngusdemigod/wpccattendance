@@ -7,6 +7,27 @@ enum ProfileRouteTab { overview, classes, query }
 
 enum ProfileQueryFilter { overview, resolved, needsAttention }
 
+/// The approved categories used when an authorized handler assigns a worker
+/// query. Kept client-side until the existing query read model exposes a
+/// category field; this must not be treated as a schema enum.
+const workerQueryCategories = <String>[
+  'Attendance & Punctuality',
+  'Conduct & Discipline',
+  'Duty Assignment',
+  'Departmental Performance',
+  'Training & Development',
+  'Welfare & Pastoral Care',
+  'Communication',
+  'Conflict Resolution',
+  'Code of Conduct',
+  'Safety & Safeguarding',
+  'Financial & Resource Stewardship',
+  'Event & Service Operations',
+  'Technical & Media',
+  'Facilities & Logistics',
+  'Other',
+];
+
 class ProfileClassSummary {
   const ProfileClassSummary({
     required this.completedCount,

@@ -166,7 +166,7 @@ class _QueryDetailCard extends StatelessWidget {
                     const SizedBox(height: 6),
                     if ((item.raisedByName ?? '').isNotEmpty)
                       Text(
-                        'Raised by ${item.raisedByName}${(item.raisedByDepartment ?? '').isNotEmpty ? ', ${item.raisedByDepartment}' : ''}',
+                        'Assigned by ${item.raisedByName}${(item.raisedByDepartment ?? '').isNotEmpty ? ', ${item.raisedByDepartment}' : ''}',
                         style: profileSans(
                             size: 12, color: const Color(0xFF4B5563)),
                       ),
