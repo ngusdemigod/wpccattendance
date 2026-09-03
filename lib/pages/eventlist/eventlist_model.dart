@@ -25,6 +25,8 @@ class EventlistModel extends FlutterFlowModel<EventlistWidget> {
   String? requestLastUniqueKey1;
   bool requestCompleted2 = false;
   String? requestLastUniqueKey2;
+  bool requestCompleted3 = false;
+  String? requestLastUniqueKey3;
 
   @override
   void initState(BuildContext context) {}
@@ -57,6 +59,21 @@ class EventlistModel extends FlutterFlowModel<EventlistWidget> {
       await Future.delayed(Duration(milliseconds: 50));
       final timeElapsed = stopwatch.elapsedMilliseconds;
       final requestComplete = requestCompleted2;
+      if (timeElapsed > maxWait || (requestComplete && timeElapsed > minWait)) {
+        break;
+      }
+    }
+  }
+
+  Future waitForRequestCompleted3({
+    double minWait = 0,
+    double maxWait = double.infinity,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    while (true) {
+      await Future.delayed(const Duration(milliseconds: 50));
+      final timeElapsed = stopwatch.elapsedMilliseconds;
+      final requestComplete = requestCompleted3;
       if (timeElapsed > maxWait || (requestComplete && timeElapsed > minWait)) {
         break;
       }

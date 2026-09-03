@@ -14,6 +14,12 @@ abstract class FlutterFlowTheme {
   Color get secondaryColor => secondary;
   @Deprecated('Use tertiary instead')
   Color get tertiaryColor => tertiary;
+  Color get onPrimary => primaryText;
+  Color get onPrimary80 => primaryText.withValues(alpha: 0.8);
+  Color get onSecondary => secondaryText;
+  Color get onError => primaryText;
+  Color get surface40 => alternate.withValues(alpha: 0.4);
+  Color get surface80 => alternate.withValues(alpha: 0.8);
 
   late Color primary;
   late Color secondary;
@@ -127,7 +133,7 @@ class LightModeTheme extends FlutterFlowTheme {
   @Deprecated('Use tertiary instead')
   Color get tertiaryColor => tertiary;
 
-  late Color primary = const Color(0xFFFFD700);
+  late Color primary = const Color(0xFFC5099C);
   late Color secondary = const Color(0xFF659058);
   late Color tertiary = const Color(0xFF636366);
   late Color alternate = const Color(0xFF2C2B33);
@@ -135,7 +141,7 @@ class LightModeTheme extends FlutterFlowTheme {
   late Color secondaryText = const Color(0xFFB3B3B3);
   late Color primaryBackground = const Color(0xFF010101);
   late Color secondaryBackground = const Color(0xFF161616);
-  late Color accent1 = const Color(0xFFFFD700);
+  late Color accent1 = const Color(0xFFC5099C);
   late Color accent2 = const Color(0xFF659058);
   late Color accent3 = const Color(0x4DEE8B60);
   late Color accent4 = const Color(0x89E3E3E3);
@@ -205,110 +211,110 @@ class ThemeTypography extends Typography {
 
   final FlutterFlowTheme theme;
 
-  String get displayLargeFamily => 'Ubuntu Sans';
+  String get displayLargeFamily => 'Instrument Sans';
   bool get displayLargeIsCustom => false;
-  TextStyle get displayLarge => GoogleFonts.roboto(
+  TextStyle get displayLarge => GoogleFonts.instrumentSans(
         color: theme.primaryText,
-        fontWeight: FontWeight.w600,
-        fontSize: 64.0,
+        fontWeight: FontWeight.w400,
+        fontSize: 25.0,
         fontStyle: FontStyle.normal,
       );
-  String get displayMediumFamily => 'Ubuntu Sans';
+  String get displayMediumFamily => 'Instrument Sans';
   bool get displayMediumIsCustom => false;
-  TextStyle get displayMedium => GoogleFonts.roboto(
-        color: theme.primaryText,
-        fontWeight: FontWeight.w600,
-        fontSize: 44.0,
-      );
-  String get displaySmallFamily => 'Ubuntu Sans';
-  bool get displaySmallIsCustom => false;
-  TextStyle get displaySmall => GoogleFonts.roboto(
-        color: theme.primaryText,
-        fontWeight: FontWeight.w600,
-        fontSize: 36.0,
-      );
-  String get headlineLargeFamily => 'Ubuntu Sans';
-  bool get headlineLargeIsCustom => false;
-  TextStyle get headlineLarge => GoogleFonts.roboto(
-        color: theme.primaryText,
-        fontWeight: FontWeight.w600,
-        fontSize: 32.0,
-      );
-  String get headlineMediumFamily => 'Ubuntu Sans';
-  bool get headlineMediumIsCustom => false;
-  TextStyle get headlineMedium => GoogleFonts.roboto(
-        color: theme.primaryText,
-        fontWeight: FontWeight.w600,
-        fontSize: 28.0,
-      );
-  String get headlineSmallFamily => 'Ubuntu Sans';
-  bool get headlineSmallIsCustom => false;
-  TextStyle get headlineSmall => GoogleFonts.roboto(
+  TextStyle get displayMedium => GoogleFonts.instrumentSans(
         color: theme.primaryText,
         fontWeight: FontWeight.w600,
         fontSize: 24.0,
       );
-  String get titleLargeFamily => 'Ubuntu Sans';
-  bool get titleLargeIsCustom => false;
-  TextStyle get titleLarge => GoogleFonts.roboto(
+  String get displaySmallFamily => 'Instrument Serif';
+  bool get displaySmallIsCustom => false;
+  TextStyle get displaySmall => GoogleFonts.instrumentSerif(
+        color: theme.primaryText,
+        fontWeight: FontWeight.w400,
+        fontSize: 36.0,
+      );
+  String get headlineLargeFamily => 'Instrument Sans';
+  bool get headlineLargeIsCustom => false;
+  TextStyle get headlineLarge => GoogleFonts.instrumentSans(
+        color: theme.primaryText,
+        fontWeight: FontWeight.w400,
+        fontSize: 25.0,
+      );
+  String get headlineMediumFamily => 'Instrument Sans';
+  bool get headlineMediumIsCustom => false;
+  TextStyle get headlineMedium => GoogleFonts.instrumentSans(
         color: theme.primaryText,
         fontWeight: FontWeight.w600,
+        fontSize: 24.0,
+      );
+  String get headlineSmallFamily => 'Instrument Sans';
+  bool get headlineSmallIsCustom => false;
+  TextStyle get headlineSmall => GoogleFonts.instrumentSans(
+        color: theme.primaryText,
+        fontWeight: FontWeight.w400,
         fontSize: 20.0,
       );
-  String get titleMediumFamily => 'Ubuntu Sans';
+  String get titleLargeFamily => 'Instrument Sans';
+  bool get titleLargeIsCustom => false;
+  TextStyle get titleLarge => GoogleFonts.instrumentSans(
+        color: theme.primaryText,
+        fontWeight: FontWeight.w400,
+        fontSize: 17.0,
+      );
+  String get titleMediumFamily => 'Instrument Sans';
   bool get titleMediumIsCustom => false;
-  TextStyle get titleMedium => GoogleFonts.roboto(
+  TextStyle get titleMedium => GoogleFonts.instrumentSans(
         color: theme.primaryText,
-        fontWeight: FontWeight.w600,
-        fontSize: 18.0,
+        fontWeight: FontWeight.w400,
+        fontSize: 15.0,
       );
-  String get titleSmallFamily => 'Ubuntu Sans';
+  String get titleSmallFamily => 'Instrument Sans';
   bool get titleSmallIsCustom => false;
-  TextStyle get titleSmall => GoogleFonts.roboto(
+  TextStyle get titleSmall => GoogleFonts.instrumentSans(
         color: theme.primaryText,
         fontWeight: FontWeight.w600,
-        fontSize: 16.0,
-      );
-  String get labelLargeFamily => 'Ubuntu Sans';
-  bool get labelLargeIsCustom => false;
-  TextStyle get labelLarge => GoogleFonts.roboto(
-        color: theme.secondaryText,
-        fontWeight: FontWeight.normal,
-        fontSize: 16.0,
-      );
-  String get labelMediumFamily => 'Ubuntu Sans';
-  bool get labelMediumIsCustom => false;
-  TextStyle get labelMedium => GoogleFonts.roboto(
-        color: theme.secondaryText,
-        fontWeight: FontWeight.normal,
         fontSize: 14.0,
       );
-  String get labelSmallFamily => 'Ubuntu Sans';
-  bool get labelSmallIsCustom => false;
-  TextStyle get labelSmall => GoogleFonts.roboto(
+  String get labelLargeFamily => 'Instrument Sans';
+  bool get labelLargeIsCustom => false;
+  TextStyle get labelLarge => GoogleFonts.instrumentSans(
         color: theme.secondaryText,
-        fontWeight: FontWeight.normal,
+        fontWeight: FontWeight.w600,
+        fontSize: 13.0,
+      );
+  String get labelMediumFamily => 'Instrument Sans';
+  bool get labelMediumIsCustom => false;
+  TextStyle get labelMedium => GoogleFonts.instrumentSans(
+        color: theme.secondaryText,
+        fontWeight: FontWeight.w400,
         fontSize: 12.0,
       );
-  String get bodyLargeFamily => 'Ubuntu Sans';
+  String get labelSmallFamily => 'Instrument Sans';
+  bool get labelSmallIsCustom => false;
+  TextStyle get labelSmall => GoogleFonts.instrumentSans(
+        color: theme.secondaryText,
+        fontWeight: FontWeight.w600,
+        fontSize: 10.0,
+      );
+  String get bodyLargeFamily => 'Instrument Sans';
   bool get bodyLargeIsCustom => false;
-  TextStyle get bodyLarge => GoogleFonts.roboto(
+  TextStyle get bodyLarge => GoogleFonts.instrumentSans(
         color: theme.primaryText,
-        fontWeight: FontWeight.normal,
-        fontSize: 16.0,
+        fontWeight: FontWeight.w400,
+        fontSize: 12.0,
       );
-  String get bodyMediumFamily => 'Ubuntu Sans';
+  String get bodyMediumFamily => 'Instrument Sans';
   bool get bodyMediumIsCustom => false;
-  TextStyle get bodyMedium => GoogleFonts.roboto(
+  TextStyle get bodyMedium => GoogleFonts.instrumentSans(
         color: theme.primaryText,
-        fontWeight: FontWeight.normal,
-        fontSize: 14.0,
+        fontWeight: FontWeight.w400,
+        fontSize: 12.0,
       );
-  String get bodySmallFamily => 'Ubuntu Sans';
+  String get bodySmallFamily => 'Instrument Sans';
   bool get bodySmallIsCustom => false;
-  TextStyle get bodySmall => GoogleFonts.roboto(
+  TextStyle get bodySmall => GoogleFonts.instrumentSans(
         color: theme.primaryText,
-        fontWeight: FontWeight.normal,
+        fontWeight: FontWeight.w400,
         fontSize: 12.0,
       );
 }
@@ -343,23 +349,23 @@ class FFShadows {
   final FlutterFlowTheme theme;
   BoxShadow get sm => const BoxShadow(
       blurRadius: 3.0,
-      color: const Color(0x1A000000),
-      offset: const Offset(0.0, 1.0),
+      color: Color(0x1A000000),
+      offset: Offset(0.0, 1.0),
       spreadRadius: 0.0);
   BoxShadow get md => const BoxShadow(
       blurRadius: 6.0,
-      color: const Color(0x1A000000),
-      offset: const Offset(0.0, 3.0),
+      color: Color(0x1A000000),
+      offset: Offset(0.0, 3.0),
       spreadRadius: 0.0);
   BoxShadow get lg => const BoxShadow(
       blurRadius: 15.0,
-      color: const Color(0x1A000000),
-      offset: const Offset(0.0, 8.0),
+      color: Color(0x1A000000),
+      offset: Offset(0.0, 8.0),
       spreadRadius: 0.0);
   BoxShadow get xl => const BoxShadow(
       blurRadius: 25.0,
-      color: const Color(0x1A000000),
-      offset: const Offset(0.0, 16.0),
+      color: Color(0x1A000000),
+      offset: Offset(0.0, 16.0),
       spreadRadius: 0.0);
 }
 

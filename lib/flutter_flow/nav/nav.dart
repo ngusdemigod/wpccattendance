@@ -1,23 +1,16 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'package:go_router/go_router.dart';
-import 'package:page_transition/page_transition.dart';
 import 'package:provider/provider.dart';
 
 import '/backend/schema/structs/index.dart';
 
-import '/backend/supabase/supabase.dart';
-
 import '/auth/base_auth_user_provider.dart';
 
-import '/main.dart';
-import '/flutter_flow/flutter_flow_theme.dart';
-import '/flutter_flow/lat_lng.dart';
-import '/flutter_flow/place.dart';
+import '/app/app_shell_widget.dart';
+import '/features/profile_completion/profile_completion_service.dart';
+import '/shared/widgets/wpcc_shimmer.dart';
 import '/flutter_flow/flutter_flow_util.dart';
-import 'serialization_util.dart';
 
 import '/index.dart';
 
@@ -57,8 +50,11 @@ class AppStateNotifier extends ChangeNotifier {
 
   BaseAuthUser? initialUser;
   BaseAuthUser? user;
+  ProfileCompletionStatus profileCompletionStatus =
+      ProfileCompletionStatus.unknown;
   bool showSplashImage = true;
   String? _redirectLocation;
+  int _profileCompletionRequestVersion = 0;
 
   /// Determines whether the app will refresh and build again when a sign
   /// in or sign out happens. This is useful when the app is launched or
@@ -67,7 +63,10 @@ class AppStateNotifier extends ChangeNotifier {
   /// Otherwise, this will trigger a refresh and interrupt the action(s).
   bool notifyOnAuthChange = true;
 
-  bool get loading => user == null || showSplashImage;
+  // Profile completion is resolved in the background by HomeScreen. It must
+  // not block authenticated routes, because a slow secure-profile lookup
+  // would otherwise leave the whole app on an indefinite shimmer.
+  bool get loading => showSplashImage;
   bool get loggedIn => user?.loggedIn ?? false;
   bool get initiallyLoggedIn => initialUser?.loggedIn ?? false;
   bool get shouldRedirect => loggedIn && _redirectLocation != null;
@@ -86,6 +85,11 @@ class AppStateNotifier extends ChangeNotifier {
         user?.uid == null || newUser.uid == null || user?.uid != newUser.uid;
     initialUser ??= newUser;
     user = newUser;
+    if (!newUser.loggedIn) {
+      profileCompletionStatus = ProfileCompletionStatus.unauthenticated;
+    } else if (shouldUpdate) {
+      profileCompletionStatus = ProfileCompletionStatus.unknown;
+    }
     // Refresh the app on auth change unless explicitly marked otherwise.
     // No need to update unless the user has changed.
     if (notifyOnAuthChange && shouldUpdate) {
@@ -96,6 +100,36 @@ class AppStateNotifier extends ChangeNotifier {
     updateNotifyOnAuthChange(true);
   }
 
+  Future<void> refreshProfileCompletionStatus() async {
+    if (!loggedIn) {
+      if (profileCompletionStatus != ProfileCompletionStatus.unauthenticated) {
+        profileCompletionStatus = ProfileCompletionStatus.unauthenticated;
+        notifyListeners();
+      }
+      return;
+    }
+
+    final requestVersion = ++_profileCompletionRequestVersion;
+    final status = await ProfileCompletionService()
+        .fetchStatus()
+        .onError((_, __) => ProfileCompletionStatus.incomplete);
+    if (requestVersion != _profileCompletionRequestVersion) {
+      return;
+    }
+    if (profileCompletionStatus != status) {
+      profileCompletionStatus = status;
+      notifyListeners();
+    }
+  }
+
+  void setProfileCompletionStatus(ProfileCompletionStatus status) {
+    if (profileCompletionStatus == status) {
+      return;
+    }
+    profileCompletionStatus = status;
+    notifyListeners();
+  }
+
   void stopShowingSplashImage() {
     showSplashImage = false;
     notifyListeners();
@@ -103,35 +137,164 @@ class AppStateNotifier extends ChangeNotifier {
 }
 
 GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
-      initialLocation: '/',
+      initialLocation: LoginWidget.routePath,
       debugLogDiagnostics: true,
       refreshListenable: appStateNotifier,
       navigatorKey: appNavigatorKey,
-      errorBuilder: (context, state) =>
-          appStateNotifier.loggedIn ? EventlistWidget() : WelcomeWidget(),
+      errorBuilder: (context, state) => const AppShellWidget(),
+      redirect: (context, state) {
+        final location = state.uri.toString();
+        final isAuthRoute =
+            location == '/' || location.startsWith(LoginWidget.routePath);
+
+        // Signed-in users always land on the app shell (home). Profile
+        // completion is no longer a hard redirect gate; the home screen opens
+        // it in the background when it is still needed.
+        if (appStateNotifier.loggedIn && isAuthRoute) {
+          return AppShellWidget.routePath;
+        }
+
+        return null;
+      },
       routes: [
         FFRoute(
           name: '_initialize',
           path: '/',
-          builder: (context, _) =>
-              appStateNotifier.loggedIn ? EventlistWidget() : WelcomeWidget(),
+          builder: (context, params) => LoginWidget(
+            tokenHash: params.getParam(
+                  'token_hash',
+                  ParamType.String,
+                ) ??
+                '',
+            authType: params.getParam(
+                  'type',
+                  ParamType.String,
+                ) ??
+                '',
+            authErrorDescription: params.getParam(
+                  'error_description',
+                  ParamType.String,
+                ) ??
+                '',
+          ),
+        ),
+        FFRoute(
+          name: AppShellWidget.routeName,
+          path: AppShellWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => const AppShellWidget(),
         ),
         FFRoute(
           name: AttendanceListWidget.routeName,
           path: AttendanceListWidget.routePath,
-          builder: (context, params) => AttendanceListWidget(),
+          requireAuth: true,
+          builder: (context, params) => const AttendanceListWidget(),
+        ),
+        FFRoute(
+          name: EventsListingWidget.routeName,
+          path: EventsListingWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => const EventsListingWidget(),
         ),
         FFRoute(
           name: EventlistWidget.routeName,
           path: EventlistWidget.routePath,
           requireAuth: true,
-          builder: (context, params) => EventlistWidget(),
+          builder: (context, params) => const EventlistWidget(),
         ),
         FFRoute(
           name: LoginWidget.routeName,
           path: LoginWidget.routePath,
+          requireAuth: false,
+          builder: (context, params) => LoginWidget(
+            tokenHash: params.getParam(
+                  'token_hash',
+                  ParamType.String,
+                ) ??
+                '',
+            authType: params.getParam(
+                  'type',
+                  ParamType.String,
+                ) ??
+                '',
+            authErrorDescription: params.getParam(
+                  'error_description',
+                  ParamType.String,
+                ) ??
+                '',
+          ),
+        ),
+        FFRoute(
+          name: EventDetailsScreen.routeName,
+          path: EventDetailsScreen.routePath,
           requireAuth: true,
-          builder: (context, params) => LoginWidget(),
+          builder: (context, params) => EventDetailsScreen(
+            eventId: params.getParam(
+                  'eventId',
+                  ParamType.String,
+                ) ??
+                '',
+          ),
+        ),
+        FFRoute(
+          name: AnnouncementDetailScreen.routeName,
+          path: AnnouncementDetailScreen.routePath,
+          requireAuth: true,
+          builder: (context, params) => AnnouncementDetailScreen(
+            announcementId: params.getParam(
+                  'announcementId',
+                  ParamType.String,
+                ) ??
+                '',
+          ),
+        ),
+        FFRoute(
+          name: ClockInScreen.routeName,
+          path: ClockInScreen.routePath,
+          requireAuth: true,
+          builder: (context, params) => ClockInScreen(
+            eventId: params.getParam(
+                  'eventId',
+                  ParamType.String,
+                ) ??
+                '',
+          ),
+        ),
+        FFRoute(
+          name: CheckedInScreen.routeName,
+          path: CheckedInScreen.routePath,
+          requireAuth: true,
+          builder: (context, params) => CheckedInScreen(
+            eventId: params.getParam(
+                  'eventId',
+                  ParamType.String,
+                ) ??
+                '',
+            action: params.getParam(
+              'action',
+              ParamType.String,
+            ),
+          ),
+        ),
+        FFRoute(
+          name: LocationNotFoundScreen.routeName,
+          path: LocationNotFoundScreen.routePath,
+          requireAuth: true,
+          builder: (context, params) => LocationNotFoundScreen(
+            eventId: params.getParam(
+                  'eventId',
+                  ParamType.String,
+                ) ??
+                '',
+            reason: params.getParam(
+              'reason',
+              ParamType.String,
+            ),
+            message: params.getParam(
+              'message',
+              ParamType.String,
+            ),
+          ),
         ),
         FFRoute(
           name: EventviewWidget.routeName,
@@ -153,16 +316,72 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           ),
         ),
         FFRoute(
+          name: AttendanceActionWidget.routeName,
+          path: AttendanceActionWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => AttendanceActionWidget(
+            eventId: params.getParam(
+              'eventId',
+              ParamType.String,
+            ),
+            clockOut: params.getParam(
+                  'clockOut',
+                  ParamType.bool,
+                ) ??
+                false,
+          ),
+        ),
+        FFRoute(
+          name: ClockInSuccessWidget.routeName,
+          path: ClockInSuccessWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => ClockInSuccessWidget(
+            eventId: params.getParam(
+              'eventId',
+              ParamType.String,
+            ),
+          ),
+        ),
+        FFRoute(
+          name: EditProfileWidget.routeName,
+          path: EditProfileWidget.routePath,
+          requireAuth: true,
+          builder: (context, params) => const EditProfileWidget(),
+        ),
+        FFRoute(
           name: SettingsWidget.routeName,
           path: SettingsWidget.routePath,
           requireAuth: true,
-          builder: (context, params) => SettingsWidget(),
+          builder: (context, params) => const SettingsWidget(),
         ),
         FFRoute(
           name: WelcomeWidget.routeName,
           path: WelcomeWidget.routePath,
-          builder: (context, params) => WelcomeWidget(),
-        )
+          builder: (context, params) => const WelcomeWidget(),
+        ),
+        FFRoute(
+          name: ProfileCompletionScreen.routeName,
+          path: ProfileCompletionScreen.routePath,
+          requireAuth: true,
+          builder: (context, params) => const ProfileCompletionScreen(),
+        ),
+        FFRoute(
+          name: GlobalSearchScreen.routeName,
+          path: GlobalSearchScreen.routePath,
+          requireAuth: true,
+          builder: (context, params) => GlobalSearchScreen(
+            initialQuery: params.getParam(
+                  'q',
+                  ParamType.String,
+                ) ??
+                '',
+            initialFilter: params.getParam(
+                  'filter',
+                  ParamType.String,
+                ) ??
+                '',
+          ),
+        ),
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );
 
@@ -215,7 +434,7 @@ extension NavigationExtensions on BuildContext {
     if (canPop()) {
       pop();
     } else {
-      go('/');
+      go(LoginWidget.routePath);
     }
   }
 }
@@ -332,7 +551,7 @@ class FFRoute {
 
           if (requireAuth && !appStateNotifier.loggedIn) {
             appStateNotifier.setRedirectLocationIfUnset(state.uri.toString());
-            return '/welcome';
+            return LoginWidget.routePath;
           }
           return null;
         },
@@ -345,17 +564,13 @@ class FFRoute {
                   builder: (context, _) => builder(context, ffParams),
                 )
               : builder(context, ffParams);
-          final child = appStateNotifier.loading
-              ? Center(
-                  child: SizedBox(
-                    width: 20.0,
-                    height: 20.0,
-                    child: SpinKitFoldingCube(
-                      color: FlutterFlowTheme.of(context).primary,
-                      size: 20.0,
-                    ),
-                  ),
-                )
+          final isSetupRoute = state.uri
+              .toString()
+              .startsWith(ProfileCompletionScreen.routePath);
+          final shouldShowGlobalLoader =
+              requireAuth && !isSetupRoute && appStateNotifier.loading;
+          final child = shouldShowGlobalLoader
+              ? const WpccScreenShimmer(includeBottomNavSpace: false)
               : FocusReloader(child: page);
 
           final transitionInfo = state.transitionInfo;
@@ -400,7 +615,8 @@ class TransitionInfo {
   final Duration duration;
   final Alignment? alignment;
 
-  static TransitionInfo appDefault() => TransitionInfo(hasTransition: false);
+  static TransitionInfo appDefault() =>
+      const TransitionInfo(hasTransition: false);
 }
 
 class RootPageContext {

@@ -7,6 +7,7 @@ import '/pages/departmentlist_loader/departmentlist_loader_widget.dart';
 import '/pages/empty_list/empty_list_widget.dart';
 import '/pages/profileview/profileview_widget.dart';
 import '/components/topnav_widget.dart';
+import '/loaders/eventprofile_loading/eventprofile_loading_widget.dart';
 import '/loaders/workerssearch_l_o_a_d_e_r/workerssearch_l_o_a_d_e_r_widget.dart';
 import '/components/workersearchresult_widget.dart';
 import '/backend/supabase/database/table.dart';
@@ -16,13 +17,13 @@ import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/form_field_controller.dart';
 import '/flutter_flow/custom_functions.dart' as functions;
+import '/services/geolocation_service.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'eventview_model.dart';
@@ -50,6 +51,12 @@ class EventviewWidget extends StatefulWidget {
 class _EventviewWidgetState extends State<EventviewWidget>
     with TickerProviderStateMixin {
   late EventviewModel _model;
+  bool _isCheckingLocation = true;
+  bool _isLocationAllowed = false;
+  String _locationMessage = 'Checking location...';
+  late final Future<List<EventsAttendanceViewRow>> _eventHeaderFuture;
+  late final Future<List<AttendanceViewRow>> _attendanceListFuture;
+  Future<List<WorkerProfilesRow>>? _workerSearchFuture;
 
   final scaffoldKey = GlobalKey<ScaffoldState>();
 
@@ -62,6 +69,13 @@ class _EventviewWidgetState extends State<EventviewWidget>
 
     _model.textController ??= TextEditingController();
     _model.textFieldFocusNode ??= FocusNode();
+
+    _eventHeaderFuture = EventsAttendanceViewTable().queryRows(
+      queryFn: (q) => q.eqOrNull('event_id', widget.evid),
+    );
+    _attendanceListFuture = AttendanceViewTable().queryRows(
+      queryFn: (q) => q.eqOrNull('event_id', widget.evid),
+    );
 
     animationsMap.addAll({
       'workersearchresultOnPageLoadAnimation': AnimationInfo(
@@ -78,14 +92,34 @@ class _EventviewWidgetState extends State<EventviewWidget>
             curve: Curves.easeInOut,
             delay: 0.0.ms,
             duration: 600.0.ms,
-            begin: Offset(0.0, 20.0),
-            end: Offset(0.0, 0.0),
+            begin: const Offset(0.0, 20.0),
+            end: const Offset(0.0, 0.0),
           ),
         ],
       ),
     });
 
+    _checkLocation();
     WidgetsBinding.instance.addPostFrameCallback((_) => safeSetState(() {}));
+  }
+
+  Future<void> _checkLocation() async {
+    setState(() {
+      _isCheckingLocation = true;
+      _locationMessage = 'Verifying your location...';
+    });
+
+    final isWithinLocation = await GeolocationService.isUserWithinAllowedLocation();
+    
+    setState(() {
+      _isCheckingLocation = false;
+      _isLocationAllowed = isWithinLocation;
+      if (isWithinLocation) {
+        _locationMessage = 'Location verified. Event details are now accessible.';
+      } else {
+        _locationMessage = 'You are outside the allowed area. Please come within 40km of the church location to view event details.';
+      }
+    });
   }
 
   @override
@@ -110,53 +144,133 @@ class _EventviewWidgetState extends State<EventviewWidget>
       child: Scaffold(
         key: scaffoldKey,
         backgroundColor: FlutterFlowTheme.of(context).primaryBackground,
-        body: Align(
-          alignment: AlignmentDirectional(0.0, -1.0),
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: 700.0,
-            ),
-            width: MediaQuery.sizeOf(context).width * 1.0,
-            height: MediaQuery.sizeOf(context).height * 1.0,
-            decoration: BoxDecoration(
-              color: FlutterFlowTheme.of(context).secondaryBackground,
-            ),
-            child: Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(24.0, 32.0, 24.0, 32.0),
-              child: SingleChildScrollView(
-                primary: false,
+        body: SafeArea(
+          top: true,
+          child: Align(
+            alignment: const AlignmentDirectional(0.0, -1.0),
+            child: Container(
+              constraints: const BoxConstraints(
+                maxWidth: 700.0,
+              ),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: FlutterFlowTheme.of(context).secondaryBackground,
+              ),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(24.0, 16.0, 24.0, 0.0),
                 child: Column(
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisSize: MainAxisSize.max,
                   mainAxisAlignment: MainAxisAlignment.start,
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    wrapWithModel(
-                      model: _model.topnavModel,
-                      updateCallback: () => safeSetState(() {}),
-                      child: TopnavWidget(
-                        title: 'Event Details',
-                      ),
-                    ),
-                    FutureBuilder<List<EventsAttendanceViewRow>>(
-                      future: EventsAttendanceViewTable().queryRows(
-                        queryFn: (q) => q.eqOrNull(
-                          'event_id',
-                          widget.evid,
+                    // Geolocation Status Indicator
+                    if (_isCheckingLocation)
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: FlutterFlowTheme.of(context).primaryBackground,
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: FlutterFlowTheme.of(context).primary,
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 20.0,
+                              height: 20.0,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2.0,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  FlutterFlowTheme.of(context).primary,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 16.0),
+                            Text(
+                              _locationMessage,
+                              style: FlutterFlowTheme.of(context).bodyMedium,
+                            ),
+                          ],
+                        ),
+                      )
+                    else if (!_isLocationAllowed)
+                      Container(
+                        padding: const EdgeInsets.all(16.0),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFEBEE),
+                          borderRadius: BorderRadius.circular(12.0),
+                          border: Border.all(
+                            color: const Color(0xFFEF5350),
+                            width: 1.0,
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.location_off,
+                              color: Color(0xFFEF5350),
+                              size: 48.0,
+                            ),
+                            const SizedBox(height: 16.0),
+                            Text(
+                              'Location Not Allowed',
+                              style: FlutterFlowTheme.of(context).titleLarge.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFFEF5350),
+                              ),
+                            ),
+                            const SizedBox(height: 8.0),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                              child: Text(
+                                _locationMessage,
+                                textAlign: TextAlign.center,
+                                style: FlutterFlowTheme.of(context).bodyMedium,
+                              ),
+                            ),
+                            const SizedBox(height: 16.0),
+                            ElevatedButton.icon(
+                              onPressed: _checkLocation,
+                              icon: const Icon(Icons.refresh, color: Colors.white),
+                              label: const Text('Retry Location Check'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFFEF5350),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                  vertical: 12.0,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      wrapWithModel(
+                        model: _model.topnavModel,
+                        updateCallback: () => safeSetState(() {}),
+                        child: const TopnavWidget(
+                          title: 'Event Details',
                         ),
                       ),
+                    const SizedBox(height: 16.0),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        primary: false,
+                        child: Padding(
+                          padding: const EdgeInsetsDirectional.fromSTEB(0.0, 0.0, 0.0, 32.0),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.start,
+                            crossAxisAlignment: CrossAxisAlignment.center,
+                            children: [
+                    FutureBuilder<List<EventsAttendanceViewRow>>(
+                      future: _eventHeaderFuture,
                       builder: (context, snapshot) {
                         // Customize what your widget looks like when it's loading.
                         if (!snapshot.hasData) {
-                          return Center(
-                            child: SizedBox(
-                              width: 20.0,
-                              height: 20.0,
-                              child: SpinKitFoldingCube(
-                                color: FlutterFlowTheme.of(context).primary,
-                                size: 20.0,
-                              ),
-                            ),
-                          );
+                          return const EventprofileLoadingWidget();
                         }
                         List<EventsAttendanceViewRow>
                             headerEventsAttendanceViewRowList = snapshot.data!;
@@ -183,7 +297,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                     ? CachedNetworkImageProvider(
                                         headerEventsAttendanceViewRow
                                             .featuredImage!)
-                                    : AssetImage(
+                                    : const AssetImage(
                                             'assets/images/image-placeholder2.jpg')
                                         as ImageProvider,
                               ),
@@ -191,7 +305,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                             child: Stack(
                               children: [
                                 Align(
-                                  alignment: AlignmentDirectional(0.0, 1.0),
+                                  alignment: const AlignmentDirectional(0.0, 1.0),
                                   child: Container(
                                     width: double.infinity,
                                     height: 140.0,
@@ -202,15 +316,15 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                           Colors.black.withValues(alpha: 0.8),
                                           Colors.black
                                         ],
-                                        stops: [0.0, 0.6, 1.0],
-                                        begin: AlignmentDirectional(0.0, -1.0),
-                                        end: AlignmentDirectional(0, 1.0),
+                                        stops: const [0.0, 0.6, 1.0],
+                                        begin: const AlignmentDirectional(0.0, -1.0),
+                                        end: const AlignmentDirectional(0, 1.0),
                                       ),
                                     ),
                                   ),
                                 ),
                                 Padding(
-                                  padding: EdgeInsets.all(18.0),
+                                  padding: const EdgeInsets.all(18.0),
                                   child: Column(
                                     mainAxisSize: MainAxisSize.max,
                                     mainAxisAlignment: MainAxisAlignment.end,
@@ -227,7 +341,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                         style: FlutterFlowTheme.of(context)
                                             .headlineLarge
                                             .override(
-                                              font: GoogleFonts.roboto(
+                                              font: GoogleFonts.instrumentSans(
                                                 fontWeight: FontWeight.bold,
                                               ),
                                               color: Colors.white,
@@ -246,17 +360,17 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                         style: FlutterFlowTheme.of(context)
                                             .titleSmall
                                             .override(
-                                              font: GoogleFonts.roboto(
+                                              font: GoogleFonts.instrumentSans(
                                                 fontWeight: FontWeight.normal,
                                               ),
-                                              color: Color(0xFFE0E0E0),
+                                              color: const Color(0xFFE0E0E0),
                                               letterSpacing: 0.0,
                                               fontSize: 14.0,
                                               lineHeight: 1.2,
                                             ),
                                       ),
                                       Padding(
-                                        padding: EdgeInsetsDirectional.fromSTEB(
+                                        padding: const EdgeInsetsDirectional.fromSTEB(
                                             0.0, 8.0, 0.0, 0.0),
                                         child: Container(
                                           height: 44.0,
@@ -267,7 +381,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                           ),
                                           child: Padding(
                                             padding:
-                                                EdgeInsetsDirectional.fromSTEB(
+                                                const EdgeInsetsDirectional.fromSTEB(
                                                     12.0, 0.0, 12.0, 0.0),
                                             child: Row(
                                               mainAxisSize: MainAxisSize.max,
@@ -276,7 +390,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                               crossAxisAlignment:
                                                   CrossAxisAlignment.center,
                                               children: [
-                                                Icon(
+                                                const Icon(
                                                   Icons.qr_code_scanner_rounded,
                                                   color: Colors.black,
                                                   size: 20.0,
@@ -292,10 +406,29 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                                       onChanged: (_) =>
                                                           EasyDebounce.debounce(
                                                         '_model.textController',
-                                                        Duration(
-                                                            milliseconds: 50),
-                                                        () =>
-                                                            safeSetState(() {}),
+                                                        const Duration(
+                                                            milliseconds: 350),
+                                                        () {
+                                                          final query = _model
+                                                              .textController
+                                                              .text
+                                                              .trim();
+                                                          safeSetState(() {
+                                                            _workerSearchFuture =
+                                                                query.length >=
+                                                                        2
+                                                                    ? WorkerProfilesTable()
+                                                                        .queryRows(
+                                                                        queryFn: (q) =>
+                                                                            q.or(
+                                                                          'full_name.ilike.%$query%, profile_membership_code.ilike.%$query%',
+                                                                        ),
+                                                                        limit:
+                                                                            20,
+                                                                      )
+                                                                    : null;
+                                                          });
+                                                        },
                                                       ),
                                                       autofocus: true,
                                                       enabled: true,
@@ -326,7 +459,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                                                   font:
                                                                       GoogleFonts
                                                                           .roboto(),
-                                                                  color: Color(
+                                                                  color: const Color(
                                                                       0xFF757575),
                                                                   fontSize:
                                                                       12.0,
@@ -336,7 +469,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                                         enabledBorder:
                                                             OutlineInputBorder(
                                                           borderSide:
-                                                              BorderSide(
+                                                              const BorderSide(
                                                             color: Colors
                                                                 .transparent,
                                                             width: 1.0,
@@ -349,7 +482,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                                         focusedBorder:
                                                             OutlineInputBorder(
                                                           borderSide:
-                                                              BorderSide(
+                                                              const BorderSide(
                                                             color: Colors
                                                                 .transparent,
                                                             width: 1.0,
@@ -414,7 +547,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                           ),
                                         ),
                                       ),
-                                    ].divide(SizedBox(height: 4.0)),
+                                    ].divide(const SizedBox(height: 4.0)),
                                   ),
                                 ),
                               ],
@@ -423,11 +556,9 @@ class _EventviewWidgetState extends State<EventviewWidget>
                         );
                       },
                     ),
-                    if (_model.textController.text == ''
-                        ? false
-                        : true)
+                    if (_model.textController.text.trim().length >= 2)
                       Container(
-                        constraints: BoxConstraints(
+                        constraints: const BoxConstraints(
                           maxHeight: 200.0,
                         ),
                         decoration: BoxDecoration(
@@ -435,23 +566,20 @@ class _EventviewWidgetState extends State<EventviewWidget>
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.all(8.0),
+                          padding: const EdgeInsets.all(8.0),
                           child: FutureBuilder<List<WorkerProfilesRow>>(
-                            future: WorkerProfilesTable().queryRows(
-                              queryFn: (q) => q.or(
-                                  "full_name.ilike.${'%${_model.textController.text}%'}, profile_membership_code.ilike.${'%${_model.textController.text}%'}"),
-                            ),
+                            future: _workerSearchFuture,
                             builder: (context, snapshot) {
                               // Customize what your widget looks like when it's loading.
                               if (!snapshot.hasData) {
-                                return WorkerssearchLOADERWidget();
+                                return const WorkerssearchLOADERWidget();
                               }
                               List<WorkerProfilesRow>
                                   listViewWorkerProfilesRowList =
                                   snapshot.data!;
 
                               if (listViewWorkerProfilesRowList.isEmpty) {
-                                return EmptyListWidget();
+                                return const EmptyListWidget();
                               }
 
                               return ListView.separated(
@@ -461,7 +589,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                 scrollDirection: Axis.vertical,
                                 itemCount: listViewWorkerProfilesRowList.length,
                                 separatorBuilder: (_, __) =>
-                                    SizedBox(height: 4.0),
+                                    const SizedBox(height: 4.0),
                                 itemBuilder: (context, listViewIndex) {
                                   final listViewWorkerProfilesRow =
                                       listViewWorkerProfilesRowList[
@@ -481,7 +609,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                               insetPadding: EdgeInsets.zero,
                                               backgroundColor:
                                                   Colors.transparent,
-                                              alignment: AlignmentDirectional(
+                                              alignment: const AlignmentDirectional(
                                                       0.0, 0.0)
                                                   .resolve(Directionality.of(
                                                       context)),
@@ -529,7 +657,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                                 .departmentName,
                                             role: listViewWorkerProfilesRow
                                                 .profileMembershipCode,
-                                            color: Color(0x21000000),
+                                            color: const Color(0x21000000),
                                           ),
                                         ),
                                       ),
@@ -552,7 +680,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                           style: FlutterFlowTheme.of(context)
                               .labelLarge
                               .override(
-                                font: GoogleFonts.roboto(
+                                font: GoogleFonts.instrumentSans(
                                   fontWeight: FlutterFlowTheme.of(context)
                                       .labelLarge
                                       .fontWeight,
@@ -578,9 +706,9 @@ class _EventviewWidgetState extends State<EventviewWidget>
                             borderRadius: BorderRadius.circular(16.0),
                           ),
                           child: Padding(
-                            padding: EdgeInsets.all(6.0),
+                            padding: const EdgeInsets.all(6.0),
                             child: FlutterFlowChoiceChips(
-                              options: [
+                              options: const [
                                 ChipData('Dream Team'),
                                 ChipData('Department')
                               ],
@@ -592,8 +720,8 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                 textStyle: FlutterFlowTheme.of(context)
                                     .bodyMedium
                                     .override(
-                                      font: GoogleFonts.roboto(
-                                        fontWeight: FontWeight.w500,
+                                      font: GoogleFonts.instrumentSans(
+                                        fontWeight: FontWeight.w400,
                                         fontStyle: FlutterFlowTheme.of(context)
                                             .bodyMedium
                                             .fontStyle,
@@ -602,7 +730,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                           .primaryBackground,
                                       fontSize: 14.0,
                                       letterSpacing: 0.0,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w400,
                                       fontStyle: FlutterFlowTheme.of(context)
                                           .bodyMedium
                                           .fontStyle,
@@ -617,7 +745,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                 textStyle: FlutterFlowTheme.of(context)
                                     .bodyMedium
                                     .override(
-                                      font: GoogleFonts.roboto(
+                                      font: GoogleFonts.instrumentSans(
                                         fontWeight: FlutterFlowTheme.of(context)
                                             .bodyMedium
                                             .fontWeight,
@@ -655,23 +783,18 @@ class _EventviewWidgetState extends State<EventviewWidget>
                           ),
                         ),
                         FutureBuilder<List<AttendanceViewRow>>(
-                          future: AttendanceViewTable().queryRows(
-                            queryFn: (q) => q.eqOrNull(
-                              'event_id',
-                              widget.evid,
-                            ),
-                          ),
+                          future: _attendanceListFuture,
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return _model.choiceChipsValue == 'Dream Team'
-                                  ? WorkerssearchLOADERWidget()
-                                  : DepartmentlistLoaderWidget();
+                                  ? const WorkerssearchLOADERWidget()
+                                  : const DepartmentlistLoaderWidget();
                             }
                             final attendanceData = snapshot.data!;
 
                             if (_model.choiceChipsValue == 'Dream Team') {
                               if (attendanceData.isEmpty) {
-                                return EmptyListWidget();
+                                return const EmptyListWidget();
                               }
 
                               // Sort for Dream Team (Latest check-ins first)
@@ -689,7 +812,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                 scrollDirection: Axis.vertical,
                                 itemCount: dreamTeamList.length,
                                 separatorBuilder: (_, __) =>
-                                    SizedBox(height: 8.0),
+                                    const SizedBox(height: 8.0),
                                 itemBuilder: (context, listViewIndex) {
                                   final row = dreamTeamList[listViewIndex];
                                   return WorkersearchresultWidget(
@@ -700,7 +823,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                     email: row.departmentName,
                                     role: dateTimeFormat(
                                         "jm", row.attendanceCreatedAt),
-                                    color: Color(0x44333333),
+                                    color: const Color(0x44333333),
                                   );
                                 },
                               );
@@ -708,7 +831,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                               // Department List logic (Sort by check-in count)
                               final departments = FFAppState().allDepartments;
                               if (departments.isEmpty) {
-                                return EmptyListWidget();
+                                return const EmptyListWidget();
                               }
 
                               final sortedDepartments =
@@ -737,7 +860,7 @@ class _EventviewWidgetState extends State<EventviewWidget>
                                 scrollDirection: Axis.vertical,
                                 itemCount: sortedDepartments.length,
                                 separatorBuilder: (_, __) =>
-                                    SizedBox(height: 8.0),
+                                    const SizedBox(height: 8.0),
                                 itemBuilder: (context, listViewIndex) {
                                   final dept =
                                       sortedDepartments[listViewIndex];
@@ -759,12 +882,17 @@ class _EventviewWidgetState extends State<EventviewWidget>
                             }
                           },
                         ),
-                      ].divide(SizedBox(height: 16.0)),
+                      ].divide(const SizedBox(height: 16.0)),
                     ),
                     Container(
                       height: 32.0,
                     ),
-                  ].divide(SizedBox(height: 24.0)),
+                  ].divide(const SizedBox(height: 24.0)),
+                ),
+              ),
+            ),
+          ),
+                  ],
                 ),
               ),
             ),

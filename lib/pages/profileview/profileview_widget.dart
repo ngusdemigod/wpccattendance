@@ -4,17 +4,13 @@ import '/flutter_flow/flutter_flow_expanded_image_view.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
-import 'dart:math';
-import 'dart:ui';
+import '/shared/widgets/wpcc_shimmer.dart';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:barcode_widget/barcode_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:page_transition/page_transition.dart';
 import 'package:provider/provider.dart';
 import 'profileview_model.dart';
 export 'profileview_model.dart';
@@ -31,16 +27,16 @@ class ProfileviewWidget extends StatefulWidget {
     String? url,
     String? deptid,
     String? branchid,
-  })  : this.name = name ?? 'null',
-        this.id = id ?? 'null',
-        this.evid = evid ?? 'null',
-        this.department = department ?? 'null',
-        this.branch = branch ?? 'null',
-        this.code = code ?? 'null',
-        this.url = url ??
+  })  : name = name ?? 'null',
+        id = id ?? 'null',
+        evid = evid ?? 'null',
+        department = department ?? 'null',
+        branch = branch ?? 'null',
+        code = code ?? 'null',
+        url = url ??
             'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/wpcc-3nsm23/assets/qrooxoy1wlrd/istockphoto-1288129985-612x612.jpg',
-        this.deptid = deptid ?? 'null',
-        this.branchid = branchid ?? 'null';
+        deptid = deptid ?? 'null',
+        branchid = branchid ?? 'null';
 
   final String name;
   final String id;
@@ -59,6 +55,7 @@ class ProfileviewWidget extends StatefulWidget {
 class _ProfileviewWidgetState extends State<ProfileviewWidget>
     with TickerProviderStateMixin {
   late ProfileviewModel _model;
+  late Future<List<AttendanceRow>> _attendanceFuture;
 
   final animationsMap = <String, AnimationInfo>{};
 
@@ -72,6 +69,21 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
   void initState() {
     super.initState();
     _model = createModel(context, () => ProfileviewModel());
+    _attendanceFuture = AttendanceTable().queryRows(
+      queryFn: (q) => q
+          .eqOrNull(
+            'event_id',
+            widget.evid,
+          )
+          .eqOrNull(
+            'user_id',
+            widget.id,
+          )
+          .eqOrNull(
+            'department_id',
+            widget.deptid,
+          ),
+    );
 
     animationsMap.addAll({
       'columnOnPageLoadAnimation': AnimationInfo(
@@ -81,8 +93,8 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
             curve: Curves.easeInOut,
             delay: 290.0.ms,
             duration: 740.0.ms,
-            begin: Offset(0.0, 55.0),
-            end: Offset(0.0, 0.0),
+            begin: const Offset(0.0, 55.0),
+            end: const Offset(0.0, 0.0),
           ),
           FadeEffect(
             curve: Curves.easeInOut,
@@ -110,14 +122,14 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
     context.watch<FFAppState>();
 
     return Align(
-      alignment: AlignmentDirectional(0.0, -1.0),
+      alignment: const AlignmentDirectional(0.0, 0.0),
       child: Container(
-        constraints: BoxConstraints(
+        constraints: const BoxConstraints(
           maxWidth: 700.0,
         ),
-        decoration: BoxDecoration(),
+        decoration: const BoxDecoration(),
         child: Padding(
-        padding: EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20.0),
         child: SingleChildScrollView(
           primary: false,
           child: Column(
@@ -125,7 +137,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
             mainAxisAlignment: MainAxisAlignment.start,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Container(
+              SizedBox(
                 height: 500.0,
                 child: Stack(
                   children: [
@@ -141,8 +153,8 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                             type: PageTransitionType.fade,
                             child: FlutterFlowExpandedImageView(
                               image: CachedNetworkImage(
-                                fadeInDuration: Duration(milliseconds: 500),
-                                fadeOutDuration: Duration(milliseconds: 500),
+                                fadeInDuration: const Duration(milliseconds: 500),
+                                fadeOutDuration: const Duration(milliseconds: 500),
                                 imageUrl:
                                     'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/wpcc-3nsm23/assets/qrooxoy1wlrd/istockphoto-1288129985-612x612.jpg',
                                 fit: BoxFit.contain,
@@ -176,8 +188,8 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                     .lg),
                           ),
                           child: CachedNetworkImage(
-                            fadeInDuration: Duration(milliseconds: 500),
-                            fadeOutDuration: Duration(milliseconds: 500),
+                            fadeInDuration: const Duration(milliseconds: 500),
+                            fadeOutDuration: const Duration(milliseconds: 500),
                             imageUrl:
                                 'https://storage.googleapis.com/flutterflow-io-6f20.appspot.com/projects/wpcc-3nsm23/assets/qrooxoy1wlrd/istockphoto-1288129985-612x612.jpg',
                             width: double.infinity,
@@ -195,12 +207,12 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                       ),
                     ),
                     Align(
-                      alignment: AlignmentDirectional(0.0, 1.0),
+                      alignment: const AlignmentDirectional(0.0, 1.0),
                       child: Container(
                         decoration: BoxDecoration(
                           color:
                               FlutterFlowTheme.of(context).secondaryBackground,
-                          boxShadow: [
+                          boxShadow: const [
                             BoxShadow(
                               blurRadius: 8.0,
                               color: Color(0x1A000000),
@@ -218,7 +230,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                   .lg),
                         ),
                         child: Padding(
-                          padding: EdgeInsets.all(24.0),
+                          padding: const EdgeInsets.all(24.0),
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             mainAxisAlignment: MainAxisAlignment.start,
@@ -242,7 +254,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                             .titleLarge
                                             .override(
                                               font: GoogleFonts.nunito(
-                                                fontWeight: FontWeight.w500,
+                                                fontWeight: FontWeight.w400,
                                                 fontStyle:
                                                     FlutterFlowTheme.of(context)
                                                         .titleLarge
@@ -253,7 +265,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                                       .secondaryText,
                                               fontSize: 12.0,
                                               letterSpacing: 0.0,
-                                              fontWeight: FontWeight.w500,
+                                              fontWeight: FontWeight.w400,
                                               fontStyle:
                                                   FlutterFlowTheme.of(context)
                                                       .titleLarge
@@ -263,7 +275,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                       ),
                                       AutoSizeText(
                                         valueOrDefault<String>(
-                                          widget!.name,
+                                          widget.name,
                                           '{{Name}}',
                                         ),
                                         maxLines: 1,
@@ -271,7 +283,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                         style: FlutterFlowTheme.of(context)
                                             .titleMedium
                                             .override(
-                                              font: GoogleFonts.roboto(
+                                              font: GoogleFonts.instrumentSans(
                                                 fontWeight:
                                                     FlutterFlowTheme.of(context)
                                                         .titleMedium
@@ -309,7 +321,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                       width: 140.0,
                                       height: 140.0,
                                       decoration: BoxDecoration(
-                                        boxShadow: [
+                                        boxShadow: const [
                                           BoxShadow(
                                             blurRadius: 2.0,
                                             color: Color(0x1A000000),
@@ -323,21 +335,21 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                         borderRadius:
                                             BorderRadius.circular(28.0),
                                         border: Border.all(
-                                          color: Color(0x52A887FF),
+                                          color: const Color(0x52A887FF),
                                         ),
                                       ),
                                       child: Padding(
-                                        padding: EdgeInsets.all(16.0),
+                                        padding: const EdgeInsets.all(16.0),
                                         child: BarcodeWidget(
-                                          data: widget!.code,
+                                          data: widget.code,
                                           barcode: Barcode.qrCode(),
                                           width: 200.0,
                                           height: 200.0,
                                           color: FlutterFlowTheme.of(context)
                                               .primaryText,
                                           backgroundColor: Colors.transparent,
-                                          errorBuilder: (_context, _error) =>
-                                              SizedBox(
+                                          errorBuilder: (context, error) =>
+                                              const SizedBox(
                                             width: 200.0,
                                             height: 200.0,
                                           ),
@@ -390,7 +402,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                             ),
                                             AutoSizeText(
                                               valueOrDefault<String>(
-                                                widget!.code,
+                                                widget.code,
                                                 '{{code}}',
                                               ),
                                               minFontSize: 12.0,
@@ -422,7 +434,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                                     lineHeight: 1.4,
                                                   ),
                                             ),
-                                          ].divide(SizedBox(height: 4.0)),
+                                          ].divide(const SizedBox(height: 4.0)),
                                         ),
                                         Column(
                                           mainAxisSize: MainAxisSize.min,
@@ -459,7 +471,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                             ),
                                             AutoSizeText(
                                               valueOrDefault<String>(
-                                                widget!.department,
+                                                widget.department,
                                                 '{{department}}',
                                               ),
                                               maxLines: 1,
@@ -492,7 +504,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                                     lineHeight: 1.4,
                                                   ),
                                             ),
-                                          ].divide(SizedBox(height: 4.0)),
+                                          ].divide(const SizedBox(height: 4.0)),
                                         ),
                                         Column(
                                           mainAxisSize: MainAxisSize.min,
@@ -529,7 +541,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                             ),
                                             AutoSizeText(
                                               valueOrDefault<String>(
-                                                widget!.branch,
+                                                widget.branch,
                                                 '{{expression}',
                                               ),
                                               maxLines: 1,
@@ -562,42 +574,22 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                                     lineHeight: 1.4,
                                                   ),
                                             ),
-                                          ].divide(SizedBox(height: 4.0)),
+                                          ].divide(const SizedBox(height: 4.0)),
                                         ),
-                                      ].divide(SizedBox(height: 4.0)),
+                                      ].divide(const SizedBox(height: 4.0)),
                                     ),
                                   ),
-                                ].divide(SizedBox(width: 24.0)),
+                                ].divide(const SizedBox(width: 24.0)),
                               ),
                               FutureBuilder<List<AttendanceRow>>(
-                                future: AttendanceTable().queryRows(
-                                  queryFn: (q) => q
-                                      .eqOrNull(
-                                        'event_id',
-                                        widget!.evid,
-                                      )
-                                      .eqOrNull(
-                                        'user_id',
-                                        widget!.id,
-                                      )
-                                      .eqOrNull(
-                                        'department_id',
-                                        widget!.deptid,
-                                      ),
-                                ),
+                                future: _attendanceFuture,
                                 builder: (context, snapshot) {
                                   // Customize what your widget looks like when it's loading.
                                   if (!snapshot.hasData) {
-                                    return Center(
-                                      child: SizedBox(
-                                        width: 20.0,
-                                        height: 20.0,
-                                        child: SpinKitFoldingCube(
-                                          color: FlutterFlowTheme.of(context)
-                                              .primary,
-                                          size: 20.0,
-                                        ),
-                                      ),
+                                    return const WpccShimmerCard(
+                                      height: 56,
+                                      radius: 18,
+                                      child: SizedBox.expand(),
                                     );
                                   }
                                   List<AttendanceRow> buttonAttendanceRowList =
@@ -608,14 +600,14 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                         ? null
                                         : () async {
                                             await AttendanceTable().insert({
-                                              'user_id': widget!.id,
+                                              'user_id': widget.id,
                                               'event_id': FFAppState().eventid,
                                               'created_at':
                                                   supaSerialize<DateTime>(
                                                       getCurrentTimestamp),
-                                              'branch_id': widget!.branchid,
-                                              'department_id': widget!.deptid,
-                                              'fullname': widget!.name,
+                                              'branch_id': widget.branchid,
+                                              'department_id': widget.deptid,
+                                              'fullname': widget.name,
                                             });
 
                                             FFAppState().clearAllRequestCache();
@@ -631,10 +623,10 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                       width: MediaQuery.sizeOf(context).width *
                                           1.0,
                                       height: 45.5,
-                                      padding: EdgeInsetsDirectional.fromSTEB(
+                                      padding: const EdgeInsetsDirectional.fromSTEB(
                                           16.0, 0.0, 16.0, 0.0),
                                       iconPadding:
-                                          EdgeInsetsDirectional.fromSTEB(
+                                          const EdgeInsetsDirectional.fromSTEB(
                                               0.0, 0.0, 0.0, 0.0),
                                       color:
                                           FlutterFlowTheme.of(context).primary,
@@ -646,7 +638,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                       textStyle: FlutterFlowTheme.of(context)
                                           .titleSmall
                                           .override(
-                                            font: GoogleFonts.roboto(
+                                            font: GoogleFonts.instrumentSans(
                                               fontWeight:
                                                   FlutterFlowTheme.of(context)
                                                       .titleSmall
@@ -675,7 +667,7 @@ class _ProfileviewWidgetState extends State<ProfileviewWidget>
                                   );
                                 },
                               ),
-                            ].divide(SizedBox(height: 16.0)),
+                            ].divide(const SizedBox(height: 16.0)),
                           ),
                         ),
                       ),

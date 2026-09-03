@@ -1,12 +1,38 @@
-import 'package:supabase_flutter/supabase_flutter.dart' hide Provider;
-import '/flutter_flow/flutter_flow_util.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 export 'database/database.dart';
 export 'storage/storage.dart';
 
-String _kSupabaseUrl = 'https://pgpihzhvysbadrzjhvxw.supabase.co';
-String _kSupabaseAnonKey =
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBncGloemh2eXNiYWRyempodnh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzIzNTc5ODcsImV4cCI6MjA4NzkzMzk4N30.rO-wc44xJhnDgAak_ltlcs6W0Eo77r2MPCRtqpR-g_w';
+const String _productionSupabaseUrl =
+    'https://pgpihzhvysbadrzjhvxw.supabase.co';
+const String _productionSupabasePublishableKey =
+    'sb_publishable_5YAfKwXF--agw-5Dil9uwA_4IAEarod';
+
+const String _configuredSupabaseUrl = String.fromEnvironment('SUPABASE_URL');
+const String _configuredSupabasePublishableKey =
+    String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+
+String _resolveSupabaseUrl() {
+  if (_configuredSupabaseUrl.isNotEmpty) {
+    return _configuredSupabaseUrl;
+  }
+  return _productionSupabaseUrl;
+}
+
+String _resolveSupabasePublishableKey() {
+  if (_configuredSupabasePublishableKey.isNotEmpty) {
+    return _configuredSupabasePublishableKey;
+  }
+  return _productionSupabasePublishableKey;
+}
+
+final String kSupabaseUrl = _resolveSupabaseUrl();
+final String kSupabaseAnonKey = _resolveSupabasePublishableKey();
+
+String supabaseFunctionUrl(String functionName) =>
+    '$kSupabaseUrl/functions/v1/$functionName';
+
+String appBaseRedirectUrl() => Uri.base.origin;
 
 class SupaFlow {
   SupaFlow._();
@@ -18,13 +44,16 @@ class SupaFlow {
   static SupabaseClient get client => instance._supabase;
 
   static Future initialize() => Supabase.initialize(
-        url: _kSupabaseUrl,
+        url: kSupabaseUrl,
         headers: {
           'X-Client-Info': 'flutterflow',
         },
-        anonKey: _kSupabaseAnonKey,
+        anonKey: kSupabaseAnonKey,
         debug: false,
-        authOptions:
-            FlutterAuthClientOptions(authFlowType: AuthFlowType.implicit),
+        authOptions: const FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+          autoRefreshToken: true,
+          detectSessionInUri: true,
+        ),
       );
 }

@@ -58,13 +58,13 @@ class _WorkersearchresultWidgetState extends State<WorkersearchresultWidget> {
   @override
   Widget build(BuildContext context) {
     final List<Color> avatarColors = [
-      FlutterFlowTheme.of(context).primary.withOpacity(0.2),
-      FlutterFlowTheme.of(context).secondary.withOpacity(0.2),
-      FlutterFlowTheme.of(context).tertiary.withOpacity(0.2),
-      FlutterFlowTheme.of(context).alternate.withOpacity(0.5),
-      FlutterFlowTheme.of(context).info.withOpacity(0.2),
-      FlutterFlowTheme.of(context).success.withOpacity(0.2),
-      FlutterFlowTheme.of(context).warning.withOpacity(0.2),
+      FlutterFlowTheme.of(context).primary.withValues(alpha: 0.2),
+      FlutterFlowTheme.of(context).secondary.withValues(alpha: 0.2),
+      FlutterFlowTheme.of(context).tertiary.withValues(alpha: 0.2),
+      FlutterFlowTheme.of(context).alternate.withValues(alpha: 0.5),
+      FlutterFlowTheme.of(context).info.withValues(alpha: 0.2),
+      FlutterFlowTheme.of(context).success.withValues(alpha: 0.2),
+      FlutterFlowTheme.of(context).warning.withValues(alpha: 0.2),
     ];
     final String hashTarget = widget!.name ?? widget!.initials ?? 'U';
     final int colorIndex = hashTarget.hashCode.abs() % avatarColors.length;

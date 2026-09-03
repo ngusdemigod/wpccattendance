@@ -1,9 +1,10 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import '/auth/auth_manager.dart';
 import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_util.dart';
+import '/features/profile/profile_identity_resolver.dart';
 import 'email_auth.dart';
 import 'google_auth.dart';
 
@@ -15,6 +16,8 @@ class SupabaseAuthManager extends AuthManager
     with EmailSignInManager, GoogleSignInManager {
   @override
   Future signOut() {
+    currentUser = null;
+    ProfileIdentityResolver.clearCache();
     return SupaFlow.client.auth.signOut();
   }
 
@@ -22,14 +25,17 @@ class SupabaseAuthManager extends AuthManager
   Future deleteUser(BuildContext context) async {
     try {
       if (!loggedIn) {
-        print('Error: delete user attempted with no logged in user!');
+        debugPrint('Error: delete user attempted with no logged in user!');
         return;
       }
       await currentUser?.delete();
     } on AuthException catch (e) {
+      if (!context.mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message!}')),
+        SnackBar(content: Text('Error: ${e.message}')),
       );
     }
   }
@@ -41,42 +47,53 @@ class SupabaseAuthManager extends AuthManager
   }) async {
     try {
       if (!loggedIn) {
-        print('Error: update email attempted with no logged in user!');
+        debugPrint('Error: update email attempted with no logged in user!');
         return;
       }
       await currentUser?.updateEmail(email);
+      if (!context.mounted) {
+        return;
+      }
     } on AuthException catch (e) {
+      if (!context.mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message!}')),
+        SnackBar(content: Text('Error: ${e.message}')),
       );
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Email change confirmation email sent')),
+      const SnackBar(content: Text('Email change confirmation email sent')),
     );
   }
 
-  @override
   Future updatePassword({
     required String newPassword,
     required BuildContext context,
   }) async {
     try {
       if (!loggedIn) {
-        print('Error: update password attempted with no logged in user!');
+        debugPrint('Error: update password attempted with no logged in user!');
         return;
       }
       await currentUser?.updatePassword(newPassword);
+      if (!context.mounted) {
+        return;
+      }
     } on AuthException catch (e) {
+      if (!context.mounted) {
+        return;
+      }
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message!}')),
+        SnackBar(content: Text('Error: ${e.message}')),
       );
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Password updated successfully')),
+      const SnackBar(content: Text('Password updated successfully')),
     );
   }
 
@@ -87,17 +104,52 @@ class SupabaseAuthManager extends AuthManager
     String? redirectTo,
   }) async {
     try {
-      await SupaFlow.client.auth
-          .resetPasswordForEmail(email, redirectTo: redirectTo);
+      final response = await http.post(
+        Uri.parse(supabaseFunctionUrl('Passwordreset_email')),
+        headers: <String, String>{
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $kSupabaseAnonKey',
+          'apikey': kSupabaseAnonKey,
+        },
+        body: jsonEncode(<String, String>{
+          'email': email,
+          if (redirectTo != null && redirectTo.trim().isNotEmpty)
+            'redirectTo': redirectTo.trim(),
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        throw FormatException(
+          response.body.isNotEmpty
+              ? response.body
+              : 'Unable to send password reset email.',
+        );
+      }
     } on AuthException catch (e) {
+      if (!context.mounted) {
+        return null;
+      }
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: ${e.message!}')),
+        SnackBar(content: Text('Error: ${e.message}')),
+      );
+      return null;
+    } on FormatException catch (e) {
+      if (!context.mounted) {
+        return null;
+      }
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.message)),
       );
       return null;
     }
+    if (!context.mounted) {
+      return null;
+    }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Password reset email sent')),
+      const SnackBar(content: Text('Password reset email sent')),
     );
   }
 
@@ -149,7 +201,10 @@ class SupabaseAuthManager extends AuthManager
     } on AuthException catch (e) {
       final errorMsg = e.message.contains('User already registered')
           ? 'Error: The email is already in use by a different account'
-          : 'Error: ${e.message!}';
+          : 'Error: ${e.message}';
+      if (!context.mounted) {
+        return null;
+      }
       ScaffoldMessenger.of(context).hideCurrentSnackBar();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(errorMsg)),
