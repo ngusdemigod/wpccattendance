@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../flutter_flow/custom_icons.dart';
 
@@ -53,14 +54,18 @@ class _AppShellWidgetState extends State<AppShellWidget> {
       ),
       bottomNavigationBar: SafeArea(
         minimum: const EdgeInsets.fromLTRB(13, 0, 13, 13),
-        child: Container(
-          height: 78,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .94),
-            borderRadius: BorderRadius.circular(27),
-            border: Border.all(color: const Color(0x12000000)),
-          ),
-          child: Row(
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(27),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              height: 78,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: .72),
+                borderRadius: BorderRadius.circular(27),
+                border: Border.all(color: const Color(0x1AFFFFFF)),
+              ),
+              child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _NavItem('Home', FFIcons.khouse, 0, _currentIndex, _onTabSelected),
@@ -69,6 +74,8 @@ class _AppShellWidgetState extends State<AppShellWidget> {
               _NavItem('Give', FFIcons.khandHeart, 4, _currentIndex, _onTabSelected),
               _NavItem('Profile', FFIcons.kuserCircle, 3, _currentIndex, _onTabSelected),
             ],
+              ),
+            ),
           ),
         ),
       ),
