@@ -3,10 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../app/app_images.dart';
 import '../../flutter_flow/custom_icons.dart';
-import '../../flutter_flow/nav/nav.dart';
-import '../../shared/widgets/hamburger_menu_button.dart';
 import '../../shared/widgets/interactive_filter_pill.dart';
-import '../search/screens/global_search_screen.dart';
 import 'department_detail_screen.dart';
 import 'departments_models.dart';
 import 'departments_service.dart';
@@ -19,7 +16,7 @@ class DepartmentsScreen extends StatefulWidget {
   State<DepartmentsScreen> createState() => _DepartmentsScreenState();
 }
 
-enum _DepartmentsFilter { all, myTeams, leading, member }
+enum _DepartmentsFilter { all, myTeams, leading }
 
 class _DepartmentsScreenState extends State<DepartmentsScreen> {
   final DepartmentsService _service = DepartmentsService();
@@ -50,9 +47,6 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
       case _DepartmentsFilter.leading:
         filtered = filtered.where((d) => d.isLeading);
         break;
-      case _DepartmentsFilter.member:
-        filtered = filtered.where((d) => !d.isLeading);
-        break;
     }
     return filtered.toList();
   }
@@ -71,7 +65,13 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: Colors.white,
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFFE9ECF8), Color(0xFFF7F8FC)],
+        ),
+      ),
       child: SafeArea(
         bottom: false,
         child: FutureBuilder<DepartmentsListData>(
@@ -131,34 +131,15 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const HamburgerMenuButton(),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Departments',
-                style: GoogleFonts.instrumentSerif(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w400,
-                  color: const Color(0xFF111827),
-                  height: 1.02,
-                  letterSpacing: -0.84,
-                ),
-              ),
-            ),
-            GestureDetector(
-              onTap: () => context.pushNamed(
-                GlobalSearchScreen.routeName,
-                queryParameters: {'filter': 'departments'},
-              ),
-              child: const Icon(
-                Icons.search_rounded,
-                size: 24,
-                color: Color(0xFF4B5563),
-              ),
-            ),
-          ],
+        Text(
+          'Departments',
+          style: GoogleFonts.instrumentSerif(
+            fontSize: 28,
+            fontWeight: FontWeight.w400,
+            color: const Color(0xFF111827),
+            height: 1.02,
+            letterSpacing: -0.84,
+          ),
         ),
       ],
     );
@@ -169,13 +150,11 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
       _DepartmentsFilter.all: 'All',
       _DepartmentsFilter.myTeams: 'My Teams',
       _DepartmentsFilter.leading: 'Leading',
-      _DepartmentsFilter.member: 'Member',
     };
     const icons = {
       _DepartmentsFilter.all: FFIcons.kgridFour,
       _DepartmentsFilter.myTeams: FFIcons.kusersThree,
       _DepartmentsFilter.leading: FFIcons.kuserCheck,
-      _DepartmentsFilter.member: FFIcons.kuser,
     };
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -217,7 +196,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
       return [
         const SizedBox(height: 32),
         const _EmptyState(
-          icon: Icons.wifi_off_rounded,
+          icon: FFIcons.kwifiX,
           title: 'Could not load departments',
           message: 'Check your connection and pull to refresh.',
         ),
@@ -228,7 +207,7 @@ class _DepartmentsScreenState extends State<DepartmentsScreen> {
         _sectionHeader(),
         const SizedBox(height: 24),
         const _EmptyState(
-          icon: Icons.apartment_outlined,
+          icon: FFIcons.kusersThree,
           title: 'No departments found',
           message: 'Departments will show up here once available.',
         ),
@@ -287,7 +266,7 @@ class _DepartmentsHeaderDelegate extends SliverPersistentHeaderDelegate {
     bool overlapsContent,
   ) {
     return ColoredBox(
-      color: Colors.white,
+      color: const Color(0xDDF7F8FC),
       child: Padding(
         padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
         child: child,
@@ -319,7 +298,7 @@ class _DepartmentCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(top: 12),
-        padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: const Color(0xFFFCFBF9),
           borderRadius: BorderRadius.circular(24),
@@ -388,12 +367,6 @@ class _DepartmentCard extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(width: 6),
-            const Icon(
-              Icons.chevron_right_rounded,
-              size: 20,
-              color: Color(0xFF8A8F98),
-            ),
           ],
         ),
       ),
@@ -408,7 +381,7 @@ class _DepartmentCardSkeleton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.only(top: 12),
-      padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: const Color(0xFFFCFBF9),
         borderRadius: BorderRadius.circular(24),
