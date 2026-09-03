@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../app/app_shell_widget.dart';
+import '../../../flutter_flow/custom_icons.dart';
 import '../../../flutter_flow/nav/nav.dart';
 import '../../announcements/announcement_detail_screen.dart';
 import '../../departments/department_detail_screen.dart';
@@ -196,7 +197,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     final top = _controller.topResult;
     if (top != null) {
       children.add(SearchSectionHeader(
-        icon: Icons.auto_awesome_outlined,
+        icon: FFIcons.ksparkle,
         title: 'Top result',
         trailingLabel: 'Open',
         onTrailingTap: () => _openResult(top),
@@ -211,7 +212,7 @@ class _GlobalSearchScreenState extends State<GlobalSearchScreen> {
     final quickActions = _controller.quickActions;
     if (quickActions.isNotEmpty) {
       children.add(SearchSectionHeader(
-        icon: Icons.bolt_outlined,
+        icon: FFIcons.kbolt,
         title: 'Quick actions',
         trailingLabel:
             '${quickActions.length} action${quickActions.length == 1 ? '' : 's'}',
@@ -272,7 +273,7 @@ class _Header extends StatelessWidget {
                 border: Border.all(color: const Color(0x1A111827)),
               ),
               child: const Icon(
-                Icons.chevron_left_rounded,
+                FFIcons.karrowLeft,
                 size: 19,
                 color: Color(0xFF111827),
               ),

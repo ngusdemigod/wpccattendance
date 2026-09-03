@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../flutter_flow/custom_icons.dart';
 import '../models/global_search_models.dart';
 import '../../../shared/widgets/interactive_filter_pill.dart';
 
@@ -55,7 +56,8 @@ class SearchInputPanel extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.search_rounded, size: 20, color: _kMuted),
+                const Icon(FFIcons.kmagnifyingGlass,
+                    size: 20, color: _kMuted),
                 const SizedBox(width: 10),
                 Expanded(
                   child: TextField(
@@ -92,7 +94,7 @@ class SearchInputPanel extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        Icons.close_rounded,
+                        FFIcons.kx,
                         size: 16,
                         color: Color(0xFF6B7280),
                       ),

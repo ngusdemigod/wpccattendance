@@ -177,7 +177,7 @@ class _EventDetailsScreenState extends State<EventDetailsScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).maybePop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                      icon: const Icon(FFIcons.karrowLeft),
                     ),
                     const SizedBox(height: 24),
                     Container(
@@ -406,18 +406,18 @@ class _OverviewTab extends StatelessWidget {
         ),
         const SizedBox(height: 20),
         _InfoRow(
-          icon: Icons.calendar_today_outlined,
+          icon: FFIcons.kcalendarBlank,
           value: formatEventDate(details.event.startsAt),
         ),
         const SizedBox(height: 12),
         _InfoRow(
-          icon: Icons.access_time_rounded,
+          icon: FFIcons.kclock,
           value:
               '${formatEventTimeRange(details.event.startsAt, details.event.endsAt)} (GMT+1)',
         ),
         const SizedBox(height: 12),
         _InfoRow(
-          icon: Icons.place_outlined,
+          icon: FFIcons.kmapPin,
           value: details.event.locationName,
           actionLabel: 'Find',
           onActionTap: onOpenMap,
@@ -476,7 +476,7 @@ class _OverviewTab extends StatelessWidget {
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
-                              Icons.check_rounded,
+                              FFIcons.kcheck,
                               size: 11,
                               color: Color(0xFFC3139C),
                             ),
@@ -910,7 +910,7 @@ class _InfoRow extends StatelessWidget {
               padding: EdgeInsets.zero,
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            icon: const Icon(Icons.place_outlined, size: 18),
+            icon: const Icon(FFIcons.kmapPin, size: 18),
             label: Text(
               actionLabel!,
               style: const TextStyle(
