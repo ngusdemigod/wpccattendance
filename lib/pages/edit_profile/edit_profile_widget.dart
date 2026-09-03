@@ -97,7 +97,7 @@ class _EditProfileWidgetState extends State<EditProfileWidget> {
         context: context,
         imageQuality: 85,
         allowPhoto: true,
-        pickerFontFamily: 'Plus Jakarta Sans',
+        pickerFontFamily: 'Instrument Sans',
       );
 
       if (selectedMedia == null || selectedMedia.isEmpty) {

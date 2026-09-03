@@ -132,9 +132,6 @@ flutter:
     - assets/pdfs/
     - assets/jsons/
   fonts:
-    - family: Plus Jakarta Sans
-      fonts:
-        - asset: assets/fonts/PlusJakartaSans.ttf
     - family: Instrument Serif
       fonts:
         - asset: assets/google_fonts/InstrumentSerif-Regular.ttf
