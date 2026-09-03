@@ -4,6 +4,7 @@ import 'dart:ui';
 import '/auth/supabase_auth/auth_util.dart';
 import '/backend/supabase/supabase.dart';
 import '/flutter_flow/flutter_flow_icon_button.dart';
+import '/flutter_flow/custom_icons.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/pages/clock_in_success/clock_in_success_widget.dart';
@@ -284,7 +285,7 @@ class _AttendanceActionWidgetState extends State<AttendanceActionWidget>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
-                    Icons.touch_app_sharp,
+                    FFIcons.khandTapBold,
                     color: FlutterFlowTheme.of(context).onPrimary,
                     size: 50,
                   ),
@@ -366,7 +367,7 @@ class _AttendanceActionWidgetState extends State<AttendanceActionWidget>
                                     buttonSize: 42,
                                     fillColor: const Color(0xFF1A1D1E),
                                     icon: Icon(
-                                      Icons.close,
+                                      FFIcons.kxBold,
                                       color: FlutterFlowTheme.of(context)
                                           .primaryText,
                                       size: 20,
@@ -424,7 +425,7 @@ class _AttendanceActionWidgetState extends State<AttendanceActionWidget>
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.bolt,
+                                    FFIcons.klightningBold,
                                     color: FlutterFlowTheme.of(context)
                                         .secondaryText,
                                     size: 16,
