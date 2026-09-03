@@ -382,8 +382,86 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
                 '',
           ),
         ),
+        FFRoute(
+          name: 'WisdomDevotional',
+          path: '/wisdom-devotional',
+          requireAuth: true,
+          builder: (context, params) => WisdomDevotionalScreen(
+            onOpenPost: (post) => context.pushNamed(
+              'WisdomDevotionalPost',
+              extra: {'post': post},
+            ),
+          ),
+        ),
+        FFRoute(
+          name: 'WisdomDevotionalPost',
+          path: '/wisdom-devotional/post',
+          requireAuth: true,
+          builder: (context, params) {
+            final post = params.getParam<WisdomDevotionalPost>(
+              'post',
+              ParamType.String,
+            );
+            return post == null
+                ? const WisdomDevotionalScreen()
+                : WisdomDevotionalDetailScreen(post: post);
+          },
+        ),
+        FFRoute(
+          name: 'PrayerAlerts',
+          path: '/prayer-alerts',
+          requireAuth: true,
+          builder: (context, params) => PrayerAlertsScreen(
+            onEdit: (alert) => context.pushNamed(
+              'PrayerAlertEdit',
+              extra: {'alert': alert},
+            ),
+          ),
+        ),
+        FFRoute(
+          name: 'PrayerAlertEdit',
+          path: '/prayer-alerts/edit',
+          requireAuth: true,
+          builder: (context, params) {
+            final alert = params.getParam<PrayerAlert>(
+              'alert',
+              ParamType.String,
+            );
+            return PrayerAlertEditScreen(
+              initialAlert: alert,
+              onSave: (savedAlert) => _savePrayerAlert(savedAlert),
+            );
+          },
+        ),
+        FFRoute(
+          name: 'PrayerSession',
+          path: '/prayer-session',
+          requireAuth: true,
+          builder: (context, params) {
+            final alert = params.getParam<PrayerAlert>(
+              'alert',
+              ParamType.String,
+            );
+            return alert == null
+                ? const PrayerAlertsScreen()
+                : PrayerSessionScreen(alert: alert);
+          },
+        ),
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );
+
+Future<void> _savePrayerAlert(PrayerAlert savedAlert) async {
+  final store = PrayerAlertStore();
+  final alerts = await store.load();
+  final existingIndex = alerts.indexWhere((alert) => alert.id == savedAlert.id);
+  final updatedAlerts = List<PrayerAlert>.from(alerts);
+  if (existingIndex == -1) {
+    updatedAlerts.add(savedAlert);
+  } else {
+    updatedAlerts[existingIndex] = savedAlert;
+  }
+  await store.save(updatedAlerts);
+}
 
 extension NavParamExtensions on Map<String, String?> {
   Map<String, String> get withoutNulls => Map.fromEntries(

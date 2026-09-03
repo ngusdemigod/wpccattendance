@@ -29,3 +29,7 @@ export '/features/profile_completion/profile_completion_screen.dart'
     show ProfileCompletionScreen;
 export '/features/search/screens/global_search_screen.dart'
     show GlobalSearchScreen;
+export '/features/prayer/prayer_feature.dart'
+    show PrayerAlert, PrayerAlertEditScreen, PrayerAlertStore, PrayerAlertsScreen, PrayerSessionScreen;
+export '/features/wisdom/wisdom_devotional_feature.dart'
+    show WisdomDevotionalDetailScreen, WisdomDevotionalPost, WisdomDevotionalScreen;
