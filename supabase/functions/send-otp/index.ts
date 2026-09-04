@@ -222,18 +222,12 @@ function getRequiredFunctionEnv(name: string): string {
   return value;
 }
 
-function isAllowedLocalRedirect(value: string, requestOrigin: string | null) {
+function isAllowedLocalRedirect(value: string) {
   try {
     const url = new URL(value);
-    if (
-      url.protocol !== "http:" ||
-      !["localhost", "127.0.0.1"].includes(url.hostname.toLowerCase()) ||
-      !["/", "/login"].includes(url.pathname) ||
-      !requestOrigin
-    ) {
-      return false;
-    }
-    return new URL(requestOrigin).origin === url.origin;
+    return url.protocol === "http:" &&
+      ["localhost", "127.0.0.1"].includes(url.hostname.toLowerCase()) &&
+      ["/", "/login"].includes(url.pathname);
   } catch (_) {
     return false;
   }
@@ -253,10 +247,16 @@ function isAllowedConfiguredRedirect(value: string) {
   }
 }
 
-function buildMagicLinkRedirectTo(
-  requestedRedirect: unknown,
-  requestOrigin: string | null,
-) {
+function getUrlOrigin(value: unknown) {
+  if (typeof value !== "string") return null;
+  try {
+    return new URL(value).origin;
+  } catch (_) {
+    return null;
+  }
+}
+
+function buildMagicLinkRedirectTo(requestedRedirect: unknown) {
   const configuredBaseUrl =
     Deno.env.get("DASHBOARD_BASE_URL")?.trim() ||
     Deno.env.get("OTP_REDIRECT_TO")?.trim() ||
@@ -275,7 +275,7 @@ function buildMagicLinkRedirectTo(
 
   const adminBaseUrl = Deno.env.get("ADMIN_BASE_URL")?.trim().replace(/\/+$/, "");
   const allowedAdminRedirect = adminBaseUrl ? `${adminBaseUrl}/auth/confirm` : "";
-  if (isAllowedLocalRedirect(requestedRedirect.trim(), requestOrigin)) {
+  if (isAllowedLocalRedirect(requestedRedirect.trim())) {
     return requestedRedirect.trim();
   }
   if (isAllowedConfiguredRedirect(requestedRedirect.trim())) {
@@ -345,10 +345,13 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => null);
     const membership_code = sanitizeMembershipCode(body?.membership_code);
-    const redirectTo = buildMagicLinkRedirectTo(
-      body?.redirect_to,
-      req.headers.get("origin"),
-    );
+    const redirectTo = buildMagicLinkRedirectTo(body?.redirect_to);
+
+    console.info("send_otp_redirect_selected", {
+      requested_origin: getUrlOrigin(body?.redirect_to),
+      selected_origin: getUrlOrigin(redirectTo),
+      local_redirect: redirectTo ? isAllowedLocalRedirect(redirectTo) : false,
+    });
 
     if (!membership_code) {
       return jsonResponse({ error: "Invalid membership_code" }, { status: 400 });
