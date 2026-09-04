@@ -72,9 +72,16 @@ class _LoginWidgetState extends State<LoginWidget> {
         return;
       }
 
-      final tokenHash = widget.tokenHash.trim();
+      // Hash-routing builds only expose parameters after `#/login` to
+      // GoRouter. Recover parameters placed before the hash by older emails.
+      final tokenHash = widget.tokenHash.trim().isNotEmpty
+          ? widget.tokenHash.trim()
+          : (Uri.base.queryParameters['token_hash']?.trim() ?? '');
       if (tokenHash.isNotEmpty) {
-        unawaited(_completeMagicLinkSignIn(tokenHash));
+        final authType = widget.authType.trim().isNotEmpty
+            ? widget.authType.trim()
+            : (Uri.base.queryParameters['type']?.trim() ?? 'email');
+        unawaited(_completeMagicLinkSignIn(tokenHash, authType));
       }
     });
   }
@@ -277,7 +284,10 @@ class _LoginWidgetState extends State<LoginWidget> {
     });
   }
 
-  Future<void> _completeMagicLinkSignIn(String tokenHash) async {
+  Future<void> _completeMagicLinkSignIn(
+    String tokenHash,
+    String authType,
+  ) async {
     if (_model.isLoading) {
       return;
     }
@@ -290,7 +300,7 @@ class _LoginWidgetState extends State<LoginWidget> {
     try {
       final authResponse = await SupaFlow.client.auth.verifyOTP(
         tokenHash: tokenHash,
-        type: _resolveOtpType(widget.authType),
+        type: _resolveOtpType(authType),
       );
 
       final sessionUser = authResponse.user ??

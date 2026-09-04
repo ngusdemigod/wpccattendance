@@ -201,6 +201,17 @@ function buildAppMagicLink(args: {
   }
 
   const url = new URL(redirectTo);
+  if (isAllowedLocalRedirect(redirectTo)) {
+    const callbackParams = new URLSearchParams({
+      token_hash: tokenHash,
+      type,
+    });
+    url.pathname = "/";
+    url.search = "";
+    url.hash = `/login?${callbackParams.toString()}`;
+    return url.toString();
+  }
+
   url.searchParams.set("token_hash", tokenHash);
   url.searchParams.set("type", type);
   return url.toString();
