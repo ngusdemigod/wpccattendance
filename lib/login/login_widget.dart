@@ -306,11 +306,20 @@ class _LoginWidgetState extends State<LoginWidget> {
       final sessionUser = authResponse.user ??
           authResponse.session?.user ??
           SupaFlow.client.auth.currentUser;
-      if (sessionUser != null) {
-        final authUser = AttendamceSupabaseUser(sessionUser);
-        currentUser = authUser;
-        AppStateNotifier.instance.update(authUser);
+      if (sessionUser == null) {
+        throw const AuthException(
+          'The sign-in link was verified, but no session was created.',
+        );
+      }
+
+      final authUser = AttendamceSupabaseUser(sessionUser);
+      currentUser = authUser;
+      AppStateNotifier.instance.update(authUser);
+      try {
         await _identityResolver.relinkCurrentAuthProfile();
+      } catch (error) {
+        // Profile repair is best-effort and must never cancel a valid login.
+        debugPrint('Auth profile relink skipped: $error');
       }
 
       if (!mounted) {
