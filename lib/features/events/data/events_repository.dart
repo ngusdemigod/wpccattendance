@@ -119,8 +119,8 @@ class EventRepository {
         isActive: event.isactive ?? eventView?.isActive ?? false,
         hostUserId: hostId,
         heroImageUrl: _normalizedUrl(event.featuredUrl ?? eventView?.featuredImage),
-        latitude: event.latitude ?? eventView?.latitude,
-        longitude: event.longitude ?? eventView?.longitude,
+        latitude: event.latitude ?? eventView?.eventLatitude,
+        longitude: event.longitude ?? eventView?.eventLongitude,
         scope: event.scope,
       ),
       host: EventHostData(

@@ -53,6 +53,14 @@ class EventsAttendanceViewRow extends SupabaseDataRow {
   set eventEndTime(DateTime? value) =>
       setField<DateTime>('event_end_time', value);
 
+  double? get eventLatitude => getField<double>('event_latitude');
+  set eventLatitude(double? value) =>
+      setField<double>('event_latitude', value);
+
+  double? get eventLongitude => getField<double>('event_longitude');
+  set eventLongitude(double? value) =>
+      setField<double>('event_longitude', value);
+
   String? get createdBy => getField<String>('created_by');
   set createdBy(String? value) => setField<String>('created_by', value);
 

@@ -49,4 +49,13 @@ class EventsRow extends SupabaseDataRow {
 
   String? get featuredUrl => getField<String>('featured_url');
   set featuredUrl(String? value) => setField<String>('featured_url', value);
+
+  String? get location => getField<String>('location');
+  set location(String? value) => setField<String>('location', value);
+
+  double? get latitude => getField<double>('latitude');
+  set latitude(double? value) => setField<double>('latitude', value);
+
+  double? get longitude => getField<double>('longitude');
+  set longitude(double? value) => setField<double>('longitude', value);
 }

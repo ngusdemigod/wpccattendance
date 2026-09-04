@@ -7,7 +7,7 @@ import '../../shared/widgets/app_motion.dart';
 
 abstract final class AppTheme {
   static ThemeData light() {
-    const tokens = AppDesignTokens.light;
+    final tokens = const AppDesignTokens.light();
     final textTheme = AppTypography.textTheme(tokens);
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
@@ -37,12 +37,12 @@ abstract final class AppTheme {
         backgroundColor: Colors.transparent,
       ),
       pageTransitionsTheme: _pageTransitionsTheme,
-      extensions: const [tokens],
+      extensions: [tokens],
     );
   }
 
   static ThemeData dark() {
-    const tokens = AppDesignTokens.dark;
+    final tokens = const AppDesignTokens.dark();
     final textTheme = AppTypography.textTheme(tokens);
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.primary,
@@ -72,7 +72,7 @@ abstract final class AppTheme {
         backgroundColor: Colors.transparent,
       ),
       pageTransitionsTheme: _pageTransitionsTheme,
-      extensions: const [tokens],
+      extensions: [tokens],
     );
   }
 

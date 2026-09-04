@@ -26,7 +26,7 @@ class PrayerAlertStore {
 
 class PrayerAlertsScreen extends StatefulWidget { const PrayerAlertsScreen({super.key, this.onEdit}); final ValueChanged<PrayerAlert?>? onEdit; @override State<PrayerAlertsScreen> createState() => _PrayerAlertsScreenState(); }
 class _PrayerAlertsScreenState extends State<PrayerAlertsScreen> { final _store = PrayerAlertStore(); late Future<List<PrayerAlert>> _future; @override void initState() { super.initState(); _future = _store.load(); } void _reload() => setState(() => _future = _store.load()); Future<void> _toggle(List<PrayerAlert> alerts, PrayerAlert alert, bool enabled) async { final updated = alerts.map((item) => item.id == alert.id ? item.copyWith(enabled: enabled) : item).toList(); await _store.save(updated); _reload(); }
- @override Widget build(BuildContext context) => Scaffold(body: SafeArea(child: FutureBuilder<List<PrayerAlert>>(future: _future, builder: (context, snapshot) { if (snapshot.connectionState != ConnectionState.done) return const WpccScreenShimmer(); if (snapshot.hasError) return _PrayerMessage(title: 'Prayer alerts unavailable', message: 'Your personal alerts could not be loaded.', onRetry: _reload); final alerts = snapshot.data ?? const []; return ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 112), children: [const WisdomFeatureTopBar(title: 'Prayer alerts'), const SizedBox(height: 20), Text('Prayer alerts', style: context.appText.pageName()), const SizedBox(height: 6), Text('Prayer reminders and church-wide prayer alerts.', style: context.appText.supportText()), const SizedBox(height: 30), Row(children: [Text('Church prayer alerts', style: context.appText.sectionTitle()), const Spacer(), Text('Admin managed', style: context.appText.metadataText())]), const SizedBox(height: 10), const _GlobalAlertCard(), const SizedBox(height: 22), Row(children: [Text('My prayer alerts', style: context.appText.sectionTitle()), const Spacer(), TextButton(onPressed: () => widget.onEdit?.call(null), child: const Text('Add'))]), const SizedBox(height: 2), if (alerts.isEmpty) _PersonalEmpty(onCreate: () => widget.onEdit?.call(null)) else _PersonalAlertList(alerts: alerts, onToggle: (alert, enabled) => _toggle(alerts, alert, enabled), onEdit: widget.onEdit), const SizedBox(height: 18), Text('Personal alerts stay on this device until a church calendar or push scheduling service is connected.', style: context.appText.compactCaption())]; })))); }
+ @override Widget build(BuildContext context) => Scaffold(body: SafeArea(child: FutureBuilder<List<PrayerAlert>>(future: _future, builder: (context, snapshot) { if (snapshot.connectionState != ConnectionState.done) return const WpccScreenShimmer(); if (snapshot.hasError) return _PrayerMessage(title: 'Prayer alerts unavailable', message: 'Your personal alerts could not be loaded.', onRetry: _reload); final alerts = snapshot.data ?? const []; return ListView(padding: const EdgeInsets.fromLTRB(20, 16, 20, 112), children: [const WisdomFeatureTopBar(title: 'Prayer alerts'), const SizedBox(height: 20), Text('Prayer alerts', style: context.appText.pageName()), const SizedBox(height: 6), Text('Prayer reminders and church-wide prayer alerts.', style: context.appText.supportText()), const SizedBox(height: 30), Row(children: [Text('Church prayer alerts', style: context.appText.sectionTitle()), const Spacer(), Text('Admin managed', style: context.appText.metadataText())]), const SizedBox(height: 10), const _GlobalAlertCard(), const SizedBox(height: 22), Row(children: [Text('My prayer alerts', style: context.appText.sectionTitle()), const Spacer(), TextButton(onPressed: () => widget.onEdit?.call(null), child: const Text('Add'))]), const SizedBox(height: 2), if (alerts.isEmpty) _PersonalEmpty(onCreate: () => widget.onEdit?.call(null)) else _PersonalAlertList(alerts: alerts, onToggle: (alert, enabled) => _toggle(alerts, alert, enabled), onEdit: widget.onEdit), const SizedBox(height: 18), Text('Personal alerts stay on this device until a church calendar or push scheduling service is connected.', style: context.appText.compactCaption())]); }))); }
 
 class PrayerAlertEditScreen extends StatefulWidget { const PrayerAlertEditScreen({super.key, this.initialAlert, required this.onSave}); final PrayerAlert? initialAlert; final ValueChanged<PrayerAlert> onSave; @override State<PrayerAlertEditScreen> createState() => _PrayerAlertEditScreenState(); }
 class _PrayerAlertEditScreenState extends State<PrayerAlertEditScreen> { late final TextEditingController _label; late final TextEditingController _duration; late TimeOfDay _time; late Set<int> _days; late bool _vibration; late bool _snooze; @override void initState() { super.initState(); final item = widget.initialAlert; _label = TextEditingController(text: item?.label ?? 'Prayer Alarm'); _duration = TextEditingController(text: item?.durationMinutes?.toString() ?? ''); _time = item?.time ?? const TimeOfDay(hour: 6, minute: 0); _days = item?.days ?? {1,2,3,4,5}; _vibration = item?.vibration ?? true; _snooze = item?.snooze ?? true; } @override void dispose() { _label.dispose(); _duration.dispose(); super.dispose(); }
@@ -39,7 +39,57 @@ class PrayerSessionScreen extends StatefulWidget { const PrayerSessionScreen({su
 }
 
 class _GlobalAlertCard extends StatelessWidget { const _GlobalAlertCard(); @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: context.tokens.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: context.tokens.border)), child: Row(children: [const Icon(FFIcons.kbell, size: 24), const SizedBox(width: 12), const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('5:30 AM', style: TextStyle(fontSize: 30, height: 1)), SizedBox(height: 4), Text('Morning Prayer'), SizedBox(height: 3), Text('Every day · Morning Worship', style: TextStyle(fontSize: 12, color: Color(0xFF8A8795))) ])), Container(padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6), decoration: BoxDecoration(color: const Color(0xFFEFE7F8), borderRadius: BorderRadius.circular(14)), child: const Text('Global', style: TextStyle(color: Color(0xFF6D3999), fontSize: 11)))])); }
-class _PersonalAlertList extends StatelessWidget { const _PersonalAlertList({required this.alerts, required this.onToggle, this.onEdit}); final List<PrayerAlert> alerts; final void Function(PrayerAlert, bool) onToggle; final ValueChanged<PrayerAlert?>? onEdit; @override Widget build(BuildContext context) => Container(decoration: BoxDecoration(color: context.tokens.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: context.tokens.border)), child: Column(children: alerts.map((alert) => ListTile(onTap: () => onEdit?.call(alert), title: Text(alert.time.format(context), style: const TextStyle(fontSize: 31, height: 1)), subtitle: Text('${alert.label}\n${_dayText(alert.days)} · ${alert.durationMinutes == null ? 'Count up' : '${alert.durationMinutes} min'}', style: context.appText.supportText()), isThreeLine: true, trailing: Switch(value: alert.enabled, onChanged: (value) => onToggle(alert, value))).toList(growable: false))); } String _dayText(Set<int> days) => days.length == 7 ? 'Every day' : days.length == 5 && !days.contains(0) && !days.contains(6) ? 'Weekdays' : 'Custom days'; }
+class _PersonalAlertList extends StatelessWidget {
+  const _PersonalAlertList({
+    required this.alerts,
+    required this.onToggle,
+    this.onEdit,
+  });
+
+  final List<PrayerAlert> alerts;
+  final void Function(PrayerAlert, bool) onToggle;
+  final ValueChanged<PrayerAlert?>? onEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: context.tokens.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: context.tokens.border),
+      ),
+      child: Column(
+        children: alerts
+            .map(
+              (alert) => ListTile(
+                onTap: () => onEdit?.call(alert),
+                title: Text(
+                  alert.time.format(context),
+                  style: const TextStyle(fontSize: 31, height: 1),
+                ),
+                subtitle: Text(
+                  '${alert.label}\n${_dayText(alert.days)} · '
+                  '${alert.durationMinutes == null ? 'Count up' : '${alert.durationMinutes} min'}',
+                  style: context.appText.supportText(),
+                ),
+                isThreeLine: true,
+                trailing: Switch(
+                  value: alert.enabled,
+                  onChanged: (value) => onToggle(alert, value),
+                ),
+              ),
+            )
+            .toList(growable: false),
+      ),
+    );
+  }
+}
+
+String _dayText(Set<int> days) => days.length == 7
+    ? 'Every day'
+    : days.length == 5 && !days.contains(0) && !days.contains(6)
+        ? 'Weekdays'
+        : 'Custom days';
 class _PersonalEmpty extends StatelessWidget { const _PersonalEmpty({required this.onCreate}); final VoidCallback onCreate; @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: context.tokens.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: context.tokens.border)), child: Column(children: [Text('No personal prayer alerts', style: context.appText.cardTitleStrong()), const SizedBox(height: 6), Text('Create one for your regular prayer time.', textAlign: TextAlign.center, style: context.appText.supportText()), TextButton.icon(onPressed: onCreate, icon: const Icon(FFIcons.kplus), label: const Text('Create alert'))])); }
 class _EditorCard extends StatelessWidget { const _EditorCard({required this.children}); final List<Widget> children; @override Widget build(BuildContext context) => Container(decoration: BoxDecoration(color: context.tokens.surface, borderRadius: BorderRadius.circular(24), border: Border.all(color: context.tokens.border)), child: Column(children: children)); }
 class _InputRow extends StatelessWidget { const _InputRow({required this.label, required this.hint, required this.controller}); final String label; final String hint; final TextEditingController controller; @override Widget build(BuildContext context) => Padding(padding: const EdgeInsets.all(14), child: TextField(controller: controller, decoration: InputDecoration(labelText: label, hintText: hint, border: InputBorder.none))); }

@@ -117,4 +117,53 @@ class WisdomFeatureTopBar extends StatelessWidget { const WisdomFeatureTopBar({s
 class _CategoryPill extends StatelessWidget { const _CategoryPill({required this.label}); final String label; @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7), decoration: BoxDecoration(color: const Color(0xFF141419), borderRadius: BorderRadius.circular(16)), child: Text(label, style: context.appText.pillLabel(color: Colors.white))); }
 class _DevotionalCard extends StatelessWidget { const _DevotionalCard({required this.post, required this.onTap}); final WisdomDevotionalPost post; final VoidCallback onTap; @override Widget build(BuildContext context) => Material(color: context.tokens.surface, borderRadius: BorderRadius.circular(24), child: InkWell(onTap: onTap, borderRadius: BorderRadius.circular(24), child: Container(padding: const EdgeInsets.all(16), decoration: BoxDecoration(border: Border.all(color: context.tokens.border), borderRadius: BorderRadius.circular(24)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [_CategoryPill(label: post.category), const SizedBox(height: 12), Text(post.title, style: context.appText.cardTitleStrong()), const SizedBox(height: 7), Text(post.body, maxLines: 3, overflow: TextOverflow.ellipsis, style: context.appText.supportText()), const SizedBox(height: 12), Row(children: [Expanded(child: Text('${post.author} · ${post.readMinutes} min read', style: context.appText.metadataText())), Text('Read post', style: context.appText.metadataText(color: const Color(0xFF6D3999)))])])))); }
 class _CommentCard extends StatelessWidget { const _CommentCard({required this.body, required this.author}); final String body; final String author; @override Widget build(BuildContext context) => Container(padding: const EdgeInsets.all(14), decoration: BoxDecoration(color: context.tokens.surface, borderRadius: BorderRadius.circular(18), border: Border.all(color: context.tokens.border)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(author, style: context.appText.cardTitleStrong()), const SizedBox(height: 4), Text(body, style: context.appText.supportText())])); }
-class _MessageState extends StatelessWidget { const _MessageState({required this.icon, required this.title, required this.message, this.action, this.actionLabel}); final IconData icon; final String title; final String message; final VoidCallback? action; final String? actionLabel; @override Widget build(BuildContext context) => Scaffold(body: SafeArea(child: Center(child: Padding(padding: const EdgeInsets.all(32), child: Column(mainAxisSize: MainAxisSize.min, children: [Icon(icon, size: 30), const SizedBox(height: 14), Text(title, style: context.appText.cardTitleStrong()), const SizedBox(height: 6), Text(message, textAlign: TextAlign.center, style: context.appText.supportText()), if (action != null) Padding(padding: const EdgeInsets.only(top: 16), child: TextButton(onPressed: action, child: Text(actionLabel!)))])))); }
+class _MessageState extends StatelessWidget {
+  const _MessageState({
+    required this.icon,
+    required this.title,
+    required this.message,
+    this.action,
+    this.actionLabel,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+  final VoidCallback? action;
+  final String? actionLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 30),
+                const SizedBox(height: 14),
+                Text(title, style: context.appText.cardTitleStrong()),
+                const SizedBox(height: 6),
+                Text(
+                  message,
+                  textAlign: TextAlign.center,
+                  style: context.appText.supportText(),
+                ),
+                if (action != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: TextButton(
+                      onPressed: action,
+                      child: Text(actionLabel!),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
