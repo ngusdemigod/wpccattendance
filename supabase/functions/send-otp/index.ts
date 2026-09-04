@@ -191,7 +191,10 @@ function buildAppMagicLink(args: {
   const redirectTo =
     args.appRedirectTo?.trim() || args.fallbackRedirectTo?.trim() || "";
   const tokenHash = args.tokenHash?.trim() ?? "";
-  const type = args.type?.trim() ?? "magiclink";
+  const generatedType = args.type?.trim().toLowerCase() ?? "magiclink";
+  // Supabase's token-hash callback contract verifies passwordless email links
+  // with type=email, even when Admin generate_link reports magiclink.
+  const type = generatedType === "magiclink" ? "email" : generatedType;
 
   if (!redirectTo || !tokenHash) {
     return null;
