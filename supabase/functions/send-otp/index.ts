@@ -228,7 +228,7 @@ function isAllowedLocalRedirect(value: string, requestOrigin: string | null) {
     if (
       url.protocol !== "http:" ||
       !["localhost", "127.0.0.1"].includes(url.hostname.toLowerCase()) ||
-      url.pathname !== "/" ||
+      !["/", "/login"].includes(url.pathname) ||
       !requestOrigin
     ) {
       return false;

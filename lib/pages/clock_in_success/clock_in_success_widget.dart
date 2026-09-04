@@ -84,7 +84,7 @@ class ClockInSuccessWidget extends StatelessWidget {
                       style: GoogleFonts.instrumentSans(
                         fontSize: 14,
                         height: 1.45,
-                        color: tokens.textSecondary,
+                        color: tokens.textMuted,
                       ),
                     ),
                     const Spacer(),

@@ -56,4 +56,7 @@ class ProfilesRow extends SupabaseDataRow {
 
   String? get prefix => getField<String>('prefix');
   set prefix(String? value) => setField<String>('prefix', value);
+
+  String? get email => getField<String>('email');
+  set email(String? value) => setField<String>('email', value);
 }

@@ -32,7 +32,7 @@ final String kSupabaseAnonKey = _resolveSupabasePublishableKey();
 String supabaseFunctionUrl(String functionName) =>
     '$kSupabaseUrl/functions/v1/$functionName';
 
-String appBaseRedirectUrl() => Uri.base.origin;
+String appBaseRedirectUrl() => Uri.base.resolve('/login').toString();
 
 class SupaFlow {
   SupaFlow._();
