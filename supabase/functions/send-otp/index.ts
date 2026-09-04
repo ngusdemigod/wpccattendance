@@ -222,12 +222,18 @@ function getRequiredFunctionEnv(name: string): string {
   return value;
 }
 
-function isAllowedLocalRedirect(value: string) {
+function isAllowedLocalRedirect(value: string, requestOrigin: string | null) {
   try {
     const url = new URL(value);
-    return url.protocol === "http:" &&
-      ["localhost", "127.0.0.1"].includes(url.hostname.toLowerCase()) &&
-      url.pathname === "/";
+    if (
+      url.protocol !== "http:" ||
+      !["localhost", "127.0.0.1"].includes(url.hostname.toLowerCase()) ||
+      url.pathname !== "/" ||
+      !requestOrigin
+    ) {
+      return false;
+    }
+    return new URL(requestOrigin).origin === url.origin;
   } catch (_) {
     return false;
   }
@@ -249,7 +255,7 @@ function isAllowedConfiguredRedirect(value: string) {
 
 function buildMagicLinkRedirectTo(
   requestedRedirect: unknown,
-  allowLocalRedirect: boolean,
+  requestOrigin: string | null,
 ) {
   const configuredBaseUrl =
     Deno.env.get("DASHBOARD_BASE_URL")?.trim() ||
@@ -269,7 +275,7 @@ function buildMagicLinkRedirectTo(
 
   const adminBaseUrl = Deno.env.get("ADMIN_BASE_URL")?.trim().replace(/\/+$/, "");
   const allowedAdminRedirect = adminBaseUrl ? `${adminBaseUrl}/auth/confirm` : "";
-  if (allowLocalRedirect && isAllowedLocalRedirect(requestedRedirect.trim())) {
+  if (isAllowedLocalRedirect(requestedRedirect.trim(), requestOrigin)) {
     return requestedRedirect.trim();
   }
   if (isAllowedConfiguredRedirect(requestedRedirect.trim())) {
@@ -341,7 +347,7 @@ Deno.serve(async (req: Request) => {
     const membership_code = sanitizeMembershipCode(body?.membership_code);
     const redirectTo = buildMagicLinkRedirectTo(
       body?.redirect_to,
-      usesLocalEmailCapture(supabaseUrl),
+      req.headers.get("origin"),
     );
 
     if (!membership_code) {
