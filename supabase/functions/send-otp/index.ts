@@ -247,6 +247,22 @@ function isAllowedConfiguredRedirect(value: string) {
   }
 }
 
+function localLoginRedirectFromOrigin(value: string | null) {
+  if (!value) return null;
+  try {
+    const origin = new URL(value);
+    if (
+      origin.protocol !== "http:" ||
+      !["localhost", "127.0.0.1"].includes(origin.hostname.toLowerCase())
+    ) {
+      return null;
+    }
+    return new URL("/login", origin.origin).toString();
+  } catch (_) {
+    return null;
+  }
+}
+
 function getUrlOrigin(value: unknown) {
   if (typeof value !== "string") return null;
   try {
@@ -256,7 +272,10 @@ function getUrlOrigin(value: unknown) {
   }
 }
 
-function buildMagicLinkRedirectTo(requestedRedirect: unknown) {
+function buildMagicLinkRedirectTo(
+  requestedRedirect: unknown,
+  requestOrigin: string | null,
+) {
   const configuredBaseUrl =
     Deno.env.get("DASHBOARD_BASE_URL")?.trim() ||
     Deno.env.get("OTP_REDIRECT_TO")?.trim() ||
@@ -268,6 +287,14 @@ function buildMagicLinkRedirectTo(requestedRedirect: unknown) {
     : normalizedBaseUrl.endsWith("/login")
       ? normalizedBaseUrl
       : `${normalizedBaseUrl}/login`;
+
+  // A local browser origin is authoritative during development. This also
+  // protects developers from stale cached bundles that omit redirect_to or
+  // still contain the production URL.
+  const localOriginRedirect = localLoginRedirectFromOrigin(requestOrigin);
+  if (localOriginRedirect) {
+    return localOriginRedirect;
+  }
 
   if (typeof requestedRedirect !== "string" || !requestedRedirect.trim()) {
     return defaultRedirect;
@@ -345,9 +372,14 @@ Deno.serve(async (req: Request) => {
 
     const body = await req.json().catch(() => null);
     const membership_code = sanitizeMembershipCode(body?.membership_code);
-    const redirectTo = buildMagicLinkRedirectTo(body?.redirect_to);
+    const requestOrigin = req.headers.get("origin");
+    const redirectTo = buildMagicLinkRedirectTo(
+      body?.redirect_to,
+      requestOrigin,
+    );
 
     console.info("send_otp_redirect_selected", {
+      request_origin: getUrlOrigin(requestOrigin),
       requested_origin: getUrlOrigin(body?.redirect_to),
       selected_origin: getUrlOrigin(redirectTo),
       local_redirect: redirectTo ? isAllowedLocalRedirect(redirectTo) : false,
