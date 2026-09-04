@@ -29,6 +29,7 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late Future<_ProfileScreenData> _profileFuture;
+  ProfileRouteTab _activeTab = ProfileRouteTab.overview;
   final _profileDetailsService = _ProfilePersonalDetailsService();
   bool _isUpdatingAvatar = false;
   final ValueNotifier<double> _avatarUploadProgress = ValueNotifier(0);
@@ -205,19 +206,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _openClasses() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const ProfileClassesScreen(),
-      ),
-    );
+    setState(() => _activeTab = ProfileRouteTab.classes);
   }
 
   void _openQuery() {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => const ProfileQueryScreen(),
-      ),
-    );
+    setState(() => _activeTab = ProfileRouteTab.query);
+  }
+
+  void _selectTab(ProfileRouteTab tab) {
+    if (_activeTab == tab) return;
+    setState(() => _activeTab = tab);
   }
 
   Future<void> _logout() async {
@@ -369,10 +367,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildTabs() {
     return ProfileRouteTabs(
-      activeTab: ProfileRouteTab.overview,
+      activeTab: _activeTab,
       onSelected: (tab) {
         switch (tab) {
           case ProfileRouteTab.overview:
+            _selectTab(tab);
             break;
           case ProfileRouteTab.classes:
             _openClasses();
@@ -448,6 +447,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_activeTab == ProfileRouteTab.classes) {
+      return ProfileClassesScreen(
+        embedded: true,
+        onTabSelected: _selectTab,
+      );
+    }
+    if (_activeTab == ProfileRouteTab.query) {
+      return ProfileQueryScreen(
+        embedded: true,
+        onTabSelected: _selectTab,
+      );
+    }
+
     return DecoratedBox(
       decoration: const BoxDecoration(color: Colors.white),
       child: SafeArea(

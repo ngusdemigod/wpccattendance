@@ -6,7 +6,14 @@ import 'profile_query_detail_screen.dart';
 import 'profile_ui_kit.dart';
 
 class ProfileQueryScreen extends StatefulWidget {
-  const ProfileQueryScreen({super.key});
+  const ProfileQueryScreen({
+    super.key,
+    this.embedded = false,
+    this.onTabSelected,
+  });
+
+  final bool embedded;
+  final ValueChanged<ProfileRouteTab>? onTabSelected;
 
   @override
   State<ProfileQueryScreen> createState() => _ProfileQueryScreenState();
@@ -42,12 +49,20 @@ class _ProfileQueryScreenState extends State<ProfileQueryScreen> {
   void _handleRouteTab(ProfileRouteTab tab) {
     switch (tab) {
       case ProfileRouteTab.overview:
-        Navigator.of(context).maybePop();
+        if (widget.embedded) {
+          widget.onTabSelected?.call(tab);
+        } else {
+          Navigator.of(context).maybePop();
+        }
         break;
       case ProfileRouteTab.classes:
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ProfileClassesScreen()),
-        );
+        if (widget.embedded) {
+          widget.onTabSelected?.call(tab);
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const ProfileClassesScreen()),
+          );
+        }
         break;
       case ProfileRouteTab.query:
         break;
@@ -96,80 +111,100 @@ class _ProfileQueryScreenState extends State<ProfileQueryScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
+    final content = SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          if (widget.embedded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Profile',
+                  style: profileSans(size: 24, weight: FontWeight.w700),
+                ),
+              ),
+            )
+          else
             ProfileSubpageHeader(
               title: 'Query',
               onBack: () => Navigator.of(context).maybePop(),
             ),
-            ProfileRouteTabs(
-              activeTab: ProfileRouteTab.query,
-              onSelected: _handleRouteTab,
-            ),
-            QueryFilterTabs(
-              activeFilter: _activeFilter,
-              onSelected: _setFilter,
-            ),
-            Expanded(
-              child: FutureBuilder<List<ProfileQueryItem>>(
-                future: _future,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const ProfileLoadingList(itemCount: 3);
-                  }
+          ProfileRouteTabs(
+            activeTab: ProfileRouteTab.query,
+            onSelected: _handleRouteTab,
+          ),
+          QueryFilterTabs(
+            activeFilter: _activeFilter,
+            onSelected: _setFilter,
+          ),
+          Expanded(
+            child: FutureBuilder<List<ProfileQueryItem>>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const ProfileLoadingList(itemCount: 3);
+                }
 
-                  if (snapshot.hasError) {
-                    return ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                      children: [
-                        ProfileRetryCard(
-                          title: 'Unable to load queries',
-                          message:
-                              'The query data could not be fetched. Confirm the scoped profile read models migration has been applied and retry.',
-                          onRetry: _reload,
-                        ),
-                      ],
-                    );
-                  }
-
-                  final items = snapshot.data ?? const <ProfileQueryItem>[];
+                if (snapshot.hasError) {
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
                     children: [
-                      if (items.isEmpty)
-                        ProfileEmptyCard(
-                          title: 'No query records',
-                          message: _emptyMessage(),
-                        )
-                      else
-                        ...items.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _QueryCard(
-                              item: item,
-                              onAcknowledge: item.requiresAcknowledgement &&
-                                      item.acknowledgedAt == null
-                                  ? () => _acknowledge(item)
-                                  : null,
-                              onRespond: item.requiresResponse
-                                  ? () => _respond(item)
-                                  : null,
-                              onViewDetails: () => _openDetails(item),
-                            ),
-                          ),
-                        ),
+                      ProfileRetryCard(
+                        title: 'Unable to load queries',
+                        message:
+                            'The query data could not be fetched. Confirm the scoped profile read models migration has been applied and retry.',
+                        onRetry: _reload,
+                      ),
                     ],
                   );
-                },
-              ),
+                }
+
+                final items = snapshot.data ?? const <ProfileQueryItem>[];
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                  children: [
+                    if (items.isEmpty)
+                      ProfileEmptyCard(
+                        title: 'No query records',
+                        message: _emptyMessage(),
+                      )
+                    else
+                      ...items.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _QueryCard(
+                            item: item,
+                            onAcknowledge: item.requiresAcknowledgement &&
+                                    item.acknowledgedAt == null
+                                ? () => _acknowledge(item)
+                                : null,
+                            onRespond: item.requiresResponse
+                                ? () => _respond(item)
+                                : null,
+                            onViewDetails: () => _openDetails(item),
+                          ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF3F4FB),
+        child: content,
+      );
+    }
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4FB),
+      body: content,
     );
   }
 }

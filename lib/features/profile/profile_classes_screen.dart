@@ -5,7 +5,14 @@ import 'profile_query_screen.dart';
 import 'profile_ui_kit.dart';
 
 class ProfileClassesScreen extends StatefulWidget {
-  const ProfileClassesScreen({super.key});
+  const ProfileClassesScreen({
+    super.key,
+    this.embedded = false,
+    this.onTabSelected,
+  });
+
+  final bool embedded;
+  final ValueChanged<ProfileRouteTab>? onTabSelected;
 
   @override
   State<ProfileClassesScreen> createState() => _ProfileClassesScreenState();
@@ -28,123 +35,153 @@ class _ProfileClassesScreenState extends State<ProfileClassesScreen> {
   }
 
   void _handleBack() {
+    if (widget.embedded) {
+      widget.onTabSelected?.call(ProfileRouteTab.overview);
+      return;
+    }
     Navigator.of(context).maybePop();
   }
 
   void _handleTab(ProfileRouteTab tab) {
     switch (tab) {
       case ProfileRouteTab.overview:
-        Navigator.of(context).maybePop();
+        if (widget.embedded) {
+          widget.onTabSelected?.call(tab);
+        } else {
+          Navigator.of(context).maybePop();
+        }
         break;
       case ProfileRouteTab.classes:
         break;
       case ProfileRouteTab.query:
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const ProfileQueryScreen()),
-        );
+        if (widget.embedded) {
+          widget.onTabSelected?.call(tab);
+        } else {
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (_) => const ProfileQueryScreen()),
+          );
+        }
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      body: SafeArea(
-        bottom: false,
-        child: Column(
-          children: [
+    final content = SafeArea(
+      bottom: false,
+      child: Column(
+        children: [
+          if (widget.embedded)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Profile',
+                  style: profileSans(size: 24, weight: FontWeight.w700),
+                ),
+              ),
+            )
+          else
             ProfileSubpageHeader(title: 'Classes', onBack: _handleBack),
-            ProfileRouteTabs(
-              activeTab: ProfileRouteTab.classes,
-              onSelected: _handleTab,
-            ),
-            Expanded(
-              child: FutureBuilder<ProfileClassesPayload>(
-                future: _future,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const ProfileLoadingList(includeStats: true);
-                  }
+          ProfileRouteTabs(
+            activeTab: ProfileRouteTab.classes,
+            onSelected: _handleTab,
+          ),
+          Expanded(
+            child: FutureBuilder<ProfileClassesPayload>(
+              future: _future,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const ProfileLoadingList(includeStats: true);
+                }
 
-                  if (snapshot.hasError) {
-                    return ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                      children: [
-                        ProfileRetryCard(
-                          title: 'Unable to load classes',
-                          message:
-                              'The classes data could not be fetched right now. Retry after confirming the scoped profile read models migration has been applied.',
-                          onRetry: _retry,
-                        ),
-                      ],
-                    );
-                  }
-
-                  final payload = snapshot.data;
-                  if (payload == null) {
-                    return ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
-                      children: [
-                        ProfileRetryCard(
-                          title: 'Classes unavailable',
-                          message:
-                              'No class data was returned for this profile.',
-                          onRetry: _retry,
-                        ),
-                      ],
-                    );
-                  }
-
+                if (snapshot.hasError) {
                   return ListView(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _StatCard(
-                              value: payload.summary.completedCount.toString(),
-                              label: 'Completed',
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _StatCard(
-                              value: payload.summary.inProgressCount.toString(),
-                              label: 'In progress',
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: _StatCard(
-                              value: payload.summary.dueSoonCount.toString(),
-                              label: 'Due soon',
-                            ),
-                          ),
-                        ],
+                      ProfileRetryCard(
+                        title: 'Unable to load classes',
+                        message:
+                            'The classes data could not be fetched right now. Retry after confirming the scoped profile read models migration has been applied.',
+                        onRetry: _retry,
                       ),
-                      const SizedBox(height: 16),
-                      if (payload.items.isEmpty)
-                        const ProfileEmptyCard(
-                          title: 'No classes assigned',
-                          message:
-                              'This account does not have any class assignments yet. Assign classes from the database to populate this screen.',
-                        )
-                      else
-                        ...payload.items.map(
-                          (item) => Padding(
-                            padding: const EdgeInsets.only(bottom: 14),
-                            child: _ClassCard(item: item),
-                          ),
-                        ),
                     ],
                   );
-                },
-              ),
+                }
+
+                final payload = snapshot.data;
+                if (payload == null) {
+                  return ListView(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                    children: [
+                      ProfileRetryCard(
+                        title: 'Classes unavailable',
+                        message: 'No class data was returned for this profile.',
+                        onRetry: _retry,
+                      ),
+                    ],
+                  );
+                }
+
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 120),
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _StatCard(
+                            value: payload.summary.completedCount.toString(),
+                            label: 'Completed',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatCard(
+                            value: payload.summary.inProgressCount.toString(),
+                            label: 'In progress',
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: _StatCard(
+                            value: payload.summary.dueSoonCount.toString(),
+                            label: 'Due soon',
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    if (payload.items.isEmpty)
+                      const ProfileEmptyCard(
+                        title: 'No classes assigned',
+                        message: '',
+                      )
+                    else
+                      ...payload.items.map(
+                        (item) => Padding(
+                          padding: const EdgeInsets.only(bottom: 14),
+                          child: _ClassCard(item: item),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+
+    if (widget.embedded) {
+      return ColoredBox(
+        color: const Color(0xFFF3F4FB),
+        child: content,
+      );
+    }
+    return Scaffold(
+      backgroundColor: const Color(0xFFF3F4FB),
+      body: content,
     );
   }
 }
