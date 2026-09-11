@@ -12,7 +12,8 @@ class DepartmentProfileEditPage extends StatefulWidget {
   final String departmentId;
 
   @override
-  State<DepartmentProfileEditPage> createState() => _DepartmentProfileEditPageState();
+  State<DepartmentProfileEditPage> createState() =>
+      _DepartmentProfileEditPageState();
 }
 
 class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
@@ -57,14 +58,19 @@ class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
   }
 
   Future<PlatformFile?> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(type: FileType.image, withData: true);
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
     return result?.files.single;
   }
 
   Future<void> _save() async {
     if (department?['can_manage'] != true) return;
     if (name.text.trim().length < 2 || description.text.length > 500) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Check department name and description.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Check department name and description.')),
+      );
       return;
     }
     setState(() => busy = true);
@@ -94,9 +100,19 @@ class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
         coverUrl: coverUrl,
         avatarUrl: avatarUrl,
       );
-      if (mounted) context.pop(true);
+      if (mounted) {
+        context.pop(true);
+      }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to update the department profile. Please try again.')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Unable to update the department profile. Please try again.',
+            ),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
@@ -106,100 +122,239 @@ class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        leading: IconButton(onPressed: () => context.pop(), icon: Icon(PhosphorIcons.caretLeft(), size: 20)),
-        title: const Text('Change profile', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+        leading: IconButton(
+          onPressed: () => context.pop(),
+          icon: Icon(PhosphorIcons.caretLeft(), size: 20),
+        ),
+        title: const Text(
+          'Change profile',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+        ),
+        centerTitle: true,
+        actions: [
+          TextButton(
+            onPressed: busy ? null : _save,
+            child: const Text(
+              'Save',
+              style: TextStyle(fontSize: 12, color: Color(0xFF7D46B4)),
+            ),
+          ),
+        ],
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
           : loadError != null
-              ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [Text(loadError!), const SizedBox(height: 8), TextButton(onPressed: () { setState(() { loading = true; loadError = null; }); _load(); }, child: const Text('Retry'))]))
-          : SafeArea(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-                children: [
-                  Center(
-                    child: InkWell(
-                      onTap: () async {
-                        try {
-                          final file = await _pickImage();
-                          if (!mounted) return;
-                          if (file != null) setState(() => avatarFile = file);
-                        } catch (_) {
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to select that image. Please try again.')));
-                        }
-                      },
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          InitialsAvatar(initials: _initials(name.text), imageUrl: avatarUrl, size: 84),
-                          Positioned(
-                            right: -3,
-                            bottom: -3,
-                            child: Container(
-                              width: 30,
-                              height: 30,
-                              decoration: const BoxDecoration(color: WpccColors.ink, shape: BoxShape.circle),
-                              child: Icon(PhosphorIcons.pencilSimple(), size: 14, color: Colors.white),
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(loadError!),
+                      const SizedBox(height: 8),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            loading = true;
+                            loadError = null;
+                          });
+                          _load();
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                )
+              : SafeArea(
+                  child: ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
+                    children: [
+                      Container(
+                        height: 177,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(26),
+                          color: const Color(0xFF4E4267),
+                          image: coverUrl != null && coverUrl!.isNotEmpty
+                              ? DecorationImage(
+                                  image: NetworkImage(coverUrl!),
+                                  fit: BoxFit.cover,
+                                  colorFilter: const ColorFilter.mode(
+                                    Color(0x55000000),
+                                    BlendMode.darken,
+                                  ),
+                                )
+                              : null,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 9,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white24,
+                                borderRadius: BorderRadius.circular(99),
+                              ),
+                              child: Text(
+                                '${department?['member_count'] ?? 0} members',
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
+                            const Spacer(),
+                            Text(
+                              name.text.isEmpty ? 'Department' : name.text,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineSmall
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              description.text.isEmpty
+                                  ? 'Department community and resources.'
+                                  : description.text,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white70,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      InkWell(
+                        onTap: () async {
+                          try {
+                            final file = await _pickImage();
+                            if (!mounted) return;
+                            if (file != null) setState(() => coverFile = file);
+                          } catch (_) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Unable to select that image. Please try again.',
+                                ),
+                              ),
+                            );
+                          }
+                        },
+                        child: Container(
+                          height: 48,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(22),
+                            border: Border.all(color: WpccColors.line),
                           ),
-                        ],
+                          child: const Text(
+                            'Change cover image',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  TextField(controller: name, onChanged: (_) => setState(() {}), decoration: const InputDecoration(labelText: 'Department name')),
-                  const SizedBox(height: 10),
-                  InputDecorator(
-                    decoration: const InputDecoration(labelText: 'Team size'),
-                    child: Text('${department?['member_count'] ?? 0} members', style: const TextStyle(fontSize: 13)),
-                  ),
-                  const SizedBox(height: 10),
-                  InkWell(
-                    onTap: () async {
-                      try {
-                        final file = await _pickImage();
-                        if (!mounted) return;
-                        if (file != null) setState(() => coverFile = file);
-                      } catch (_) {
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Unable to select that image. Please try again.')));
-                      }
-                    },
-                    child: Container(
-                      height: 150,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF0F1F5),
-                        borderRadius: BorderRadius.circular(22),
-                        image: coverUrl != null && coverUrl!.isNotEmpty ? DecorationImage(image: NetworkImage(coverUrl!), fit: BoxFit.cover) : null,
+                      const SizedBox(height: 10),
+                      Container(
+                        clipBehavior: Clip.antiAlias,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(26),
+                          border: Border.all(color: WpccColors.line),
+                        ),
+                        child: Column(
+                          children: [
+                            _ProfileField(
+                              controller: name,
+                              label: 'Department name',
+                              onChanged: (_) => setState(() {}),
+                            ),
+                            _ProfileField(
+                              controller: description,
+                              label: 'About department',
+                              maxLines: 4,
+                              onChanged: (_) => setState(() {}),
+                            ),
+                            InkWell(
+                              onTap: () async {
+                                final file = await _pickImage();
+                                if (mounted && file != null) {
+                                  setState(() => avatarFile = file);
+                                }
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 14,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Avatar initials',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelSmall
+                                                ?.copyWith(
+                                                  fontSize: 11,
+                                                  color: WpccColors.muted,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            _initials(name.text),
+                                            style:
+                                                const TextStyle(fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    InitialsAvatar(
+                                      initials: _initials(name.text),
+                                      imageUrl: avatarUrl,
+                                      size: 34,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                      child: coverUrl == null || coverUrl!.isEmpty
-                          ? Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(PhosphorIcons.image(), size: 24),
-                                const SizedBox(height: 7),
-                                const Text('Choose cover image', style: TextStyle(fontSize: 11)),
-                              ],
-                            )
-                          : null,
-                    ),
+                      const SizedBox(height: 14),
+                      FilledButton(
+                        onPressed: busy ? null : _save,
+                        style: FilledButton.styleFrom(
+                          backgroundColor: WpccColors.ink,
+                          minimumSize: const Size.fromHeight(50),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                        ),
+                        child: busy
+                            ? const CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              )
+                            : const Text('Update profile'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  TextField(controller: description, maxLines: 5, maxLength: 500, decoration: const InputDecoration(labelText: 'About department')),
-                  const SizedBox(height: 14),
-                  FilledButton(
-                    onPressed: busy ? null : _save,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: WpccColors.ink,
-                      minimumSize: const Size.fromHeight(50),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    ),
-                    child: busy ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white) : const Text('Update profile'),
-                  ),
-                ],
-              ),
-            ),
+                ),
     );
   }
 
@@ -210,4 +365,43 @@ class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
       .take(2)
       .map((part) => part[0].toUpperCase())
       .join();
+}
+
+class _ProfileField extends StatelessWidget {
+  const _ProfileField({
+    required this.controller,
+    required this.label,
+    this.maxLines = 1,
+    this.onChanged,
+  });
+  final TextEditingController controller;
+  final String label;
+  final int maxLines;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: WpccColors.line)),
+        ),
+        child: TextField(
+          controller: controller,
+          maxLines: maxLines,
+          maxLength: maxLines > 1 ? 500 : null,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            labelText: label,
+            counterText: '',
+            filled: false,
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
+          ),
+          style: const TextStyle(fontSize: 14),
+        ),
+      );
 }
