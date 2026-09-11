@@ -6,11 +6,7 @@ import '../../core/widgets/initials_avatar.dart';
 import 'devotional_repository.dart';
 
 class DevotionalPostPage extends StatefulWidget {
-  const DevotionalPostPage({
-    super.key,
-    required this.postId,
-    this.seed,
-  });
+  const DevotionalPostPage({super.key, required this.postId, this.seed});
 
   final String postId;
   final Map<String, dynamic>? seed;
@@ -30,6 +26,7 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
   bool loadingMoreComments = false;
   bool hasMoreComments = true;
   bool sending = false;
+  final Set<String> updatingReactions = {};
   Object? commentsError;
 
   @override
@@ -93,7 +90,8 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Unable to load more comments. Please try again.')),
+            content: Text('Unable to load more comments. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -105,8 +103,9 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: const Text(
-          'Wisdom Devotional',
+          'Devotional',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ),
@@ -126,21 +125,52 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
               await Future.wait([post, _reloadComments()]);
             },
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
+              padding: const EdgeInsets.fromLTRB(19, 4, 19, 30),
               children: [
                 Text(
-                  current['title']?.toString() ?? '',
+                  'Wisdom Devotional',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    fontSize: 27,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -1,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Text(
+                  'Short devotionals to help you pray, reflect, and stay rooted through the week.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: WpccColors.inkSoft,
+                    height: 1.45,
+                  ),
                 ),
                 const SizedBox(height: 16),
-                Text(
-                  current['body']?.toString() ?? '',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        height: 1.65,
-                        color: WpccColors.inkSoft,
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: WpccColors.line),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        current['title']?.toString() ?? '',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
+                      const SizedBox(height: 14),
+                      Text(
+                        current['body']?.toString() ?? '',
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          height: 1.65,
+                          color: WpccColors.inkSoft,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
                 FutureBuilder<Set<String>>(
@@ -158,10 +188,13 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                             (type) => FilterChip(
                               selected: selected.contains(type),
                               showCheckmark: false,
-                              label:
-                                  Text('${_label(type)} ${counts[type] ?? 0}'),
-                              onSelected: (_) =>
-                                  _toggle(type, selected.contains(type)),
+                              label: Text(
+                                '${_label(type)} ${counts[type] ?? 0}',
+                              ),
+                              onSelected: updatingReactions.contains(type)
+                                  ? null
+                                  : (_) =>
+                                        _toggle(type, selected.contains(type)),
                               selectedColor: WpccColors.ink,
                               labelStyle: TextStyle(
                                 fontSize: 11,
@@ -184,18 +217,17 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                       child: Text(
                         'Comments',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ),
                     if (current['comments_count'] != null)
                       Text(
                         current['comments_count'].toString(),
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelSmall
-                            ?.copyWith(color: WpccColors.muted),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: WpccColors.muted,
+                        ),
                       ),
                   ],
                 ),
@@ -208,32 +240,32 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                 else if (commentsError != null)
                   Text(
                     'Unable to load comments.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: Colors.redAccent),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: Colors.redAccent),
                   )
                 else if (comments.isEmpty)
                   Text(
                     'No comments yet.',
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(color: WpccColors.muted),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
                   )
                 else ...[
                   ...comments.map(_commentRow),
                   if (hasMoreComments)
                     Center(
                       child: TextButton(
-                        onPressed:
-                            loadingMoreComments ? null : _loadMoreComments,
+                        onPressed: loadingMoreComments
+                            ? null
+                            : _loadMoreComments,
                         child: loadingMoreComments
                             ? const SizedBox(
                                 width: 18,
                                 height: 18,
-                                child:
-                                    CircularProgressIndicator(strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text('Load more comments'),
                       ),
@@ -249,21 +281,25 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                         maxLines: 3,
                         minLines: 1,
                         maxLength: 1000,
-                        decoration:
-                            const InputDecoration(hintText: 'Add a comment...'),
+                        decoration: const InputDecoration(
+                          hintText: 'Add a comment...',
+                        ),
                       ),
                     ),
                     const SizedBox(width: 8),
                     IconButton.filled(
                       onPressed: sending ? null : _send,
-                      style:
-                          IconButton.styleFrom(backgroundColor: WpccColors.ink),
+                      style: IconButton.styleFrom(
+                        backgroundColor: WpccColors.ink,
+                      ),
                       icon: sending
                           ? const SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
-                                  strokeWidth: 2, color: Colors.white),
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
                             )
                           : Icon(PhosphorIcons.arrowUp(), size: 18),
                     ),
@@ -294,15 +330,16 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                 Text(
                   resolvedName,
                   style: const TextStyle(
-                      fontSize: 12, fontWeight: FontWeight.w600),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   entry['body']?.toString() ?? '',
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(height: 1.45),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(height: 1.45),
                 ),
               ],
             ),
@@ -313,6 +350,8 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
   }
 
   Future<void> _toggle(String type, bool active) async {
+    if (updatingReactions.contains(type)) return;
+    setState(() => updatingReactions.add(type));
     try {
       await repo.toggleReaction(widget.postId, type, active);
       if (mounted) {
@@ -325,10 +364,12 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-                  Text('Unable to update your reaction. Please try again.')),
+            content: Text('Unable to update your reaction. Please try again.'),
+          ),
         );
       }
+    } finally {
+      if (mounted) setState(() => updatingReactions.remove(type));
     }
   }
 
@@ -347,7 +388,8 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Unable to post your comment. Please try again.')),
+            content: Text('Unable to post your comment. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -356,11 +398,11 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
   }
 
   String _label(String type) => switch (type) {
-        'amen' => 'Amen',
-        'helpful' => 'Helpful',
-        'inspired' => 'Inspired',
-        _ => type,
-      };
+    'amen' => 'Amen',
+    'helpful' => 'Helpful',
+    'inspired' => 'Inspired',
+    _ => type,
+  };
 
   String _initials(String name) => name
       .split(RegExp(r'\s+'))

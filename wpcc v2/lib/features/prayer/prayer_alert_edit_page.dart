@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/theme/app_theme.dart';
 import 'prayer_repository.dart';
@@ -48,8 +49,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
   Future<void> _loadAlert() async {
     try {
       final rows = await repo.alerts();
-      final matches =
-          rows.where((row) => row['id']?.toString() == widget.alertId);
+      final matches = rows.where(
+        (row) => row['id']?.toString() == widget.alertId,
+      );
       if (!mounted) return;
       if (matches.isEmpty) {
         setState(() {
@@ -77,8 +79,10 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
     title.text = value['title']?.toString() ?? 'Prayer';
     time = _timeFrom(value);
     days = Set<int>.from(
-        ((value['days_of_week'] as List?) ?? const [1, 2, 3, 4, 5, 6, 7])
-            .map((e) => e as int));
+      ((value['days_of_week'] as List?) ?? const [1, 2, 3, 4, 5, 6, 7]).map(
+        (e) => e as int,
+      ),
+    );
     hasDuration = value['duration_seconds'] != null;
     durationMinutes = ((value['duration_seconds'] as int?) ?? 1800) / 60;
     vibrationEnabled = value['vibration_enabled'] != false;
@@ -139,8 +143,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
   }
 
   void _show(String message) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -152,19 +157,24 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
       return Scaffold(
         appBar: AppBar(),
         body: Center(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(loadError!),
-          const SizedBox(height: 8),
-          TextButton(
-              onPressed: () {
-                setState(() {
-                  loading = true;
-                  loadError = null;
-                });
-                _loadAlert();
-              },
-              child: const Text('Retry')),
-        ])),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(loadError!),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    loading = true;
+                    loadError = null;
+                  });
+                  _loadAlert();
+                },
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
       );
     }
     const labels = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
@@ -177,6 +187,18 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
               : 'Edit prayer alert',
           style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
         ),
+        actions: [
+          TextButton(
+            onPressed: saving ? null : _save,
+            child: const Text(
+              'Save',
+              style: TextStyle(
+                color: Color(0xFF6F329C),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(18, 8, 18, 30),
@@ -187,27 +209,38 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
             label: 'Prayer alert time',
             value: time.format(context),
             child: InkWell(
-                borderRadius: BorderRadius.circular(26),
-                onTap: () async {
-                  final next =
-                      await showTimePicker(context: context, initialTime: time);
-                  if (next != null) setState(() => time = next);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 26),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(26),
-                  ),
-                  child: Text(
-                    time.format(context),
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: -2,
-                        ),
-                  ),
-                )),
+              borderRadius: BorderRadius.circular(26),
+              onTap: () async {
+                final next = await showTimePicker(
+                  context: context,
+                  initialTime: time,
+                );
+                if (next != null) setState(() => time = next);
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 24),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      time.format(context),
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                            fontSize: 44,
+                            fontWeight: FontWeight.w400,
+                            letterSpacing: -2,
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(
+                      PhosphorIcons.clock(),
+                      size: 42,
+                      color: WpccColors.ink,
+                    ),
+                  ],
+                ),
+              ),
+            ),
           ),
           const SizedBox(height: 12),
           TextField(
@@ -224,35 +257,40 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                 ),
           ),
           const SizedBox(height: 8),
-          Row(
-            children: List.generate(7, (index) {
-              final day = index + 1;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
-                  child: ChoiceChip(
-                    selected: days.contains(day),
-                    onSelected: (selected) {
-                      setState(() {
-                        if (selected) {
-                          days.add(day);
-                        } else {
-                          days.remove(day);
-                        }
-                      });
-                    },
-                    showCheckmark: false,
-                    selectedColor: WpccColors.ink,
-                    label: Text(labels[index]),
-                    labelStyle: TextStyle(
-                      fontSize: 11,
-                      color: days.contains(day) ? Colors.white : WpccColors.ink,
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: List.generate(7, (index) {
+                final day = index + 1;
+                return SizedBox(
+                  width: 64,
+                  child: Padding(
+                    padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
+                    child: ChoiceChip(
+                      selected: days.contains(day),
+                      onSelected: (selected) {
+                        setState(() {
+                          if (selected) {
+                            days.add(day);
+                          } else {
+                            days.remove(day);
+                          }
+                        });
+                      },
+                      showCheckmark: false,
+                      selectedColor: WpccColors.ink,
+                      label: Text(labels[index]),
+                      labelStyle: TextStyle(
+                        fontSize: 11,
+                        color:
+                            days.contains(day) ? Colors.white : WpccColors.ink,
+                      ),
+                      side: BorderSide.none,
                     ),
-                    side: BorderSide.none,
                   ),
-                ),
-              );
-            }),
+                );
+              }),
+            ),
           ),
           const SizedBox(height: 20),
           SwitchListTile(
@@ -265,10 +303,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
               hasDuration
                   ? '${durationMinutes.round()} minutes · countdown'
                   : 'No duration · count up',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: WpccColors.muted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
             ),
             value: hasDuration,
             onChanged: (value) => setState(() => hasDuration = value),
@@ -291,10 +328,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
             ),
             subtitle: Text(
               'Used by supported installed PWA/browser notifications',
-              style: Theme.of(context)
-                  .textTheme
-                  .bodySmall
-                  ?.copyWith(color: WpccColors.muted),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
             ),
             value: vibrationEnabled,
             onChanged: (value) => setState(() => vibrationEnabled = value),
@@ -330,9 +366,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                 Text(
                   alert?['audio_title']?.toString() ??
                       'No published prayer audio selected',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: WpccColors.muted,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
                 ),
               ],
             ),
@@ -340,21 +376,22 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
           const SizedBox(height: 28),
           SizedBox(
             height: 50,
-            child: FilledButton(
-              onPressed: saving ? null : _save,
-              style: FilledButton.styleFrom(
-                backgroundColor: WpccColors.ink,
+            child: OutlinedButton.icon(
+              onPressed: saving
+                  ? null
+                  : () => _show(
+                        'Save this alert first, then open it from Prayer alerts to test the full session.',
+                      ),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: WpccColors.ink,
+                side: const BorderSide(color: WpccColors.line),
+                backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(18)),
+                  borderRadius: BorderRadius.circular(18),
+                ),
               ),
-              child: saving
-                  ? const SizedBox(
-                      width: 18,
-                      height: 18,
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Text('Save alert'),
+              icon: Icon(PhosphorIcons.speakerHigh(), size: 18),
+              label: const Text('Test prayer alert'),
             ),
           ),
         ],
