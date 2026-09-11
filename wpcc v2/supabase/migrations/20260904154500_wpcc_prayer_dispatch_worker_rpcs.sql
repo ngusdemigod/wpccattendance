@@ -1,0 +1,2 @@
+-- Applied to WPCC Community. Server-only Web Push worker helpers.
+-- See live migration wpcc_prayer_dispatch_worker_rpcs for exact deployed SQL.
