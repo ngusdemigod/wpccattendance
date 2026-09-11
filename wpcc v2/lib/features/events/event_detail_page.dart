@@ -165,7 +165,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-            Color(0xFFE5D5F4),
+            WpccColors.primarySoft,
             Color(0xFFD7DEEF),
             Color(0xFFF2E8DF)
           ])));

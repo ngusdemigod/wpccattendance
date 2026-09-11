@@ -155,11 +155,9 @@ class _DevotionalPageState extends State<DevotionalPage> {
                         final metadata = Map<String, dynamic>.from(
                           (post['more'] as Map?) ?? const {},
                         );
-                        final tag =
-                            metadata['tag']?.toString() ??
+                        final tag = metadata['tag']?.toString() ??
                             (rowIndex == 0 ? 'Today' : 'Devotional');
-                        final author =
-                            metadata['author']?.toString() ??
+                        final author = metadata['author']?.toString() ??
                             'WPCC Devotional Desk';
                         final readTime =
                             metadata['read_time']?.toString() ?? '3 min read';
@@ -222,7 +220,9 @@ class _DevotionalPageState extends State<DevotionalPage> {
                                   post['body']?.toString() ?? '',
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
                                       ?.copyWith(
                                         color: WpccColors.inkSoft,
                                         height: 1.5,
@@ -250,7 +250,7 @@ class _DevotionalPageState extends State<DevotionalPage> {
                                       'Read post',
                                       style: TextStyle(
                                         fontSize: 12,
-                                        color: Color(0xFF6F329C),
+                                        color: WpccColors.primaryDeep,
                                         fontWeight: FontWeight.w500,
                                       ),
                                     ),

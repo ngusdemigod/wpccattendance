@@ -193,7 +193,7 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
             child: const Text(
               'Save',
               style: TextStyle(
-                color: Color(0xFF6F329C),
+                color: WpccColors.primaryDeep,
                 fontWeight: FontWeight.w600,
               ),
             ),

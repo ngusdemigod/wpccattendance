@@ -414,7 +414,7 @@ class _AlertRow extends StatelessWidget {
                     'Global',
                     style: TextStyle(
                       fontSize: 12,
-                      color: Color(0xFF6F329C),
+                      color: WpccColors.primaryDeep,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

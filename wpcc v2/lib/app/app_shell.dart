@@ -64,30 +64,44 @@ class AppShell extends StatelessWidget {
                             label: labels[i],
                             excludeSemantics: true,
                             child: InkWell(
+                              borderRadius: BorderRadius.circular(20),
                               onTap: () => context.go(destinations[i]),
-                              child: SizedBox(
+                              child: Align(
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 180),
+                                  width: 62,
                                   height: 56,
+                                  decoration: BoxDecoration(
+                                    gradient: selected == i
+                                        ? const LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              WpccColors.primary,
+                                              WpccColors.primaryDeep,
+                                            ],
+                                          )
+                                        : null,
+                                    borderRadius: BorderRadius.circular(20),
+                                    boxShadow: selected == i
+                                        ? const [
+                                            BoxShadow(
+                                              color: Color(0x38683793),
+                                              blurRadius: 22,
+                                              offset: Offset(0, 10),
+                                            ),
+                                          ]
+                                        : null,
+                                  ),
                                   child: Column(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        AnimatedContainer(
-                                          duration:
-                                              const Duration(milliseconds: 180),
-                                          width: 32,
-                                          height: 28,
-                                          decoration: BoxDecoration(
-                                              color: selected == i
-                                                  ? WpccColors.ink
-                                                  : Colors.transparent,
-                                              borderRadius:
-                                                  BorderRadius.circular(12)),
-                                          child: Icon(icons[i],
-                                              size: 18,
-                                              color: selected == i
-                                                  ? Colors.white
-                                                  : WpccColors.muted),
-                                        ),
+                                        Icon(icons[i],
+                                            size: 18,
+                                            color: selected == i
+                                                ? Colors.white
+                                                : WpccColors.muted),
                                         const SizedBox(height: 3),
                                         Text(labels[i],
                                             maxLines: 1,
@@ -97,9 +111,11 @@ class AppShell extends StatelessWidget {
                                                 ?.copyWith(
                                                     fontSize: 12,
                                                     color: selected == i
-                                                        ? WpccColors.ink
+                                                        ? Colors.white
                                                         : WpccColors.muted)),
-                                      ])),
+                                      ]),
+                                ),
+                              ),
                             ),
                           ),
                         )),
