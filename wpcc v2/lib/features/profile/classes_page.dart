@@ -196,13 +196,8 @@ class ProfileTabs extends StatelessWidget {
   const ProfileTabs({super.key, required this.index});
   final int index;
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) => SizedBox(
     height: 42,
-    padding: const EdgeInsets.all(3),
-    decoration: BoxDecoration(
-      color: const Color(0xFFE9EAF0),
-      borderRadius: BorderRadius.circular(22),
-    ),
     child: Row(
       children: [
         tab(context, 0, 'Overview', '/profile'),
@@ -212,31 +207,29 @@ class ProfileTabs extends StatelessWidget {
     ),
   );
   Widget tab(BuildContext context, int value, String label, String route) =>
-      Expanded(
+      Padding(
+        padding: const EdgeInsets.only(right: 10),
         child: InkWell(
           onTap: value == index ? null : () => context.go(route),
           borderRadius: BorderRadius.circular(20),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 160),
+            height: 42,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: value == index ? Colors.white : Colors.transparent,
+              color: value == index ? WpccColors.navActive : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              boxShadow: value == index
-                  ? const [
-                      BoxShadow(
-                        color: Color(0x12000000),
-                        blurRadius: 6,
-                        offset: Offset(0, 2),
-                      ),
-                    ]
-                  : null,
+              border: Border.all(color: value == index
+                  ? WpccColors.navActive
+                  : WpccColors.lineSubtle),
             ),
             child: Text(
               label,
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: value == index ? FontWeight.w600 : FontWeight.w500,
+                color: value == index ? Colors.white : WpccColors.inkSoft,
               ),
             ),
           ),

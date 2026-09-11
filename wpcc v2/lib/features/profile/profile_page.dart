@@ -75,14 +75,14 @@ class _ProfilePageState extends State<ProfilePage> {
                   vertical: 6,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEAF7EF),
+                  color: WpccColors.successBackground,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
                   'Active',
                   style: TextStyle(
                     fontSize: 10,
-                    color: Color(0xFF247A49),
+                    color: WpccColors.success,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

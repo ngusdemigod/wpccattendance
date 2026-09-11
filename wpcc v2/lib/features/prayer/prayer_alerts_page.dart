@@ -407,7 +407,7 @@ class _AlertRow extends StatelessWidget {
                     vertical: 7,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF4EFF8),
+                    color: WpccColors.primarySoft,
                     borderRadius: BorderRadius.circular(99),
                   ),
                   child: const Text(

@@ -76,10 +76,10 @@ class _GiveResultPageState extends State<GiveResultPage> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       color: successful
-                          ? const Color(0xFFE8F7EE)
+                          ? WpccColors.successBackground
                           : pending
-                              ? const Color(0xFFFFF3DA)
-                              : const Color(0xFFFFEAEA),
+                              ? WpccColors.warningBackground
+                              : WpccColors.errorBackground,
                     ),
                     child: Icon(
                       successful
@@ -89,10 +89,10 @@ class _GiveResultPageState extends State<GiveResultPage> {
                               : PhosphorIcons.x(),
                       size: 36,
                       color: successful
-                          ? const Color(0xFF1F8F52)
+                          ? WpccColors.success
                           : pending
-                              ? Colors.orange
-                              : Colors.redAccent,
+                              ? WpccColors.warning
+                              : WpccColors.error,
                     ),
                   ),
                 ),

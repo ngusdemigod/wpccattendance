@@ -144,7 +144,7 @@ class _SearchPageState extends State<SearchPage> {
                               padding: const EdgeInsets.all(9),
                               child: DecoratedBox(
                                 decoration: const BoxDecoration(
-                                  color: Color(0xFFF4EFF8),
+                                  color: WpccColors.primarySoft,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -314,7 +314,7 @@ class _SearchPageState extends State<SearchPage> {
                 width: 58,
                 height: 58,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFF1F2F5),
+                  color: WpccColors.subtle,
                   borderRadius: BorderRadius.circular(13),
                   image: image != null && image.isNotEmpty
                       ? DecorationImage(
@@ -579,7 +579,7 @@ class _PublicMemberSheet extends StatelessWidget {
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF4F5F8),
+                          color: WpccColors.subtle,
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(

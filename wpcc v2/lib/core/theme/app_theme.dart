@@ -102,6 +102,18 @@ ThemeData buildWpccTheme() {
     textTheme: text,
     splashFactory: NoSplash.splashFactory,
     dividerColor: WpccColors.line,
+    appBarTheme: AppBarTheme(
+      backgroundColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: true,
+      foregroundColor: WpccColors.ink,
+      titleTextStyle: text.titleSmall?.copyWith(
+        color: WpccColors.ink,
+        fontSize: 15,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
     progressIndicatorTheme: const ProgressIndicatorThemeData(
       color: WpccColors.primary,
     ),

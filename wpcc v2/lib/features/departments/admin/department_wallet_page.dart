@@ -157,7 +157,7 @@ class _AdminScaffold extends StatelessWidget {
           onPressed: onSave,
           child: const Text(
             'Save',
-            style: TextStyle(fontSize: 12, color: Color(0xFF7D46B4)),
+            style: TextStyle(fontSize: 12, color: WpccColors.primaryDeep),
           ),
         ),
       ],

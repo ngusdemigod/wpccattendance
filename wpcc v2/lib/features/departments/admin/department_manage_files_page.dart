@@ -159,7 +159,7 @@ class _FileManageCardState extends State<_FileManageCard> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F7),
+                      color: WpccColors.subtle,
                       borderRadius: BorderRadius.circular(16)),
                   child: Icon(_icon(), size: 29),
                 ),

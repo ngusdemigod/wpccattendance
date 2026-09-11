@@ -110,7 +110,7 @@ class _DepartmentCreateEventPageState extends State<DepartmentCreateEventPage> {
             onPressed: busy ? null : _save,
             child: const Text(
               'Publish',
-              style: TextStyle(fontSize: 12, color: Color(0xFF7D46B4)),
+              style: TextStyle(fontSize: 12, color: WpccColors.primaryDeep),
             ),
           ),
         ],

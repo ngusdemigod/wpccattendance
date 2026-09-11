@@ -137,7 +137,7 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                                   width: 38,
                                   height: 38,
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFFF8F8FB),
+                                    color: WpccColors.subtle,
                                     borderRadius: BorderRadius.circular(13),
                                     border: Border.all(color: WpccColors.line),
                                   ),

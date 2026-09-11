@@ -71,11 +71,7 @@ class _DevotionalPageState extends State<DevotionalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          'Devotional',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        ),
+        title: const Text('Devotional'),
       ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -83,7 +79,33 @@ class _DevotionalPageState extends State<DevotionalPage> {
               onRefresh: _refresh,
               child: rows.isEmpty
                   ? ListView(
+                      padding: const EdgeInsets.fromLTRB(19, 4, 19, 30),
                       children: [
+                        const Padding(
+                          padding: EdgeInsets.only(bottom: 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Wisdom Devotional',
+                                style: TextStyle(
+                                  fontSize: 27,
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -1,
+                                ),
+                              ),
+                              SizedBox(height: 5),
+                              Text(
+                                'Short devotionals to help you pray, reflect, and stay rooted through the week.',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  height: 1.45,
+                                  color: WpccColors.inkSoft,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                         SectionEmptyState(
                           icon: error == null
                               ? PhosphorIcons.bookOpenText()

@@ -161,8 +161,8 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                           child: CircularProgressIndicator(
                             value: progress,
                             strokeWidth: 16,
-                            backgroundColor: const Color(0xFFEDEEF3),
-                            color: const Color(0xFFD9C7EA),
+                            backgroundColor: WpccColors.line,
+                            color: WpccColors.lavender,
                           ),
                         ),
                         _TimerText(seconds: shown),

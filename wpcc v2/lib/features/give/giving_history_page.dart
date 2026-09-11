@@ -176,8 +176,8 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
               height: 38,
               decoration: BoxDecoration(
                 color: successful
-                    ? const Color(0xFFEAF7EF)
-                    : const Color(0xFFF2F3F7),
+                    ? WpccColors.successBackground
+                    : WpccColors.subtle,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -186,7 +186,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                     : PhosphorIcons.receipt(),
                 size: 18,
                 color: successful
-                    ? const Color(0xFF247A49)
+                    ? WpccColors.success
                     : WpccColors.inkSoft,
               ),
             ),

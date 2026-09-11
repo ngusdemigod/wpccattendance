@@ -136,7 +136,7 @@ class _QueryPageState extends State<QueryPage> {
           FilledButton(
             onPressed: busy ? null : submit,
             style: FilledButton.styleFrom(
-              backgroundColor: WpccColors.ink,
+              backgroundColor: WpccColors.primaryDeep,
               minimumSize: const Size.fromHeight(50),
             ),
             child: busy

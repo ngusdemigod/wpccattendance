@@ -343,7 +343,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> with Single
                         child: InkWell(
                           onTap: () => _showAttendanceEvent(e),
                           child: Padding(padding: const EdgeInsets.all(13), child: Row(children: [
-                            Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFFF5F6F9), borderRadius: BorderRadius.circular(14)), child: Icon(PhosphorIcons.church(), size: 19)),
+                            Container(width: 42, height: 42, decoration: BoxDecoration(color: WpccColors.subtle, borderRadius: BorderRadius.circular(14)), child: Icon(PhosphorIcons.church(), size: 19)),
                             const SizedBox(width: 11),
                             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                               Text(e['title']?.toString() ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
@@ -442,7 +442,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> with Single
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(22), border: Border.all(color: WpccColors.line)),
                             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Expanded(child: Container(width: double.infinity, decoration: BoxDecoration(color: const Color(0xFFF5F6F9), borderRadius: BorderRadius.circular(16)), child: Icon(icon, size: 30, color: WpccColors.inkSoft))),
+                              Expanded(child: Container(width: double.infinity, decoration: BoxDecoration(color: WpccColors.subtle, borderRadius: BorderRadius.circular(16)), child: Icon(icon, size: 30, color: WpccColors.inkSoft))),
                               const SizedBox(height: 8),
                               Text(f['file_name']?.toString() ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontSize: 12, fontWeight: FontWeight.w500)),
                             ]),
