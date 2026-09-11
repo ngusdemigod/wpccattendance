@@ -62,6 +62,7 @@ class AppShell extends StatelessWidget {
                             button: true,
                             selected: selected == i,
                             label: labels[i],
+                            excludeSemantics: true,
                             child: InkWell(
                               onTap: () => context.go(destinations[i]),
                               child: SizedBox(

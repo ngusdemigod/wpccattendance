@@ -47,8 +47,8 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
       AnimatedContainer(
         duration: const Duration(milliseconds: 220),
         curve: Curves.easeOutCubic,
-        width: expanded ? 218 : 48,
-        height: 48,
+        width: expanded ? 218 : 50,
+        height: 50,
         decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: .94),
             borderRadius: BorderRadius.circular(999),
@@ -57,7 +57,9 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
           IconButton(
               onPressed: expanded ? () => focusNode.requestFocus() : open,
               icon: Icon(PhosphorIcons.magnifyingGlass(), size: 18),
-              padding: EdgeInsets.zero),
+              padding: EdgeInsets.zero,
+              constraints:
+                  const BoxConstraints.tightFor(width: 48, height: 48)),
           if (expanded)
             Expanded(
               child: TextField(

@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:wpcc_community/app/app_shell.dart';
 import 'package:wpcc_community/core/widgets/animated_search_filter.dart';
 import 'package:wpcc_community/features/auth/login_page.dart';
@@ -11,6 +13,18 @@ import 'package:wpcc_community/features/prayer/prayer_alert_edit_page.dart';
 import 'package:wpcc_community/features/profile/query_page.dart';
 
 void main() {
+  setUpAll(() async {
+    SharedPreferences.setMockInitialValues(const {});
+    await Supabase.initialize(
+      url: 'https://example.supabase.co',
+      publishableKey: 'test-publishable-key',
+    );
+  });
+
+  tearDownAll(() async {
+    await Supabase.instance.dispose();
+  });
+
   testWidgets('blank membership code shows inline validation', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: LoginPage()));
 
@@ -87,6 +101,8 @@ void main() {
   testWidgets('query validation identifies each invalid field', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: QueryPage()));
 
+    await tester.drag(find.byType(ListView), const Offset(0, -520));
+    await tester.pump();
     await tester.tap(find.text('Submit query'));
     await tester.pump();
 

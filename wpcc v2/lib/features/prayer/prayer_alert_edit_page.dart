@@ -219,25 +219,29 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 24),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      time.format(context),
-                      textAlign: TextAlign.center,
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                            fontSize: 44,
-                            fontWeight: FontWeight.w400,
-                            letterSpacing: -2,
-                          ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      PhosphorIcons.clock(),
-                      size: 42,
-                      color: WpccColors.ink,
-                    ),
-                  ],
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        time.format(context),
+                        textAlign: TextAlign.center,
+                        style:
+                            Theme.of(context).textTheme.displaySmall?.copyWith(
+                                  fontSize: 44,
+                                  fontWeight: FontWeight.w400,
+                                  letterSpacing: -2,
+                                ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        PhosphorIcons.clock(),
+                        size: 42,
+                        color: WpccColors.ink,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -263,7 +267,7 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
               children: List.generate(7, (index) {
                 final day = index + 1;
                 return SizedBox(
-                  width: 64,
+                  width: 112,
                   child: Padding(
                     padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
                     child: ChoiceChip(

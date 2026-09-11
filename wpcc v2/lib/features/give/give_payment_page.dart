@@ -23,10 +23,10 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
   int get amountKobo => (int.tryParse(digits) ?? 0) * 100;
   bool get canSubmit => !busy && amountKobo >= 10000;
   String get amountText => NumberFormat.currency(
-    locale: 'en_NG',
-    symbol: '₦',
-    decimalDigits: 2,
-  ).format(amountKobo / 100);
+        locale: 'en_NG',
+        symbol: '₦',
+        decimalDigits: 2,
+      ).format(amountKobo / 100);
 
   @override
   void initState() {
@@ -75,155 +75,159 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      leading: IconButton(
-        onPressed: () => context.pop(),
-        icon: Icon(PhosphorIcons.caretLeft(), size: 20),
-      ),
-      title: Text(
-        widget.payload['title']?.toString() ?? 'Give',
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-      ),
-    ),
-    body: SafeArea(
-      child: LayoutBuilder(
-        builder: (context, constraints) => SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
-            child: IntrinsicHeight(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-                child: Column(
-                  children: [
-                    const Spacer(),
-                    Text(
-                      'Enter amount',
-                      style: Theme.of(
-                        context,
-                      ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
-                    ),
-                    const SizedBox(height: 10),
-                    FittedBox(
-                      child: Text(
-                        amountText,
-                        style: Theme.of(context).textTheme.displaySmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: -1.4,
-                            ),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => context.pop(),
+            icon: Icon(PhosphorIcons.caretLeft(), size: 20),
+          ),
+          title: Text(
+            widget.payload['title']?.toString() ?? 'Give',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ),
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) => SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+                  child: Column(
+                    children: [
+                      const SizedBox(height: 24),
+                      Text(
+                        'Enter amount',
+                        style: Theme.of(
+                          context,
+                        )
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: WpccColors.muted),
                       ),
-                    ),
-                    const SizedBox(height: 18),
-                    FutureBuilder<List<Map<String, dynamic>>>(
-                      future: paymentMethods,
-                      builder: (context, snapshot) {
-                        final method = snapshot.data?.firstOrNull;
-                        final bank = method?['bank']?.toString();
-                        final last4 = method?['last4']?.toString();
-                        return Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF8F8FB),
-                                  borderRadius: BorderRadius.circular(13),
-                                  border: Border.all(color: WpccColors.line),
-                                ),
-                                child: Icon(
-                                  PhosphorIcons.creditCard(),
-                                  size: 18,
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      method == null
-                                          ? 'Secure payment'
-                                          : 'Saved payment account',
-                                      style: const TextStyle(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      method == null
-                                          ? 'Choose a payment method in Paystack'
-                                          : '${bank ?? 'Card'} ·•••• ${last4 ?? ''}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(
-                                            fontSize: 11,
-                                            color: WpccColors.muted,
-                                          ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                    if (error != null) ...[
                       const SizedBox(height: 10),
-                      Semantics(
-                        liveRegion: true,
+                      FittedBox(
                         child: Text(
-                          error!,
-                          style: const TextStyle(
-                            fontSize: 11,
-                            color: Colors.redAccent,
+                          amountText,
+                          style: Theme.of(context)
+                              .textTheme
+                              .displaySmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: -1.4,
+                              ),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      FutureBuilder<List<Map<String, dynamic>>>(
+                        future: paymentMethods,
+                        builder: (context, snapshot) {
+                          final method = snapshot.data?.firstOrNull;
+                          final bank = method?['bank']?.toString();
+                          final last4 = method?['last4']?.toString();
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(22),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F8FB),
+                                    borderRadius: BorderRadius.circular(13),
+                                    border: Border.all(color: WpccColors.line),
+                                  ),
+                                  child: Icon(
+                                    PhosphorIcons.creditCard(),
+                                    size: 18,
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        method == null
+                                            ? 'Secure payment'
+                                            : 'Saved payment account',
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                      Text(
+                                        method == null
+                                            ? 'Choose a payment method in Paystack'
+                                            : '${bank ?? 'Card'} ·•••• ${last4 ?? ''}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              fontSize: 11,
+                                              color: WpccColors.muted,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      if (error != null) ...[
+                        const SizedBox(height: 10),
+                        Semantics(
+                          liveRegion: true,
+                          child: Text(
+                            error!,
+                            style: const TextStyle(
+                              fontSize: 11,
+                              color: Colors.redAccent,
+                            ),
                           ),
+                        ),
+                      ],
+                      const SizedBox(height: 28),
+                      _Keypad(onKey: press),
+                      const SizedBox(height: 16),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton(
+                          onPressed: canSubmit ? submit : null,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: WpccColors.ink,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          child: busy
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text('Continue'),
                         ),
                       ),
                     ],
-                    const Spacer(),
-                    _Keypad(onKey: press),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 50,
-                      child: FilledButton(
-                        onPressed: canSubmit ? submit : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: WpccColors.ink,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: busy
-                            ? const SizedBox(
-                                width: 18,
-                                height: 18,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text('Continue'),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
-      ),
-    ),
-  );
+      );
 }
 
 class _Keypad extends StatelessWidget {
