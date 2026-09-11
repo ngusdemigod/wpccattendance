@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import 'profile_repository.dart';
+import 'classes_page.dart';
 
 class QueryPage extends StatefulWidget {
   const QueryPage({super.key});
@@ -32,10 +33,12 @@ class _QueryPageState extends State<QueryPage> {
     if (shortTitle || shortDetails) {
       setState(() {
         message = null;
-        titleError =
-            shortTitle ? 'Enter a subject with at least 3 characters.' : null;
-        detailsError =
-            shortDetails ? 'Add at least 10 characters of detail.' : null;
+        titleError = shortTitle
+            ? 'Enter a subject with at least 3 characters.'
+            : null;
+        detailsError = shortDetails
+            ? 'Add at least 10 characters of detail.'
+            : null;
       });
       (shortTitle ? titleFocus : detailsFocus).requestFocus();
       return;
@@ -48,7 +51,9 @@ class _QueryPageState extends State<QueryPage> {
     });
     try {
       await repo.submitQuery(
-          title: title.text.trim(), details: details.text.trim());
+        title: title.text.trim(),
+        details: details.text.trim(),
+      );
       if (mounted) {
         title.clear();
         details.clear();
@@ -63,42 +68,57 @@ class _QueryPageState extends State<QueryPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-      appBar: AppBar(
-          title: const Text('Query',
-              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
-      body: ListView(padding: const EdgeInsets.all(18), children: [
-        Container(
+    body: SafeArea(
+      bottom: false,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+        children: [
+          const Text(
+            'Profile',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 15),
+          const ProfileTabs(index: 2),
+          const SizedBox(height: 34),
+          Container(
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-                color: const Color(0xFFF0F1F6),
-                borderRadius: BorderRadius.circular(16)),
-            child: Icon(PhosphorIcons.question(), size: 22)),
-        const SizedBox(height: 18),
-        Text('How can we help?',
-            style: Theme.of(context)
-                .textTheme
-                .headlineSmall
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 7),
-        Text(
+              color: const Color(0xFFF0F1F6),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(PhosphorIcons.question(), size: 22),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'How can we help?',
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 7),
+          Text(
             'Send a query to the appropriate WPCC leadership team. You can review responses from your profile history.',
-            style: Theme.of(context)
-                .textTheme
-                .bodySmall
-                ?.copyWith(color: WpccColors.muted, height: 1.5)),
-        const SizedBox(height: 22),
-        TextField(
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: WpccColors.muted,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 22),
+          TextField(
             controller: title,
             focusNode: titleFocus,
             maxLength: 100,
             onChanged: (_) {
               if (titleError != null) setState(() => titleError = null);
             },
-            decoration:
-                InputDecoration(labelText: 'Subject', errorText: titleError)),
-        const SizedBox(height: 10),
-        TextField(
+            decoration: InputDecoration(
+              labelText: 'Subject',
+              errorText: titleError,
+            ),
+          ),
+          const SizedBox(height: 10),
+          TextField(
             controller: details,
             focusNode: detailsFocus,
             maxLines: 8,
@@ -107,31 +127,43 @@ class _QueryPageState extends State<QueryPage> {
               if (detailsError != null) setState(() => detailsError = null);
             },
             decoration: InputDecoration(
-                labelText: 'Details',
-                hintText: 'Describe your question or concern...',
-                errorText: detailsError)),
-        const SizedBox(height: 14),
-        FilledButton(
+              labelText: 'Details',
+              hintText: 'Describe your question or concern...',
+              errorText: detailsError,
+            ),
+          ),
+          const SizedBox(height: 14),
+          FilledButton(
             onPressed: busy ? null : submit,
             style: FilledButton.styleFrom(
-                backgroundColor: WpccColors.ink,
-                minimumSize: const Size.fromHeight(50)),
+              backgroundColor: WpccColors.ink,
+              minimumSize: const Size.fromHeight(50),
+            ),
             child: busy
                 ? const SizedBox(
                     width: 18,
                     height: 18,
                     child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.white))
-                : const Text('Submit query')),
-        if (message != null) ...[
-          const SizedBox(height: 12),
-          Semantics(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Text('Submit query'),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 12),
+            Semantics(
               liveRegion: true,
-              child: Text(message!,
-                  style: Theme.of(context)
-                      .textTheme
-                      .bodySmall
-                      ?.copyWith(color: WpccColors.inkSoft)))
-        ]
-      ]));
+              child: Text(
+                message!,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: WpccColors.inkSoft),
+              ),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
 }
