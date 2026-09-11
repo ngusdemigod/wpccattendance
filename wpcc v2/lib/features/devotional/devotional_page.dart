@@ -41,7 +41,10 @@ class _DevotionalPageState extends State<DevotionalPage> {
     }
 
     try {
-      final next = await repo.posts(offset: reset ? 0 : rows.length, limit: pageSize);
+      final next = await repo.posts(
+        offset: reset ? 0 : rows.length,
+        limit: pageSize,
+      );
       if (!mounted) return;
       setState(() {
         if (reset) rows.clear();
@@ -68,8 +71,9 @@ class _DevotionalPageState extends State<DevotionalPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
         title: const Text(
-          'Wisdom Devotional',
+          'Devotional',
           style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         ),
       ),
@@ -81,58 +85,177 @@ class _DevotionalPageState extends State<DevotionalPage> {
                   ? ListView(
                       children: [
                         SectionEmptyState(
-                          icon: error == null ? PhosphorIcons.bookOpenText() : PhosphorIcons.warningCircle(),
-                          message: error == null ? 'No devotional posts yet' : 'Unable to load devotionals',
+                          icon: error == null
+                              ? PhosphorIcons.bookOpenText()
+                              : PhosphorIcons.warningCircle(),
+                          message: error == null
+                              ? 'No devotional posts yet'
+                              : 'Unable to load devotionals',
                           height: 280,
                         ),
                       ],
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(18, 18, 18, 30),
-                      itemCount: rows.length + (hasMore ? 1 : 0),
+                      padding: const EdgeInsets.fromLTRB(19, 4, 19, 30),
+                      itemCount: rows.length + (hasMore ? 1 : 0) + 1,
                       itemBuilder: (context, index) {
-                        if (index == rows.length) {
+                        if (index == 0) {
+                          return const Padding(
+                            padding: EdgeInsets.only(bottom: 16),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Wisdom Devotional',
+                                  style: TextStyle(
+                                    fontSize: 27,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -1,
+                                  ),
+                                ),
+                                SizedBox(height: 5),
+                                Text(
+                                  'Short devotionals to help you pray, reflect, and stay rooted through the week.',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    height: 1.45,
+                                    color: WpccColors.inkSoft,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+                        final rowIndex = index - 1;
+                        if (rowIndex == rows.length) {
                           return Padding(
                             padding: const EdgeInsets.only(top: 6, bottom: 12),
                             child: Center(
                               child: TextButton(
-                                onPressed: loadingMore ? null : () => _load(reset: false),
+                                onPressed: loadingMore
+                                    ? null
+                                    : () => _load(reset: false),
                                 child: loadingMore
-                                    ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                                    : const Text('Load more', style: TextStyle(fontSize: 12)),
+                                    ? const SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      )
+                                    : const Text(
+                                        'Load more',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
                               ),
                             ),
                           );
                         }
-                        final post = rows[index];
+                        final post = rows[rowIndex];
+                        final metadata = Map<String, dynamic>.from(
+                          (post['more'] as Map?) ?? const {},
+                        );
+                        final tag =
+                            metadata['tag']?.toString() ??
+                            (rowIndex == 0 ? 'Today' : 'Devotional');
+                        final author =
+                            metadata['author']?.toString() ??
+                            'WPCC Devotional Desk';
+                        final readTime =
+                            metadata['read_time']?.toString() ?? '3 min read';
                         return InkWell(
                           borderRadius: BorderRadius.circular(24),
-                          onTap: () => context.push('/devotional/${post['id']}', extra: post),
+                          onTap: () => context.push(
+                            '/devotional/${post['id']}',
+                            extra: post,
+                          ),
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 10),
-                            padding: const EdgeInsets.all(15),
-                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(post['title']?.toString() ?? '', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                                Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 11,
+                                        vertical: 7,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: WpccColors.ink,
+                                        borderRadius: BorderRadius.circular(99),
+                                      ),
+                                      child: Text(
+                                        tag,
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    Text(
+                                      _date(post['created_at']),
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: WpccColors.muted,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Text(
+                                  post['title']?.toString() ?? '',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                                 const SizedBox(height: 6),
                                 Text(
                                   post['body']?.toString() ?? '',
                                   maxLines: 3,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: WpccColors.inkSoft, height: 1.5),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: WpccColors.inkSoft,
+                                        height: 1.5,
+                                      ),
                                 ),
                                 const SizedBox(height: 10),
-                                Row(children: [
-                                  Icon(PhosphorIcons.calendarBlank(), size: 13, color: WpccColors.muted),
-                                  const SizedBox(width: 5),
-                                  Text(_date(post['created_at']), style: Theme.of(context).textTheme.labelSmall?.copyWith(color: WpccColors.muted)),
-                                  const Spacer(),
-                                  Icon(PhosphorIcons.chatCircle(), size: 14, color: WpccColors.muted),
-                                  const SizedBox(width: 4),
-                                  Text('${post['comments_count'] ?? 0}', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: WpccColors.muted)),
-                                ]),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '$author · $readTime',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelSmall
+                                            ?.copyWith(
+                                              color: WpccColors.muted,
+                                              fontSize: 12,
+                                            ),
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    const Text(
+                                      'Read post',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF6F329C),
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -143,5 +266,6 @@ class _DevotionalPageState extends State<DevotionalPage> {
     );
   }
 
-  String _date(dynamic value) => WpccTime.transactionDate(value).split(' · ').first;
+  String _date(dynamic value) =>
+      WpccTime.transactionDate(value).split(' · ').first;
 }

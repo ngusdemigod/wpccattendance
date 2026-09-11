@@ -26,12 +26,15 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
   int elapsed = 0;
   bool finishing = false;
 
-  late final Map<String, dynamic> alert =
-      Map<String, dynamic>.from((widget.payload['alert'] as Map?) ?? const {});
-  late final Map<String, dynamic> session =
-      Map<String, dynamic>.from((widget.payload['session'] as Map?) ?? const {});
+  late final Map<String, dynamic> alert = Map<String, dynamic>.from(
+    (widget.payload['alert'] as Map?) ?? const {},
+  );
+  late final Map<String, dynamic> session = Map<String, dynamic>.from(
+    (widget.payload['session'] as Map?) ?? const {},
+  );
 
-  int? get target => int.tryParse(session['target_duration_seconds']?.toString() ?? '');
+  int? get target =>
+      int.tryParse(session['target_duration_seconds']?.toString() ?? '');
 
   @override
   void initState() {
@@ -39,17 +42,24 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
     WidgetsBinding.instance.addObserver(this);
     _syncServerClock();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (mounted && !finishing) setState(() => elapsed++);
+      if (!mounted || finishing) return;
+      setState(() => elapsed++);
+      final duration = target;
+      if (duration != null && elapsed >= duration) finish('completed');
     });
-    serverSyncTimer =
-        Timer.periodic(const Duration(seconds: 30), (_) => _syncServerClock());
+    serverSyncTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) => _syncServerClock(),
+    );
   }
 
   Future<void> _syncServerClock() async {
     try {
       final active = await repo.activeSession();
       if (mounted && active != null) {
-        setState(() => elapsed = (active['elapsed_seconds'] as num?)?.toInt() ?? 0);
+        setState(
+          () => elapsed = (active['elapsed_seconds'] as num?)?.toInt() ?? 0,
+        );
       }
     } catch (_) {
       // Display timer keeps moving locally until the next server sync succeeds.
@@ -80,7 +90,9 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
       if (!mounted) return;
       setState(() => finishing = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Unable to end the prayer session. Please try again.')),
+        const SnackBar(
+          content: Text('Unable to end the prayer session. Please try again.'),
+        ),
       );
     }
   }
@@ -113,7 +125,7 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
       child: Scaffold(
         body: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(18, 12, 18, 24),
+            padding: const EdgeInsets.fromLTRB(19, 12, 19, 22),
             child: Column(
               children: [
                 Row(
@@ -128,26 +140,29 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                         textAlign: TextAlign.center,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        style: const TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 48),
                   ],
                 ),
-                const Spacer(),
+                const SizedBox(height: 26),
                 if (progress != null)
                   SizedBox(
-                    width: 218,
-                    height: 218,
+                    width: 228,
+                    height: 228,
                     child: Stack(
                       alignment: Alignment.center,
                       children: [
                         SizedBox.expand(
                           child: CircularProgressIndicator(
                             value: progress,
-                            strokeWidth: 7,
+                            strokeWidth: 16,
                             backgroundColor: const Color(0xFFEDEEF3),
-                            color: WpccColors.ink,
+                            color: const Color(0xFFD9C7EA),
                           ),
                         ),
                         _TimerText(seconds: shown),
@@ -158,12 +173,15 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                   _TimerText(seconds: shown),
                 const SizedBox(height: 16),
                 Text(
-                  total == null ? 'Open prayer session' : 'Prayer countdown',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+                  total == null
+                      ? 'Prayer time'
+                      : 'Countdown · ${math.max(1, total ~/ 60)} min',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
                 ),
-                const Spacer(),
-                SizedBox(
-                  height: 190,
+                const SizedBox(height: 38),
+                Expanded(
                   child: tracks.isEmpty
                       ? SectionEmptyState(
                           icon: PhosphorIcons.musicNotes(),
@@ -174,7 +192,11 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                           shaderCallback: (rect) => const LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Colors.white, Colors.white, Colors.transparent],
+                            colors: [
+                              Colors.white,
+                              Colors.white,
+                              Colors.transparent,
+                            ],
                             stops: [0, .78, 1],
                           ).createShader(rect),
                           blendMode: BlendMode.dstIn,
@@ -184,25 +206,6 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                                 _SongRow(track: tracks[index]),
                           ),
                         ),
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: FilledButton(
-                    onPressed: finishing ? null : () => finish('completed'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: WpccColors.ink,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                    ),
-                    child: finishing
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Text('End prayer'),
-                  ),
                 ),
               ],
             ),
@@ -228,9 +231,9 @@ class _TimerText extends StatelessWidget {
     return Text(
       value,
       style: Theme.of(context).textTheme.displayMedium?.copyWith(
-            fontWeight: FontWeight.w500,
-            letterSpacing: -2,
-          ),
+        fontWeight: FontWeight.w500,
+        letterSpacing: -2,
+      ),
     );
   }
 }
@@ -281,7 +284,11 @@ class _SongRowState extends State<_SongRow> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Unable to play this prayer audio. Please try again.')),
+          const SnackBar(
+            content: Text(
+              'Unable to play this prayer audio. Please try again.',
+            ),
+          ),
         );
       }
     }
@@ -289,40 +296,54 @@ class _SongRowState extends State<_SongRow> {
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F2F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(PhosphorIcons.musicNotes(), size: 18),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
+    margin: const EdgeInsets.only(bottom: 8),
+    constraints: const BoxConstraints(minHeight: 102),
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
                 widget.track.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
-            ),
-            IconButton(
-              onPressed: toggle,
-              icon: Icon(
-                state == PlayerState.playing ? PhosphorIcons.pause() : PhosphorIcons.play(),
-                size: 18,
+              const SizedBox(height: 4),
+              const Text(
+                'Prayer audio',
+                style: TextStyle(fontSize: 12, color: WpccColors.muted),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      );
+        IconButton.filled(
+          tooltip: state == PlayerState.playing
+              ? 'Pause ${widget.track.title}'
+              : 'Play ${widget.track.title}',
+          onPressed: toggle,
+          style: IconButton.styleFrom(
+            backgroundColor: WpccColors.ink,
+            foregroundColor: Colors.white,
+            minimumSize: const Size(48, 48),
+          ),
+          icon: Icon(
+            state == PlayerState.playing
+                ? PhosphorIcons.pause()
+                : PhosphorIcons.play(),
+            size: 18,
+          ),
+        ),
+      ],
+    ),
+  );
 }

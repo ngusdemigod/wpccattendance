@@ -46,7 +46,8 @@ class _SearchPageState extends State<SearchPage> {
     final prefs = await SharedPreferences.getInstance();
     if (mounted) {
       setState(
-          () => recent = prefs.getStringList('wpcc_recent_searches') ?? []);
+        () => recent = prefs.getStringList('wpcc_recent_searches') ?? [],
+      );
     }
   }
 
@@ -54,7 +55,7 @@ class _SearchPageState extends State<SearchPage> {
     final prefs = await SharedPreferences.getInstance();
     recent = [
       query,
-      ...recent.where((value) => value.toLowerCase() != query.toLowerCase())
+      ...recent.where((value) => value.toLowerCase() != query.toLowerCase()),
     ].take(8).toList();
     await prefs.setStringList('wpcc_recent_searches', recent);
     if (mounted) setState(() {});
@@ -102,9 +103,11 @@ class _SearchPageState extends State<SearchPage> {
   List<Map<String, dynamic>> get visible => filter == 'All'
       ? results
       : results
-          .where((row) =>
-              _sectionLabel(row['section']?.toString() ?? '') == filter)
-          .toList();
+            .where(
+              (row) =>
+                  _sectionLabel(row['section']?.toString() ?? '') == filter,
+            )
+            .toList();
 
   @override
   Widget build(BuildContext context) {
@@ -112,44 +115,77 @@ class _SearchPageState extends State<SearchPage> {
     return Scaffold(
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(18, 12, 18, 30),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          padding: const EdgeInsets.fromLTRB(19, 12, 19, 32),
           children: [
-            Row(children: [
-              IconButton(
+            Row(
+              children: [
+                IconButton.outlined(
+                  tooltip: 'Back',
                   onPressed: () => context.pop(),
-                  icon: Icon(PhosphorIcons.caretLeft(), size: 20)),
-              const SizedBox(width: 4),
-              Expanded(
-                child: TextField(
-                  controller: controller,
-                  autofocus: true,
-                  onChanged: _changed,
-                  onSubmitted: (value) => _search(value, remember: true),
-                  decoration: InputDecoration(
-                    hintText: 'Search',
-                    prefixIcon: Icon(PhosphorIcons.magnifyingGlass(), size: 18),
-                    suffixIcon: controller.text.isEmpty
-                        ? null
-                        : IconButton(
-                            onPressed: () {
-                              controller.clear();
-                              _changed('');
-                            },
-                            icon: Icon(PhosphorIcons.x(), size: 15),
-                          ),
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 11),
+                  style: IconButton.styleFrom(
+                    minimumSize: const Size(44, 44),
+                    side: const BorderSide(color: WpccColors.line),
+                    backgroundColor: Colors.white,
+                  ),
+                  icon: Icon(PhosphorIcons.arrowLeft(), size: 19),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: controller,
+                    autofocus: true,
+                    onChanged: _changed,
+                    onSubmitted: (value) => _search(value, remember: true),
+                    decoration: InputDecoration(
+                      hintText: 'Search giving, events, departments',
+                      suffixIcon: controller.text.isEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.all(9),
+                              child: DecoratedBox(
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF4EFF8),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  PhosphorIcons.magnifyingGlass(),
+                                  size: 17,
+                                ),
+                              ),
+                            )
+                          : IconButton(
+                              tooltip: 'Clear search',
+                              onPressed: () {
+                                controller.clear();
+                                _changed('');
+                              },
+                              icon: Icon(PhosphorIcons.x(), size: 15),
+                            ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Search across the app and jump straight to what you need.',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: WpccColors.inkSoft),
+            ),
             if (!hasQuery && recent.isNotEmpty) ...[
-              const SizedBox(height: 20),
-              Text('Recent searches',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
+              const SizedBox(height: 22),
+              Text(
+                'Recent searches',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
               const SizedBox(height: 9),
               Wrap(
                 spacing: 7,
@@ -167,7 +203,9 @@ class _SearchPageState extends State<SearchPage> {
                           recent.remove(term);
                           final prefs = await SharedPreferences.getInstance();
                           await prefs.setStringList(
-                              'wpcc_recent_searches', recent);
+                            'wpcc_recent_searches',
+                            recent,
+                          );
                           if (mounted) setState(() {});
                         },
                         labelStyle: const TextStyle(fontSize: 11),
@@ -178,80 +216,73 @@ class _SearchPageState extends State<SearchPage> {
                     .toList(),
               ),
             ],
-            if (hasQuery) ...[
-              const SizedBox(height: 16),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    'All',
-                    'Events',
-                    'Departments',
-                    'Announcements',
-                    'People'
-                  ]
-                      .map(
-                        (value) => Padding(
-                          padding: const EdgeInsets.only(right: 7),
-                          child: ChoiceChip(
-                            selected: filter == value,
-                            showCheckmark: false,
-                            label: Text(value),
-                            onSelected: (_) => setState(() => filter = value),
-                            selectedColor: WpccColors.ink,
-                            backgroundColor: Colors.white,
-                            side: BorderSide.none,
-                            labelStyle: TextStyle(
-                                fontSize: 11,
-                                color: filter == value
-                                    ? Colors.white
-                                    : WpccColors.inkSoft),
-                          ),
-                        ),
-                      )
-                      .toList(),
-                ),
+            const SizedBox(height: 28),
+            Text(
+              'Search Results',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
               ),
-              const SizedBox(height: 14),
+            ),
+            const SizedBox(height: 10),
+            if (hasQuery) ...[
               if (loading)
                 const Center(
-                    child: Padding(
-                        padding: EdgeInsets.all(36),
-                        child: CircularProgressIndicator()))
+                  child: Padding(
+                    padding: EdgeInsets.all(36),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
               else if (searchError != null)
                 Padding(
                   padding: const EdgeInsets.only(top: 100),
-                  child: Column(children: [
-                    Icon(PhosphorIcons.warningCircle(),
-                        size: 28, color: WpccColors.muted),
-                    const SizedBox(height: 9),
-                    Text(searchError!,
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: WpccColors.muted)),
-                    const SizedBox(height: 8),
-                    TextButton(
+                  child: Column(
+                    children: [
+                      Icon(
+                        PhosphorIcons.warningCircle(),
+                        size: 28,
+                        color: WpccColors.muted,
+                      ),
+                      const SizedBox(height: 9),
+                      Text(
+                        searchError!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: WpccColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      TextButton(
                         onPressed: () => _search(controller.text),
-                        child: const Text('Retry')),
-                  ]),
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
                 )
               else if (visible.isEmpty)
                 Padding(
                   padding: const EdgeInsets.only(top: 120),
-                  child: Column(children: [
-                    Icon(PhosphorIcons.magnifyingGlassMinus(),
-                        size: 28, color: WpccColors.muted),
-                    const SizedBox(height: 9),
-                    Text('No result found',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: WpccColors.muted)),
-                  ]),
+                  child: Column(
+                    children: [
+                      Text(
+                        'No result found',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: WpccColors.inkSoft,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 )
               else
-                ...visible.map(_result),
+                Container(
+                  clipBehavior: Clip.antiAlias,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: .94),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: WpccColors.line),
+                  ),
+                  child: Column(children: visible.map(_result).toList()),
+                ),
             ],
           ],
         ),
@@ -265,57 +296,67 @@ class _SearchPageState extends State<SearchPage> {
     final image = row['image_url']?.toString();
     return InkWell(
       onTap: () => _open(row),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 9),
-        child: Row(children: [
-          if (section == 'people')
-            InitialsAvatar(
-                initials: _initials(title), imageUrl: image, size: 40)
-          else
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F2F5),
-                borderRadius: BorderRadius.circular(13),
-                image: image != null && image.isNotEmpty
-                    ? DecorationImage(
-                        image: NetworkImage(image), fit: BoxFit.cover)
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: WpccColors.line)),
+        ),
+        child: Row(
+          children: [
+            if (section == 'people')
+              InitialsAvatar(
+                initials: _initials(title),
+                imageUrl: image,
+                size: 58,
+              )
+            else
+              Container(
+                width: 58,
+                height: 58,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F2F5),
+                  borderRadius: BorderRadius.circular(13),
+                  image: image != null && image.isNotEmpty
+                      ? DecorationImage(
+                          image: NetworkImage(image),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: image == null || image.isEmpty
+                    ? Icon(_icon(section), size: 19)
                     : null,
               ),
-              child: image == null || image.isEmpty
-                  ? Icon(_icon(section), size: 19)
-                  : null,
-            ),
-          const SizedBox(width: 11),
-          Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      fontSize: 13, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 3),
-              Text(
-                row['subtitle']?.toString() ??
-                    row['body']?.toString() ??
-                    _sectionLabel(section),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: WpccColors.muted),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    row['subtitle']?.toString() ??
+                        row['body']?.toString() ??
+                        _sectionLabel(section),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+                  ),
+                ],
               ),
-            ]),
-          ),
-          Text(_sectionLabel(section),
-              style: Theme.of(context)
-                  .textTheme
-                  .labelSmall
-                  ?.copyWith(fontSize: 9, color: WpccColors.muted)),
-        ]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -357,26 +398,28 @@ class _SearchPageState extends State<SearchPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text(
-                'You can view public details only for members who share one of your departments.')),
+          content: Text(
+            'You can view public details only for members who share one of your departments.',
+          ),
+        ),
       );
     }
   }
 
   String _sectionLabel(String section) => switch (section) {
-        'events' => 'Events',
-        'departments' => 'Departments',
-        'announcements' => 'Announcements',
-        'people' => 'People',
-        _ => 'All',
-      };
+    'events' => 'Events',
+    'departments' => 'Departments',
+    'announcements' => 'Announcements',
+    'people' => 'People',
+    _ => 'All',
+  };
 
   IconData _icon(String section) => switch (section) {
-        'events' => PhosphorIcons.calendarDots(),
-        'departments' => PhosphorIcons.usersThree(),
-        'announcements' => PhosphorIcons.megaphone(),
-        _ => PhosphorIcons.fileText(),
-      };
+    'events' => PhosphorIcons.calendarDots(),
+    'departments' => PhosphorIcons.usersThree(),
+    'announcements' => PhosphorIcons.megaphone(),
+    _ => PhosphorIcons.fileText(),
+  };
 
   String _initials(String name) => name
       .split(RegExp(r'\s+'))
@@ -402,115 +445,155 @@ class _PublicMemberSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final departments =
         (member['departments'] as List?)?.cast<dynamic>() ?? const [];
-    final name = member['full_name']?.toString() ??
+    final name =
+        member['full_name']?.toString() ??
         member['display_name']?.toString() ??
         'Member';
     final initials = member['initials']?.toString() ?? '--';
     final avatar = member['avatar']?.toString();
     return Container(
       padding: EdgeInsets.fromLTRB(
-          18, 10, 18, 24 + MediaQuery.paddingOf(context).bottom),
+        18,
+        10,
+        18,
+        24 + MediaQuery.paddingOf(context).bottom,
+      ),
       decoration: const BoxDecoration(
-          color: WpccColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
+        color: WpccColors.background,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
-                width: 42,
-                height: 4,
-                decoration: BoxDecoration(
-                    color: WpccColors.line,
-                    borderRadius: BorderRadius.circular(99))),
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: WpccColors.line,
+                borderRadius: BorderRadius.circular(99),
+              ),
+            ),
             const SizedBox(height: 16),
             Tooltip(
               message: 'View $name photo',
               child: Semantics(
-                  button: true,
-                  excludeSemantics: true,
-                  label: 'View $name photo',
-                  child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: () => showDialog<void>(
-                      context: context,
-                      barrierColor: Colors.black87,
-                      builder: (_) => Dialog.fullscreen(
-                        backgroundColor: Colors.black,
-                        child: Stack(children: [
+                button: true,
+                excludeSemantics: true,
+                label: 'View $name photo',
+                child: InkWell(
+                  customBorder: const CircleBorder(),
+                  onTap: () => showDialog<void>(
+                    context: context,
+                    barrierColor: Colors.black87,
+                    builder: (_) => Dialog.fullscreen(
+                      backgroundColor: Colors.black,
+                      child: Stack(
+                        children: [
                           Center(
-                              child: InitialsAvatar(
-                                  initials: initials,
-                                  imageUrl: avatar,
-                                  size: 280)),
+                            child: InitialsAvatar(
+                              initials: initials,
+                              imageUrl: avatar,
+                              size: 280,
+                            ),
+                          ),
                           Positioned(
-                              top: 16,
-                              right: 16,
-                              child: IconButton(
-                                  onPressed: () =>
-                                      Navigator.of(context, rootNavigator: true)
-                                          .pop(),
-                                  icon: const Icon(Icons.close,
-                                      color: Colors.white))),
-                        ]),
+                            top: 16,
+                            right: 16,
+                            child: IconButton(
+                              onPressed: () => Navigator.of(
+                                context,
+                                rootNavigator: true,
+                              ).pop(),
+                              icon: const Icon(
+                                Icons.close,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    child: InitialsAvatar(
-                        initials: initials, imageUrl: avatar, size: 92),
-                  )),
+                  ),
+                  child: InitialsAvatar(
+                    initials: initials,
+                    imageUrl: avatar,
+                    size: 92,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 12),
-            Text(name,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -.4)),
+            Text(
+              name,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -.4,
+              ),
+            ),
             const SizedBox(height: 20),
-            _detail(context, PhosphorIcons.phone(), 'Phone number',
-                member['phone']?.toString() ?? 'Not available'),
+            _detail(
+              context,
+              PhosphorIcons.phone(),
+              'Phone number',
+              member['phone']?.toString() ?? 'Not available',
+            ),
             const SizedBox(height: 10),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: WpccColors.line)),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: WpccColors.line),
+              ),
               child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
                       Icon(PhosphorIcons.usersThree(), size: 18),
                       const SizedBox(width: 9),
-                      Text('Departments',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(color: WpccColors.muted))
-                    ]),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
-                      children: departments.map((value) {
-                        final map = value is Map
-                            ? Map<String, dynamic>.from(value)
-                            : <String, dynamic>{};
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 10, vertical: 7),
-                          decoration: BoxDecoration(
-                              color: const Color(0xFFF4F5F8),
-                              borderRadius: BorderRadius.circular(99)),
-                          child: Text(map['name']?.toString() ?? '',
-                              style: const TextStyle(
-                                  fontSize: 11, fontWeight: FontWeight.w500)),
-                        );
-                      }).toList(),
-                    ),
-                  ]),
+                      Text(
+                        'Departments',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: WpccColors.muted,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: departments.map((value) {
+                      final map = value is Map
+                          ? Map<String, dynamic>.from(value)
+                          : <String, dynamic>{};
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 7,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF4F5F8),
+                          borderRadius: BorderRadius.circular(99),
+                        ),
+                        child: Text(
+                          map['name']?.toString() ?? '',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -519,31 +602,44 @@ class _PublicMemberSheet extends StatelessWidget {
   }
 
   Widget _detail(
-          BuildContext context, IconData icon, String label, String value) =>
-      Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(color: WpccColors.line)),
-        child: Row(children: [
-          Icon(icon, size: 18),
-          const SizedBox(width: 11),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(color: WpccColors.muted)),
-                const SizedBox(height: 3),
-                Text(value,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w500)),
-              ])),
-        ]),
-      );
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+  ) => Container(
+    width: double.infinity,
+    padding: const EdgeInsets.all(14),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      border: Border.all(color: WpccColors.line),
+    ),
+    child: Row(
+      children: [
+        Icon(icon, size: 18),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: WpccColors.muted),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
