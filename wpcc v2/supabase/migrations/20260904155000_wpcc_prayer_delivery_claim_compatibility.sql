@@ -1,0 +1,2 @@
+-- Applied to WPCC Community. Allows delivery materialization for claimed processing occurrences.
+-- See live migration wpcc_prayer_delivery_claim_compatibility for exact deployed SQL.
