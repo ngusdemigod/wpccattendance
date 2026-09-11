@@ -33,7 +33,9 @@ class _GiveResultPageState extends State<GiveResultPage> {
     } catch (_) {
       try {
         final transaction = await repo.transactionByReference(widget.reference);
-        return transaction == null ? const _PaymentLookup.notFound() : _PaymentLookup.data(transaction);
+        return transaction == null
+            ? const _PaymentLookup.notFound()
+            : _PaymentLookup.data(transaction);
       } catch (_) {
         return const _PaymentLookup.transientError();
       }
@@ -52,15 +54,20 @@ class _GiveResultPageState extends State<GiveResultPage> {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Center(child: CircularProgressIndicator());
             }
-            final lookup = snapshot.data ?? const _PaymentLookup.transientError();
-            if (lookup.state == _PaymentLookupState.notFound) return _notFound(context);
-            if (lookup.state == _PaymentLookupState.transientError) return _transientError(context);
+            final lookup =
+                snapshot.data ?? const _PaymentLookup.transientError();
+            if (lookup.state == _PaymentLookupState.notFound) {
+              return _notFound(context);
+            }
+            if (lookup.state == _PaymentLookupState.transientError) {
+              return _transientError(context);
+            }
             final tx = lookup.transaction!;
             final status = tx['status']?.toString() ?? 'pending';
             final successful = status == 'successful';
             final pending = status == 'pending' || status == 'initialized';
             return ListView(
-              padding: const EdgeInsets.fromLTRB(22, 80, 22, 30),
+              padding: const EdgeInsets.fromLTRB(22, 46, 22, 30),
               children: [
                 Center(
                   child: Container(
@@ -92,28 +99,53 @@ class _GiveResultPageState extends State<GiveResultPage> {
                 const SizedBox(height: 18),
                 Text(
                   successful
-                      ? 'Gift received'
+                      ? 'Giving successful'
                       : pending
                           ? 'Payment pending'
                           : 'Payment failed',
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 const SizedBox(height: 8),
+                if (successful)
+                  const Text(
+                    'Thank you for giving. Your receipt is ready.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 12, color: WpccColors.muted),
+                  ),
+                if (successful) const SizedBox(height: 18),
                 Text(
                   _amount(tx),
                   textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
                 ),
                 const SizedBox(height: 26),
                 Container(
                   padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24)),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: WpccColors.line),
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                   child: Column(
                     children: [
                       _row('Giving type', _label(tx['giving_type'])),
-                      _row('Reference', tx['paystack_reference']?.toString() ?? tx['internal_reference']?.toString() ?? '—'),
-                      _row('Payment source', tx['source_summary']?.toString() ?? tx['payment_channel']?.toString() ?? 'Paystack'),
+                      _row(
+                        'Reference',
+                        tx['paystack_reference']?.toString() ??
+                            tx['internal_reference']?.toString() ??
+                            '—',
+                      ),
+                      _row(
+                        'Payment source',
+                        tx['source_summary']?.toString() ??
+                            tx['payment_channel']?.toString() ??
+                            'Paystack',
+                      ),
                       _row('Status', _label(status)),
                     ],
                   ),
@@ -154,7 +186,9 @@ class _GiveResultPageState extends State<GiveResultPage> {
                   style: FilledButton.styleFrom(
                     backgroundColor: WpccColors.ink,
                     minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                   child: const Text('Back to Give'),
                 ),
@@ -173,7 +207,10 @@ class _GiveResultPageState extends State<GiveResultPage> {
             Icon(PhosphorIcons.warningCircle(), size: 42, color: Colors.orange),
             const SizedBox(height: 12),
             const Text('Payment not found'),
-            TextButton(onPressed: () => context.go('/give'), child: const Text('Back to Give')),
+            TextButton(
+              onPressed: () => context.go('/give'),
+              child: const Text('Back to Give'),
+            ),
           ],
         ),
       );
@@ -188,7 +225,10 @@ class _GiveResultPageState extends State<GiveResultPage> {
             const SizedBox(height: 4),
             const Text('Check your connection and try again.'),
             TextButton(onPressed: _retry, child: const Text('Retry')),
-            TextButton(onPressed: () => context.go('/give'), child: const Text('Back to Give')),
+            TextButton(
+              onPressed: () => context.go('/give'),
+              child: const Text('Back to Give'),
+            ),
           ],
         ),
       );
@@ -198,8 +238,20 @@ class _GiveResultPageState extends State<GiveResultPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(width: 112, child: Text(label, style: const TextStyle(fontSize: 11, color: WpccColors.muted))),
-            Expanded(child: Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
+            SizedBox(
+              width: 112,
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 11, color: WpccColors.muted),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ),
           ],
         ),
       );
@@ -213,14 +265,19 @@ class _GiveResultPageState extends State<GiveResultPage> {
   String _label(dynamic value) => (value?.toString() ?? '—')
       .replaceAll('_', ' ')
       .split(' ')
-      .map((part) => part.isEmpty ? part : '${part[0].toUpperCase()}${part.substring(1)}')
+      .map(
+        (part) => part.isEmpty
+            ? part
+            : '${part[0].toUpperCase()}${part.substring(1)}',
+      )
       .join(' ');
 }
 
 enum _PaymentLookupState { data, notFound, transientError }
 
 class _PaymentLookup {
-  const _PaymentLookup.data(this.transaction) : state = _PaymentLookupState.data;
+  const _PaymentLookup.data(this.transaction)
+      : state = _PaymentLookupState.data;
   const _PaymentLookup.notFound()
       : state = _PaymentLookupState.notFound,
         transaction = null;
