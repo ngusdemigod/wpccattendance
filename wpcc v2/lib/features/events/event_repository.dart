@@ -22,6 +22,23 @@ class EventRepository {
         .toList();
   }
 
+  Future<List<Map<String, dynamic>>> recurringEvents({int limit = 20}) async {
+    final rows = await client
+        .from('my_recurring_events')
+        .select(
+          'recurring_event_id,title,description,event_scope,source_table,'
+          'branch_id,department_id,recurrence_type,day_of_week,'
+          'week_of_month,day_of_month,month,start_time,end_time,'
+          'featured_image,is_active,created_at',
+        )
+        .eq('is_active', true)
+        .order('created_at', ascending: false)
+        .limit(limit);
+    return (rows as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
   Future<Map<String, dynamic>?> event(String id) async {
     final rows =
         await client.rpc('community_event_by_id', params: {'p_event_id': id});

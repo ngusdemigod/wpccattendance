@@ -11,15 +11,15 @@ import '../data/providers.dart';
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
-  static const actions = <(String, String)>[
-    ('Prayer\nalerts', '/prayer-alerts'),
-    ('Wisdom Devotional', '/devotional'),
-    ('Events', '/events'),
-    ('Department', '/departments'),
-    ('Souls', '/souls'),
-    ('Classes', '/profile/classes'),
-    ('Counselling', '/counselling'),
-    ('Media', '/media'),
+  static const actions = <(String, String, IconData)>[
+    ('Prayer\nalerts', '/prayer-alerts', Icons.notifications_none_rounded),
+    ('Wisdom Devotional', '/devotional', Icons.menu_book_outlined),
+    ('Events', '/events', Icons.calendar_month_outlined),
+    ('Department', '/departments', Icons.groups_outlined),
+    ('Souls', '/souls', Icons.person_add_alt_outlined),
+    ('Classes', '/profile/classes', Icons.school_outlined),
+    ('Counselling', '/counselling', Icons.forum_outlined),
+    ('Media', '/media', Icons.headphones_outlined),
   ];
 
   @override
@@ -56,7 +56,9 @@ class HomePage extends ConsumerWidget {
                           'WPCC, His Glory Expression',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.labelSmall
+                          style: Theme.of(context)
+                              .textTheme
+                              .labelSmall
                               ?.copyWith(fontSize: 10, color: WpccColors.muted),
                         ),
                         const SizedBox(height: 2),
@@ -67,11 +69,11 @@ class HomePage extends ConsumerWidget {
                               : p?['full_name']?.toString() ?? 'WPCC Member',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          style:
+                              Theme.of(context).textTheme.titleSmall?.copyWith(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                         ),
                       ],
                     ),
@@ -113,6 +115,7 @@ class HomePage extends ConsumerWidget {
                 trailing: '8 Actions',
               ),
               child: GridView.builder(
+                padding: EdgeInsets.zero,
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: actions.length,
@@ -120,7 +123,7 @@ class HomePage extends ConsumerWidget {
                   crossAxisCount: 4,
                   mainAxisSpacing: 9,
                   crossAxisSpacing: 9,
-                  childAspectRatio: .82,
+                  mainAxisExtent: 94,
                 ),
                 itemBuilder: (context, index) {
                   final action = actions[index];
@@ -133,23 +136,33 @@ class HomePage extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: WpccColors.line),
                       ),
-                      child: Center(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 4),
-                          child: Text(
-                            action.$1,
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  fontSize: action.$1 == 'Wisdom Devotional'
-                                      ? 9
-                                      : 11,
-                                  height: 1.1,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                          ),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 10,
+                        ),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(action.$3, size: 22, color: WpccColors.ink),
+                            const SizedBox(height: 8),
+                            Text(
+                              action.$1,
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    fontSize: action.$1 == 'Wisdom Devotional'
+                                        ? 9
+                                        : 11,
+                                    height: 1.1,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -198,14 +211,14 @@ class _SectionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
-    decoration: BoxDecoration(
-      color: Colors.white.withValues(alpha: .46),
-      borderRadius: BorderRadius.circular(26),
-      border: Border.all(color: WpccColors.line),
-    ),
-    child: Column(children: [header, const SizedBox(height: 11), child]),
-  );
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .46),
+          borderRadius: BorderRadius.circular(26),
+          border: Border.all(color: WpccColors.line),
+        ),
+        child: Column(children: [header, const SizedBox(height: 11), child]),
+      );
 }
 
 class _SectionHeader extends StatelessWidget {
@@ -215,24 +228,27 @@ class _SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-    children: [
-      Expanded(
-        child: Text(
-          title,
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontSize: 14,
-            fontWeight: FontWeight.w400,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+            ),
           ),
-        ),
-      ),
-      Text(
-        trailing,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(fontSize: 10, color: WpccColors.muted),
-      ),
-    ],
-  );
+          Text(
+            trailing,
+            style: Theme.of(
+              context,
+            )
+                .textTheme
+                .labelSmall
+                ?.copyWith(fontSize: 10, color: WpccColors.muted),
+          ),
+        ],
+      );
 }
 
 class _AnnouncementCard extends StatelessWidget {
@@ -265,9 +281,9 @@ class _AnnouncementCard extends StatelessWidget {
                 Text(
                   row['title']?.toString() ?? 'Announcement',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                 ),
                 if (source != null) ...[
                   const SizedBox(height: 2),
@@ -280,9 +296,9 @@ class _AnnouncementCard extends StatelessWidget {
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      fontSize: 12,
-                      color: WpccColors.inkSoft,
-                    ),
+                          fontSize: 12,
+                          color: WpccColors.inkSoft,
+                        ),
                   ),
                 ],
                 if (created != null) ...[
@@ -301,8 +317,8 @@ class _AnnouncementCard extends StatelessWidget {
   }
 
   TextStyle? _supportStyle(BuildContext context) => Theme.of(
-    context,
-  ).textTheme.labelSmall?.copyWith(fontSize: 10, color: WpccColors.muted);
+        context,
+      ).textTheme.labelSmall?.copyWith(fontSize: 10, color: WpccColors.muted);
 }
 
 class _EventHero extends StatelessWidget {
@@ -331,9 +347,9 @@ class _EventHero extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
             ),
             const SizedBox(height: 7),
             Text(

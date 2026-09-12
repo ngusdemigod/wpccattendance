@@ -18,8 +18,7 @@ class _EventsPageState extends State<EventsPage> {
   static const pageSize = 20;
   final repo = EventRepository();
 
-  String filter = 'all';
-  List<Map<String, dynamic>> ongoingRows = [];
+  List<Map<String, dynamic>> recurringRows = [];
   List<Map<String, dynamic>> upcomingRows = [];
   bool loading = true;
   bool loadingMore = false;
@@ -45,23 +44,19 @@ class _EventsPageState extends State<EventsPage> {
     }
 
     try {
-      final offset = reset ? 0 : upcomingRows.length;
-      final eventType = filter == 'prayer' ? 'prayer' : 'all';
       final results = await Future.wait([
-        if (reset)
-          repo.events(mode: 'ongoing', type: eventType, limit: pageSize),
+        if (reset) repo.recurringEvents(limit: pageSize),
         repo.events(
           mode: 'upcoming',
-          type: eventType,
+          type: 'all',
           limit: pageSize,
-          offset: offset,
+          offset: reset ? 0 : upcomingRows.length,
         ),
       ]);
-
       if (!mounted) return;
       setState(() {
         if (reset) {
-          ongoingRows = results.first;
+          recurringRows = results.first;
           upcomingRows = results.last;
         } else {
           upcomingRows = [...upcomingRows, ...results.last];
@@ -83,239 +78,266 @@ class _EventsPageState extends State<EventsPage> {
 
   Future<void> _refresh() => _load(reset: true);
 
-  void _filter(String value) {
-    if (value == filter) return;
-    setState(() => filter = value);
-    _load(reset: true);
-  }
-
   @override
   Widget build(BuildContext context) => SafeArea(
-    bottom: false,
-    child: RefreshIndicator(
-      onRefresh: _refresh,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(26, 18, 26, 110),
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Events',
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontSize: 30,
+                                fontFamily: 'serif',
+                                fontWeight: FontWeight.w400,
+                                letterSpacing: -1.2,
+                              ),
+                    ),
+                  ),
+                  IconButton(
+                    tooltip: 'Search',
+                    onPressed: () => context.push('/search'),
+                    icon: Icon(PhosphorIcons.magnifyingGlass(), size: 25),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              if (loading)
+                const SizedBox(
+                  height: 300,
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (error != null)
+                SectionEmptyState(
+                  icon: PhosphorIcons.warningCircle(),
+                  message: 'Unable to load events',
+                  height: 220,
+                )
+              else ...[
+                _EventSection(
+                  title: 'Recurring Events',
+                  events: recurringRows,
+                  emptyMessage: 'No recurring events',
+                ),
+                const SizedBox(height: 28),
+                _EventSection(
+                  title: 'Upcoming Events',
+                  events: upcomingRows,
+                  emptyMessage: 'No upcoming events',
+                ),
+                if (hasMore)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 18),
+                    child: Center(
+                      child: TextButton.icon(
+                        onPressed:
+                            loadingMore ? null : () => _load(reset: false),
+                        icon: loadingMore
+                            ? const SizedBox(
+                                width: 15,
+                                height: 15,
+                                child:
+                                    CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Icon(PhosphorIcons.arrowDown(), size: 15),
+                        label: Text(loadingMore ? 'Loading…' : 'Load more'),
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        ),
+      );
+}
+
+class _EventSection extends StatelessWidget {
+  const _EventSection({
+    required this.title,
+    required this.events,
+    required this.emptyMessage,
+  });
+
+  final String title;
+  final List<Map<String, dynamic>> events;
+  final String emptyMessage;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Expanded(
                 child: Text(
-                  'Events',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -.7,
-                  ),
+                  title,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w400,
+                      ),
                 ),
               ),
-              IconButton(
-                onPressed: () => context.push('/search'),
-                icon: Icon(PhosphorIcons.magnifyingGlass(), size: 21),
+              Text(
+                'View more',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: WpccColors.inkSoft,
+                    ),
+              ),
+              const SizedBox(width: 10),
+              Icon(
+                PhosphorIcons.caretRight(),
+                size: 17,
+                color: WpccColors.inkSoft,
               ),
             ],
           ),
           const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: [
-                _chip('all', 'All'),
-                _chip('ongoing', 'Ongoing'),
-                _chip('upcoming', 'Upcoming'),
-                _chip('prayer', 'Prayer'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 24),
-          if (loading)
-            const SizedBox(
-              height: 280,
-              child: Center(child: CircularProgressIndicator()),
-            )
-          else if (error != null)
+          if (events.isEmpty)
             SectionEmptyState(
-              icon: PhosphorIcons.warningCircle(),
-              message: 'Unable to load events',
-              height: 220,
+              icon: PhosphorIcons.calendarBlank(),
+              message: emptyMessage,
+              height: 176,
             )
-          else ...[
-            if (filter != 'upcoming')
-              Text(
-                'Ongoing services',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            if (filter != 'upcoming') const SizedBox(height: 9),
-            if (filter != 'upcoming' && ongoingRows.isEmpty)
-              SectionEmptyState(
-                icon: PhosphorIcons.calendarCheck(),
-                message: 'No ongoing service',
-                height: 130,
-              )
-            else if (filter != 'upcoming')
-              ...ongoingRows.map((e) => _EventCard(event: e, ongoing: true)),
-            if (filter != 'upcoming') const SizedBox(height: 24),
-            if (filter != 'ongoing')
-              Text(
-                filter == 'all' ? 'Recurring events' : 'Upcoming events',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            if (filter != 'ongoing') const SizedBox(height: 9),
-            if (filter != 'ongoing' && upcomingRows.isEmpty)
-              SectionEmptyState(
-                icon: PhosphorIcons.calendarBlank(),
-                message: 'No upcoming events',
-              )
-            else if (filter != 'ongoing') ...[
-              ...upcomingRows.map((e) => _EventCard(event: e)),
-              if (hasMore)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Center(
-                    child: TextButton.icon(
-                      onPressed: loadingMore ? null : () => _load(reset: false),
-                      icon: loadingMore
-                          ? const SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(PhosphorIcons.arrowDown(), size: 15),
-                      label: Text(loadingMore ? 'Loading…' : 'Load more'),
-                    ),
-                  ),
-                ),
-            ],
-          ],
+          else
+            LayoutBuilder(
+              builder: (context, constraints) {
+                const gap = 24.0;
+                final width = (constraints.maxWidth - gap) / 2;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: 24,
+                  children: events
+                      .take(2)
+                      .map(
+                        (event) => SizedBox(
+                          width: width,
+                          child: _EventTile(event: event),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
         ],
-      ),
-    ),
-  );
-
-  Widget _chip(String key, String label) => Padding(
-    padding: const EdgeInsets.only(right: 7),
-    child: ChoiceChip(
-      selected: filter == key,
-      showCheckmark: false,
-      label: Text(label),
-      onSelected: (_) => _filter(key),
-      selectedColor: WpccColors.ink,
-      backgroundColor: Colors.white,
-      side: BorderSide.none,
-      shape: const StadiumBorder(),
-      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-        fontSize: 12,
-        color: filter == key ? Colors.white : WpccColors.inkSoft,
-      ),
-    ),
-  );
+      );
 }
 
-class _EventCard extends StatelessWidget {
-  const _EventCard({required this.event, this.ongoing = false});
+class _EventTile extends StatelessWidget {
+  const _EventTile({required this.event});
 
   final Map<String, dynamic> event;
-  final bool ongoing;
 
   @override
   Widget build(BuildContext context) {
-    final title = event['title']?.toString() ?? 'Event';
-    final type = event['event_type']?.toString() ?? 'event';
+    final imageUrl = event['featured_image']?.toString().trim() ?? '';
+    final description = event['description']?.toString().trim() ?? '';
+    final location = event['location']?.toString().trim() ?? '';
+    final eventId = event['event_id']?.toString();
     return InkWell(
-      borderRadius: BorderRadius.circular(24),
-      onTap: () => context.push('/events/${event['event_id']}', extra: event),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 72,
-              height: 72,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(18),
-                gradient: const LinearGradient(
-                  colors: [Color(0xFFDDD7EF), Color(0xFFF0E9E4)],
+      borderRadius: BorderRadius.circular(28),
+      onTap: eventId == null
+          ? null
+          : () => context.push('/events/$eventId', extra: event),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          AspectRatio(
+            aspectRatio: .88,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: imageUrl.isNotEmpty
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => const _EventPlaceholder(),
+                    )
+                  : const _EventPlaceholder(),
+            ),
+          ),
+          const SizedBox(height: 13),
+          Text(
+            event['title']?.toString() ?? 'Event',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -.35,
                 ),
-              ),
-              child: Icon(_eventIcon(type), size: 25),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (ongoing)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 5),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
-                      ),
-                      decoration: BoxDecoration(
-                        color: WpccColors.ink,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Text(
-                        'ONGOING',
-                        style: TextStyle(
-                          fontSize: 8,
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    WpccTime.compact(event['event_start_at']),
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
-                  ),
-                  if ((event['location']?.toString() ?? '').isNotEmpty)
-                    Text(
-                      event['location'].toString(),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: 11,
-                        color: WpccColors.muted,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            Icon(PhosphorIcons.caretRight(), size: 16, color: WpccColors.muted),
-          ],
-        ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            event['event_start_at'] != null
+                ? WpccTime.compact(event['event_start_at'])
+                : _recurrenceLabel(event),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: WpccColors.inkSoft,
+                ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            description.isNotEmpty
+                ? description
+                : location.isNotEmpty
+                    ? location
+                    : 'Location unavailable',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: WpccColors.inkSoft,
+                ),
+          ),
+        ],
       ),
     );
   }
 
-  static IconData _eventIcon(String type) => switch (type) {
-    'service' => PhosphorIcons.church(),
-    'meeting' => PhosphorIcons.usersThree(),
-    'rehearsal' => PhosphorIcons.microphoneStage(),
-    'training' => PhosphorIcons.chalkboardTeacher(),
-    'special' => PhosphorIcons.sparkle(),
-    _ => PhosphorIcons.calendarDots(),
-  };
+  static String _recurrenceLabel(Map<String, dynamic> event) {
+    const days = [
+      'Sunday',
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+    ];
+    final dayIndex = int.tryParse(event['day_of_week']?.toString() ?? '');
+    final day = dayIndex != null && dayIndex >= 0 && dayIndex < days.length
+        ? days[dayIndex]
+        : 'Recurring';
+    final rawTime = event['start_time']?.toString() ?? '';
+    final parts = rawTime.split(':');
+    if (parts.length < 2) return day;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return day;
+    final suffix = hour >= 12 ? 'pm' : 'am';
+    final displayHour = hour % 12 == 0 ? 12 : hour % 12;
+    return '$day, $displayHour:${minute.toString().padLeft(2, '0')}$suffix';
+  }
+}
+
+class _EventPlaceholder extends StatelessWidget {
+  const _EventPlaceholder();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+        color: const Color(0xFFFAF9F7),
+        child: Center(
+          child: Icon(
+            PhosphorIcons.imageBroken(),
+            size: 30,
+            color: const Color(0xFFB7A58F),
+          ),
+        ),
+      );
 }
