@@ -9,7 +9,7 @@ class GiveRepository {
     final rows = await client
         .from('church_bank_accounts')
         .select(
-            'id,scope,branch_id,department_id,wallet_name,bank_name,account_name,account_number,purpose,display_order,style_variant')
+            'id,scope,branch_id,department_id,wallet_name,bank_name,account_name,account_number,purpose,display_order,style_variant,bank_logo_url,bank_logo_object_key')
         .eq('is_active', true)
         .order('display_order');
     return (rows as List)

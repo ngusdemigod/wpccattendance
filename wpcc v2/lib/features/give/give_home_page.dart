@@ -315,10 +315,14 @@ class _ChurchAccountCard extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                       color: foreground)),
               const SizedBox(height: 2),
-              Text(variant == 0 ? 'Main church account' : 'Church account',
+              Text(row['wallet_name']?.toString() ?? 'Church account',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 10, color: muted)),
             ]),
-            Icon(PhosphorIcons.bank(), size: 20, color: foreground),
+            _BankLogo(
+                url: row['bank_logo_url']?.toString() ?? '',
+                fallbackColor: foreground),
           ]),
           const SizedBox(height: 26),
           Text(number,
@@ -375,6 +379,31 @@ class _ChurchAccountCard extends StatelessWidget {
       ]),
     );
   }
+}
+
+class _BankLogo extends StatelessWidget {
+  const _BankLogo({required this.url, required this.fallbackColor});
+  final String url;
+  final Color fallbackColor;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: 34,
+        height: 34,
+        padding: const EdgeInsets.all(5),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: .9),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: url.isEmpty
+            ? Icon(PhosphorIcons.bank(), size: 20, color: fallbackColor)
+            : Image.network(
+                url,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) =>
+                    Icon(PhosphorIcons.bank(), size: 20, color: fallbackColor),
+              ),
+      );
 }
 
 class _GivingOption extends StatelessWidget {
