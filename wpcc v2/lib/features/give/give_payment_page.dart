@@ -240,76 +240,70 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                   const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
         ),
         body: SafeArea(
-            child: LayoutBuilder(
-                builder: (context, constraints) => SingleChildScrollView(
-                        child: ConstrainedBox(
-                      constraints:
-                          BoxConstraints(minHeight: constraints.maxHeight),
-                      child: Padding(
-                          padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-                          child: Column(children: [
-                            const SizedBox(height: 24),
-                            Text('Enter amount',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(color: WpccColors.muted)),
-                            const SizedBox(height: 10),
-                            FittedBox(
-                                child: Text(amountText,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .displaySmall
-                                        ?.copyWith(
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: -1.4))),
-                            const SizedBox(height: 18),
-                            _AutoGiveCard(
-                                enabled: autoGive,
-                                weekdays: weekdays,
-                                selectedCount: selectedRules.length,
-                                chargeTime: chargeTime,
-                                onToggle: () =>
-                                    setState(() => autoGive = !autoGive),
-                                onWeekday: (day) => setState(() =>
-                                    weekdays.contains(day)
-                                        ? weekdays.remove(day)
-                                        : weekdays.add(day)),
-                                onServices: chooseServices,
-                                onTime: pickTime),
-                            if (error != null) ...[
-                              const SizedBox(height: 10),
-                              Semantics(
-                                  liveRegion: true,
-                                  child: Text(error!,
-                                      style: const TextStyle(
-                                          fontSize: 11,
-                                          color: Colors.redAccent)))
-                            ],
-                            const SizedBox(height: 24),
-                            _Keypad(onKey: press),
-                            const SizedBox(height: 16),
-                            SizedBox(
-                                width: double.infinity,
-                                height: 50,
-                                child: FilledButton(
-                                  onPressed: canSubmit ? submit : null,
-                                  style: FilledButton.styleFrom(
-                                      backgroundColor: WpccColors.ink,
-                                      shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(18))),
-                                  child: busy
-                                      ? const SizedBox(
-                                          width: 18,
-                                          height: 18,
-                                          child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                              color: Colors.white))
-                                      : const Text('Continue'),
-                                )),
-                          ])),
-                    )))),
+            child: CustomScrollView(slivers: [
+          SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
+              sliver: SliverFillRemaining(
+                  hasScrollBody: false,
+                  child: Column(children: [
+                    const Spacer(),
+                    Text('Enter amount',
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodySmall
+                            ?.copyWith(color: WpccColors.muted)),
+                    const SizedBox(height: 10),
+                    FittedBox(
+                        child: Text(amountText,
+                            style: Theme.of(context)
+                                .textTheme
+                                .displaySmall
+                                ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -1.4))),
+                    const SizedBox(height: 18),
+                    _AutoGiveCard(
+                        enabled: autoGive,
+                        weekdays: weekdays,
+                        selectedCount: selectedRules.length,
+                        chargeTime: chargeTime,
+                        onToggle: () => setState(() => autoGive = !autoGive),
+                        onWeekday: (day) => setState(() =>
+                            weekdays.contains(day)
+                                ? weekdays.remove(day)
+                                : weekdays.add(day)),
+                        onServices: chooseServices,
+                        onTime: pickTime),
+                    if (error != null) ...[
+                      const SizedBox(height: 10),
+                      Semantics(
+                          liveRegion: true,
+                          child: Text(error!,
+                              style: const TextStyle(
+                                  fontSize: 11, color: Colors.redAccent)))
+                    ],
+                    const SizedBox(height: 24),
+                    _Keypad(onKey: press),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: FilledButton(
+                          onPressed: canSubmit ? submit : null,
+                          style: FilledButton.styleFrom(
+                              backgroundColor: WpccColors.ink,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(18))),
+                          child: busy
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                      strokeWidth: 2, color: Colors.white))
+                              : const Text('Continue'),
+                        )),
+                  ])))
+        ])),
       );
 }
 
@@ -491,32 +485,42 @@ class _Keypad extends StatelessWidget {
       '0',
       'back'
     ];
-    return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: keys.length,
-        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 3,
-            mainAxisSpacing: 8,
-            crossAxisSpacing: 8,
-            childAspectRatio: 1.7),
-        itemBuilder: (context, i) {
-          final keyValue = keys[i];
-          return InkWell(
-              borderRadius: BorderRadius.circular(16),
-              onTap: () => onKey(keyValue),
-              child: Container(
-                  decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: WpccColors.line)),
-                  child: Center(
-                      child: keyValue == 'back'
-                          ? Icon(PhosphorIcons.backspace(), size: 20)
-                          : Text(keyValue,
-                              style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w500)))));
-        });
+    return Column(
+      children: List.generate(
+          4,
+          (row) => Padding(
+                padding: EdgeInsets.only(bottom: row == 3 ? 0 : 8),
+                child: Row(
+                  children: List.generate(3, (column) {
+                    final keyValue = keys[(row * 3) + column];
+                    return Expanded(
+                      child: Padding(
+                        padding: EdgeInsets.only(right: column == 2 ? 0 : 8),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => onKey(keyValue),
+                          child: Container(
+                            height: 82,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: WpccColors.line),
+                            ),
+                            child: Center(
+                              child: keyValue == 'back'
+                                  ? Icon(PhosphorIcons.backspace(), size: 20)
+                                  : Text(keyValue,
+                                      style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.w500)),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  }),
+                ),
+              )),
+    );
   }
 }

@@ -98,7 +98,7 @@ void main() {
       ),
     ));
 
-    expect(find.byType(SingleChildScrollView), findsOneWidget);
+    expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.text('Auto give this amount'), findsOneWidget);
     expect(find.text('Set up Auto Give'), findsNothing);
     await tester.tap(find.text('Auto give this amount'));
