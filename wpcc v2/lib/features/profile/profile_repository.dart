@@ -5,27 +5,31 @@ import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../core/config/app_config.dart';
+import '../../core/services/swr_cache.dart';
 
 class ProfileRepository {
   ProfileRepository([SupabaseClient? client])
       : client = client ?? Supabase.instance.client;
   final SupabaseClient client;
+  final cache = SwrCache.instance;
 
-  Future<Map<String, dynamic>?> profile() async {
-    final data = await client.rpc('current_my_profile');
-    if (data is List && data.isNotEmpty) {
-      return Map<String, dynamic>.from(data.first as Map);
-    }
-    if (data is Map) return Map<String, dynamic>.from(data);
-    return null;
-  }
+  Future<Map<String, dynamic>?> profile() =>
+      cache.get('profile:current', () async {
+        final data = await client.rpc('current_my_profile');
+        if (data is List && data.isNotEmpty) {
+          return Map<String, dynamic>.from(data.first as Map);
+        }
+        if (data is Map) return Map<String, dynamic>.from(data);
+        return null;
+      });
 
-  Future<List<Map<String, dynamic>>> classes() async {
-    final data = await client.rpc('current_my_classes');
-    return (data as List)
-        .map((e) => Map<String, dynamic>.from(e as Map))
-        .toList();
-  }
+  Future<List<Map<String, dynamic>>> classes() =>
+      cache.get('profile:classes', () async {
+        final data = await client.rpc('current_my_classes');
+        return (data as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      });
 
   Future<void> updateAllowedDetails(
       {String? bio, String? occupation, String? address}) async {
@@ -40,6 +44,7 @@ class ProfileRepository {
     if (values.isNotEmpty) {
       await client.from('profiles_priv_info').update(values).eq('id', uid);
     }
+    cache.invalidate('profile:');
   }
 
   Future<String> uploadAvatar(PlatformFile file) async {
@@ -65,6 +70,7 @@ class ProfileRepository {
     }
     final avatarUrl = payload['avatar_url']?.toString() ?? '';
     if (avatarUrl.isEmpty) throw StateError('Avatar URL was not returned');
+    cache.invalidate('profile:');
     return avatarUrl;
   }
 }

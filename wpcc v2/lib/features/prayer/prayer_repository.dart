@@ -1,13 +1,20 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/services/swr_cache.dart';
 
 class PrayerRepository {
-  PrayerRepository([SupabaseClient? client]) : client = client ?? Supabase.instance.client;
+  PrayerRepository([SupabaseClient? client])
+      : client = client ?? Supabase.instance.client;
   final SupabaseClient client;
+  final cache = SwrCache.instance;
 
-  Future<List<Map<String, dynamic>>> alerts() async {
-    final rows = await client.from('prayer_alerts').select().order('local_time');
-    return (rows as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
-  }
+  Future<List<Map<String, dynamic>>> alerts() =>
+      cache.get('prayer:alerts', () async {
+        final rows =
+            await client.from('prayer_alerts').select().order('local_time');
+        return (rows as List)
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+      });
 
   Future<Map<String, dynamic>> save({
     String? id,
@@ -49,10 +56,12 @@ class PrayerRepository {
       'p_vibration_enabled': vibrationEnabled,
       'p_snooze_minutes': snoozeMinutes,
     });
+    cache.invalidate('prayer:');
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<void> setActive(String id, bool active, Map<String, dynamic> current) async {
+  Future<void> setActive(
+      String id, bool active, Map<String, dynamic> current) async {
     await save(
       id: id,
       scope: current['scope']?.toString() ?? 'personal',
@@ -60,7 +69,9 @@ class PrayerRepository {
       description: current['description']?.toString(),
       timezone: current['timezone']?.toString() ?? 'Africa/Lagos',
       localTime: current['local_time']?.toString() ?? '06:00:00',
-      days: ((current['days_of_week'] as List?) ?? const [1,2,3,4,5,6,7]).map((e) => e as int).toList(),
+      days: ((current['days_of_week'] as List?) ?? const [1, 2, 3, 4, 5, 6, 7])
+          .map((e) => e as int)
+          .toList(),
       durationSeconds: current['duration_seconds'] as int?,
       audioUrl: current['audio_url']?.toString(),
       audioTitle: current['audio_title']?.toString(),
@@ -73,9 +84,13 @@ class PrayerRepository {
     );
   }
 
-  Future<void> delete(String id) => client.from('prayer_alerts').delete().eq('id', id);
+  Future<void> delete(String id) async {
+    await client.from('prayer_alerts').delete().eq('id', id);
+    cache.invalidate('prayer:');
+  }
 
-  Future<Map<String, dynamic>> snoozeOccurrence(String occurrenceId, int minutes) async {
+  Future<Map<String, dynamic>> snoozeOccurrence(
+      String occurrenceId, int minutes) async {
     final result = await client.rpc('snooze_prayer_alert_occurrence', params: {
       'p_occurrence_id': occurrenceId,
       'p_minutes': minutes,
@@ -83,30 +98,68 @@ class PrayerRepository {
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<Map<String, dynamic>> startSession({String? alertId, String? occurrenceId, String source = 'app'}) async {
-    final result = await client.rpc('start_prayer_session', params: {'p_prayer_alert_id': alertId, 'p_occurrence_id': occurrenceId, 'p_started_from': source});
+  Future<Map<String, dynamic>> startSession(
+      {String? alertId, String? occurrenceId, String source = 'app'}) async {
+    final result = await client.rpc('start_prayer_session', params: {
+      'p_prayer_alert_id': alertId,
+      'p_occurrence_id': occurrenceId,
+      'p_started_from': source
+    });
     return Map<String, dynamic>.from(result as Map);
   }
 
-  Future<Map<String, dynamic>?> activeSession() async {
-    final result = await client.rpc('get_active_prayer_session');
-    if (result is List && result.isNotEmpty) return Map<String, dynamic>.from(result.first as Map);
-    return null;
-  }
+  Future<Map<String, dynamic>?> activeSession() =>
+      cache.get('prayer:active-session', () async {
+        final result = await client.rpc('get_active_prayer_session');
+        if (result is List && result.isNotEmpty)
+          return Map<String, dynamic>.from(result.first as Map);
+        return null;
+      }, freshFor: const Duration(seconds: 20));
 
-  Future<Map<String, dynamic>> endSession(String sessionId, {String status = 'completed'}) async {
-    final result = await client.rpc('end_prayer_session', params: {'p_session_id': sessionId, 'p_completion_status': status});
+  Future<Map<String, dynamic>> endSession(String sessionId,
+      {String status = 'completed'}) async {
+    final result = await client.rpc('end_prayer_session',
+        params: {'p_session_id': sessionId, 'p_completion_status': status});
     return Map<String, dynamic>.from(result as Map);
   }
-  Future<List<Map<String,dynamic>>> creationScopes() async {
-    final options=<Map<String,dynamic>>[{'scope':'personal','label':'Personal','branch_id':null,'department_id':null}];
-    final role=(await client.rpc('churchmetric_role'))?.toString().toLowerCase()??'';
-    final branch=(await client.rpc('churchmetric_branch_id'))?.toString();
-    if(role=='globaladmin') options.add({'scope':'global','label':'Global church','branch_id':null,'department_id':null});
-    if(role=='admin' && branch!=null) options.add({'scope':'branch','label':'My branch','branch_id':branch,'department_id':null});
-    final leading=await client.rpc('community_departments',params:{'p_filter':'leading'});
-    for(final item in (leading as List)){final d=Map<String,dynamic>.from(item as Map);options.add({'scope':'department','label':d['name']?.toString()??'Department','branch_id':d['branch_id']?.toString(),'department_id':d['department_id']?.toString()});}
+
+  Future<List<Map<String, dynamic>>> creationScopes() async {
+    final options = <Map<String, dynamic>>[
+      {
+        'scope': 'personal',
+        'label': 'Personal',
+        'branch_id': null,
+        'department_id': null
+      }
+    ];
+    final role =
+        (await client.rpc('churchmetric_role'))?.toString().toLowerCase() ?? '';
+    final branch = (await client.rpc('churchmetric_branch_id'))?.toString();
+    if (role == 'globaladmin')
+      options.add({
+        'scope': 'global',
+        'label': 'Global church',
+        'branch_id': null,
+        'department_id': null
+      });
+    if (role == 'admin' && branch != null)
+      options.add({
+        'scope': 'branch',
+        'label': 'My branch',
+        'branch_id': branch,
+        'department_id': null
+      });
+    final leading = await client
+        .rpc('community_departments', params: {'p_filter': 'leading'});
+    for (final item in (leading as List)) {
+      final d = Map<String, dynamic>.from(item as Map);
+      options.add({
+        'scope': 'department',
+        'label': d['name']?.toString() ?? 'Department',
+        'branch_id': d['branch_id']?.toString(),
+        'department_id': d['department_id']?.toString()
+      });
+    }
     return options;
   }
-
 }

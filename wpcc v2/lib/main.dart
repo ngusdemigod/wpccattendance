@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
 import 'core/config/app_config.dart';
+import 'core/services/swr_cache.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,5 +19,6 @@ Future<void> main() async {
       authFlowType: AuthFlowType.implicit,
     ),
   );
+  SwrCache.instance.bind(Supabase.instance.client);
   runApp(const ProviderScope(child: WpccApp()));
 }
