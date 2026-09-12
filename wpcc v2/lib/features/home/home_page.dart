@@ -19,7 +19,7 @@ class HomePage extends ConsumerWidget {
     ('Souls', '/souls'),
     ('Classes', '/profile/classes'),
     ('Counselling', '/counselling'),
-    ('Query', '/profile/query'),
+    ('Media', '/media'),
   ];
 
   @override

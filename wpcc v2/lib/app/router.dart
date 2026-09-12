@@ -23,6 +23,7 @@ import '../features/give/give_payment_page.dart';
 import '../features/give/give_result_page.dart';
 import '../features/give/giving_history_page.dart';
 import '../features/home/home_page.dart';
+import '../features/media/media_page.dart';
 import '../features/prayer/prayer_alert_edit_page.dart';
 import '../features/prayer/prayer_alerts_page.dart';
 import '../features/prayer/prayer_session_page.dart';
@@ -89,6 +90,7 @@ GoRouter buildRouter() {
       GoRoute(path: '/prayer-session', pageBuilder: (_, state) => CustomTransitionPage(key: state.pageKey, fullscreenDialog: true, transitionDuration: const Duration(milliseconds: 260), child: PrayerSessionPage(payload: Map<String, dynamic>.from((state.extra as Map?) ?? const {})), transitionsBuilder: (context, animation, __, child) => MediaQuery.disableAnimationsOf(context) ? child : FadeTransition(opacity: animation, child: child))),
       GoRoute(path: '/search', pageBuilder: (_, state) => _slide(state, const SearchPage())),
       GoRoute(path: '/devotional', pageBuilder: (_, state) => _slide(state, const DevotionalPage())),
+      GoRoute(path: '/media', pageBuilder: (_, state) => _slide(state, const MediaPage())),
       GoRoute(path: '/devotional/:id', pageBuilder: (_, state) => _slide(state, DevotionalPostPage(postId: state.pathParameters['id']!, seed: state.extra as Map<String,dynamic>?))),
       GoRoute(path: '/profile/classes', pageBuilder: (_, state) => _slide(state, const ClassesPage())),
       GoRoute(path: '/profile/query', pageBuilder: (_, state) => _slide(state, const QueryPage())),
