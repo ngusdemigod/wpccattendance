@@ -88,12 +88,7 @@ class _GiveHomePageState extends State<GiveHomePage> {
                         message: 'No giving accounts configured',
                         height: 112);
                   }
-                  return _ListPanel(children: [
-                    for (var i = 0; i < rows.length; i++) ...[
-                      _ChurchAccountRow(row: rows[i]),
-                      if (i != rows.length - 1) const _Divider(),
-                    ],
-                  ]);
+                  return _AccountRail(rows: rows);
                 },
               ),
               const SizedBox(height: 24),
@@ -183,47 +178,200 @@ class _ListPanel extends StatelessWidget {
       child: Column(children: children));
 }
 
-class _ChurchAccountRow extends StatelessWidget {
-  const _ChurchAccountRow({required this.row});
+class _AccountRail extends StatefulWidget {
+  const _AccountRail({required this.rows});
+  final List<Map<String, dynamic>> rows;
+
+  @override
+  State<_AccountRail> createState() => _AccountRailState();
+}
+
+class _AccountRailState extends State<_AccountRail> {
+  final controller = ScrollController();
+  int selected = 0;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          final cardWidth = (constraints.maxWidth * .88).clamp(260.0, 360.0);
+          return Column(children: [
+            SizedBox(
+              height: 172,
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification is ScrollUpdateNotification ||
+                      notification is ScrollEndNotification) {
+                    final next = (controller.offset / (cardWidth + 10))
+                        .round()
+                        .clamp(0, widget.rows.length - 1);
+                    if (next != selected) setState(() => selected = next);
+                  }
+                  return false;
+                },
+                child: ListView.separated(
+                  controller: controller,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.only(right: 18),
+                  itemCount: widget.rows.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, index) => SizedBox(
+                    width: cardWidth,
+                    child: _ChurchAccountCard(
+                        row: widget.rows[index], variant: index % 3),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 7),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.rows.length,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: selected == index ? 18 : 5,
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
+                  decoration: BoxDecoration(
+                    color: selected == index
+                        ? WpccColors.ink
+                        : const Color(0xFFD5D7DC),
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+            ),
+          ]);
+        },
+      );
+}
+
+class _ChurchAccountCard extends StatelessWidget {
+  const _ChurchAccountCard({required this.row, required this.variant});
   final Map<String, dynamic> row;
+  final int variant;
+
   @override
   Widget build(BuildContext context) {
     final number = row['account_number']?.toString() ?? '';
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(14, 13, 8, 13),
-      child: Row(children: [
-        const _LeadingIcon(icon: Icons.account_balance_outlined),
-        const SizedBox(width: 12),
-        Expanded(
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(row['account_name']?.toString() ?? 'Church account',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
-          const SizedBox(height: 3),
-          Text(
-              [number, row['bank_name']]
-                  .where(
-                      (value) => value != null && value.toString().isNotEmpty)
-                  .join(' · '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, color: WpccColors.muted)),
-        ])),
-        IconButton(
-            tooltip: 'Copy account number',
-            onPressed: number.isEmpty
-                ? null
-                : () async {
-                    await Clipboard.setData(ClipboardData(text: number));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Account number copied')));
-                    }
-                  },
-            icon: Icon(PhosphorIcons.copy(), size: 18)),
+    final dark = variant == 0;
+    final warm = variant == 2;
+    final foreground = dark ? Colors.white : WpccColors.ink;
+    final muted =
+        dark ? Colors.white.withValues(alpha: .7) : WpccColors.inkSoft;
+    final colors = dark
+        ? const [Color(0xFF202229), Color(0xFF111217)]
+        : warm
+            ? const [Color(0xFFFBF6ED), Color(0xFFF3EADB)]
+            : const [Colors.white, Color(0xFFF5F5F6)];
+    return Container(
+      padding: const EdgeInsets.all(18),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: colors),
+        borderRadius: BorderRadius.circular(27),
+        border: Border.all(
+            color: dark
+                ? Colors.white.withValues(alpha: .08)
+                : warm
+                    ? const Color(0xFFEEE4D2)
+                    : WpccColors.line),
+        boxShadow: const [
+          BoxShadow(
+              color: Color(0x121C1E24), blurRadius: 28, offset: Offset(0, 12))
+        ],
+      ),
+      child: Stack(children: [
+        Positioned(
+          width: 150,
+          height: 150,
+          right: -72,
+          top: -70,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: dark
+                  ? Colors.white.withValues(alpha: .07)
+                  : WpccColors.ink.withValues(alpha: .035),
+            ),
+          ),
+        ),
+        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(row['bank_name']?.toString() ?? 'Church bank',
+                  style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: foreground)),
+              const SizedBox(height: 2),
+              Text(variant == 0 ? 'Main church account' : 'Church account',
+                  style: TextStyle(fontSize: 10, color: muted)),
+            ]),
+            Icon(PhosphorIcons.bank(), size: 20, color: foreground),
+          ]),
+          const SizedBox(height: 26),
+          Text(number,
+              style: TextStyle(
+                  fontSize: 27,
+                  height: 1,
+                  letterSpacing: .8,
+                  fontWeight: FontWeight.w600,
+                  color: foreground)),
+          const Spacer(),
+          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Expanded(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('ACCOUNT NAME',
+                        style: TextStyle(fontSize: 9, color: muted)),
+                    const SizedBox(height: 2),
+                    Text(row['account_name']?.toString() ?? 'Church account',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: foreground)),
+                  ]),
+            ),
+            IconButton.filledTonal(
+                tooltip: 'Copy account number',
+                style: IconButton.styleFrom(
+                  fixedSize: const Size(38, 38),
+                  backgroundColor: dark
+                      ? Colors.white.withValues(alpha: .11)
+                      : Colors.white.withValues(alpha: .72),
+                  foregroundColor: foreground,
+                  side: BorderSide(
+                      color: dark
+                          ? Colors.white.withValues(alpha: .18)
+                          : WpccColors.line),
+                ),
+                onPressed: number.isEmpty
+                    ? null
+                    : () async {
+                        await Clipboard.setData(ClipboardData(text: number));
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                  content: Text('Account number copied')));
+                        }
+                      },
+                icon: Icon(PhosphorIcons.copy(), size: 17)),
+          ]),
+        ]),
       ]),
     );
   }
