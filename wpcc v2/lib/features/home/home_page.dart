@@ -12,14 +12,14 @@ class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
   static const actions = <(String, String, IconData)>[
-    ('Prayer\nalerts', '/prayer-alerts', Icons.notifications_none_rounded),
+    ('Prayer alerts', '/prayer-alerts', Icons.notifications_none_outlined),
     ('Wisdom Devotional', '/devotional', Icons.menu_book_outlined),
     ('Events', '/events', Icons.calendar_month_outlined),
-    ('Department', '/departments', Icons.groups_outlined),
-    ('Souls', '/souls', Icons.person_add_alt_outlined),
+    ('Department', '/departments', Icons.group_outlined),
+    ('Souls', '/souls', Icons.favorite_border_rounded),
     ('Classes', '/profile/classes', Icons.school_outlined),
-    ('Counselling', '/counselling', Icons.forum_outlined),
-    ('Media', '/media', Icons.headphones_outlined),
+    ('Counselling', '/counselling', Icons.question_answer_outlined),
+    ('Query', '/profile/query', Icons.help_outline_rounded),
   ];
 
   @override
