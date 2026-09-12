@@ -21,4 +21,13 @@ class MediaRepository {
         .map((row) => Map<String, dynamic>.from(row as Map))
         .toList();
   }
+
+  Future<Map<String, dynamic>?> episode(String id) async {
+    final row = await client
+        .from('media_sermons')
+        .select('id,title,description,duration_ms,explicit,source_published_at,artwork_url,provider_url,embed_url')
+        .eq('id', id)
+        .maybeSingle();
+    return row == null ? null : Map<String, dynamic>.from(row);
+  }
 }

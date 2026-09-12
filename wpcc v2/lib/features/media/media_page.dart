@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -144,81 +145,86 @@ class _FeaturedEpisode extends StatelessWidget {
   Widget build(BuildContext context) {
     final artwork = episode['artwork_url']?.toString() ?? '';
     final description = episode['description']?.toString() ?? '';
-    return Container(
-        height: 205,
-        decoration: BoxDecoration(
-            color: WpccColors.primarySoft,
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(color: WpccColors.lavender)),
-        child: ClipRRect(
-            borderRadius: BorderRadius.circular(27),
-            child: Stack(children: [
-              Positioned(
-                  right: -16,
-                  bottom: -12,
-                  top: 16,
-                  width: 178,
-                  child: artwork.isEmpty
-                      ? const _ArtworkPlaceholder(size: 178)
-                      : Image.network(artwork,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) =>
-                              const _ArtworkPlaceholder(size: 178))),
-              Positioned.fill(
-                  child: DecoratedBox(
-                      decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                WpccColors.primarySoft,
-                WpccColors.primarySoft.withValues(alpha: .96),
-                WpccColors.primarySoft.withValues(alpha: 0)
-              ], stops: const [
-                0,
-                .48,
-                .78
-              ])))),
-              Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: SizedBox(
-                      width: 220,
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text('NEW MESSAGE',
-                                style: TextStyle(
-                                    fontSize: 9,
-                                    letterSpacing: 1.1,
-                                    fontWeight: FontWeight.w600,
-                                    color: WpccColors.primaryDeep)),
-                            const SizedBox(height: 10),
-                            Text(
-                                episode['title']?.toString() ??
-                                    'Podcast episode',
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 20,
-                                    height: 1.08,
-                                    fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 8),
-                            Text(description,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                    fontSize: 11,
-                                    height: 1.35,
-                                    color: WpccColors.inkSoft)),
-                            const Spacer(),
-                            FilledButton.icon(
-                                onPressed: () => MediaPlayerController.instance
-                                    .play(episode),
-                                style: FilledButton.styleFrom(
-                                    backgroundColor: WpccColors.ink,
-                                    foregroundColor: Colors.white,
-                                    minimumSize: const Size(112, 44)),
-                                icon: Icon(PhosphorIcons.play(), size: 16),
-                                label: const Text('Listen')),
-                          ]))),
-            ])));
+    return InkWell(
+      onTap: () => context.push('/media/${episode['id']}', extra: episode),
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+          height: 205,
+          decoration: BoxDecoration(
+              color: WpccColors.primarySoft,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: WpccColors.lavender)),
+          child: ClipRRect(
+              borderRadius: BorderRadius.circular(27),
+              child: Stack(children: [
+                Positioned(
+                    right: -16,
+                    bottom: -12,
+                    top: 16,
+                    width: 178,
+                    child: artwork.isEmpty
+                        ? const _ArtworkPlaceholder(size: 178)
+                        : Image.network(artwork,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) =>
+                                const _ArtworkPlaceholder(size: 178))),
+                Positioned.fill(
+                    child: DecoratedBox(
+                        decoration: BoxDecoration(
+                            gradient: LinearGradient(colors: [
+                  WpccColors.primarySoft,
+                  WpccColors.primarySoft.withValues(alpha: .96),
+                  WpccColors.primarySoft.withValues(alpha: 0)
+                ], stops: const [
+                  0,
+                  .48,
+                  .78
+                ])))),
+                Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: SizedBox(
+                        width: 220,
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('NEW MESSAGE',
+                                  style: TextStyle(
+                                      fontSize: 9,
+                                      letterSpacing: 1.1,
+                                      fontWeight: FontWeight.w600,
+                                      color: WpccColors.primaryDeep)),
+                              const SizedBox(height: 10),
+                              Text(
+                                  episode['title']?.toString() ??
+                                      'Podcast episode',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      height: 1.08,
+                                      fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 8),
+                              Text(description,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontSize: 11,
+                                      height: 1.35,
+                                      color: WpccColors.inkSoft)),
+                              const Spacer(),
+                              FilledButton.icon(
+                                  onPressed: () => MediaPlayerController
+                                      .instance
+                                      .play(episode),
+                                  style: FilledButton.styleFrom(
+                                      backgroundColor: WpccColors.ink,
+                                      foregroundColor: Colors.white,
+                                      minimumSize: const Size(112, 44)),
+                                  icon: Icon(PhosphorIcons.play(), size: 16),
+                                  label: const Text('Listen')),
+                            ]))),
+              ]))),
+    );
   }
 }
 
@@ -233,7 +239,7 @@ class _EpisodeTile extends StatelessWidget {
     final durationMs =
         int.tryParse(episode['duration_ms']?.toString() ?? '') ?? 0;
     return InkWell(
-        onTap: () => MediaPlayerController.instance.play(episode),
+        onTap: () => context.push('/media/${episode['id']}', extra: episode),
         borderRadius: BorderRadius.circular(22),
         child: Container(
             margin: const EdgeInsets.only(bottom: 9),
@@ -277,13 +283,16 @@ class _EpisodeTile extends StatelessWidget {
                             fontSize: 10, color: WpccColors.muted)),
                   ])),
               const SizedBox(width: 8),
-              Container(
-                  width: 42,
-                  height: 42,
-                  decoration: const BoxDecoration(
-                      color: WpccColors.ink, shape: BoxShape.circle),
-                  child: Icon(PhosphorIcons.play(),
-                      size: 17, color: Colors.white)),
+              InkWell(
+                  onTap: () => MediaPlayerController.instance.play(episode),
+                  customBorder: const CircleBorder(),
+                  child: Container(
+                      width: 42,
+                      height: 42,
+                      decoration: const BoxDecoration(
+                          color: WpccColors.ink, shape: BoxShape.circle),
+                      child: Icon(PhosphorIcons.play(),
+                          size: 17, color: Colors.white))),
             ])));
   }
 }

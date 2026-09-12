@@ -1,47 +1,98 @@
 import 'package:flutter/foundation.dart';
 
-class MediaPlayerEpisode {
-  const MediaPlayerEpisode({
-    required this.id,
-    required this.title,
-    required this.artworkUrl,
-    required this.providerUrl,
-    required this.embedUrl,
-    required this.durationMs,
-  });
+import 'spotify_playback_bridge.dart';
 
-  final String id;
-  final String title;
-  final String artworkUrl;
-  final String providerUrl;
-  final String embedUrl;
+class MediaPlayerEpisode {
+  const MediaPlayerEpisode(
+      {required this.id,
+      required this.title,
+      required this.artworkUrl,
+      required this.providerUrl,
+      required this.embedUrl,
+      required this.durationMs,
+      required this.description,
+      required this.publishedAt});
+  factory MediaPlayerEpisode.fromRow(Map<String, dynamic> row) =>
+      MediaPlayerEpisode(
+          id: row['id']?.toString() ?? '',
+          title: row['title']?.toString() ?? 'Podcast episode',
+          artworkUrl: row['artwork_url']?.toString() ?? '',
+          providerUrl: row['provider_url']?.toString() ?? '',
+          embedUrl: row['embed_url']?.toString() ?? '',
+          durationMs: int.tryParse(row['duration_ms']?.toString() ?? '') ?? 0,
+          description: row['description']?.toString() ?? '',
+          publishedAt: row['source_published_at']?.toString() ?? '');
+  final String id,
+      title,
+      artworkUrl,
+      providerUrl,
+      embedUrl,
+      description,
+      publishedAt;
   final int durationMs;
+  Map<String, dynamic> toRow() => {
+        'id': id,
+        'title': title,
+        'artwork_url': artworkUrl,
+        'provider_url': providerUrl,
+        'embed_url': embedUrl,
+        'duration_ms': durationMs,
+        'description': description,
+        'source_published_at': publishedAt
+      };
 }
 
 class MediaPlayerState {
-  const MediaPlayerState({this.episode, this.expanded = false});
+  const MediaPlayerState(
+      {this.episode,
+      this.isPlaying = false,
+      this.positionMs = 0,
+      this.durationMs = 0});
   final MediaPlayerEpisode? episode;
-  final bool expanded;
+  final bool isPlaying;
+  final int positionMs, durationMs;
 }
 
 class MediaPlayerController extends ValueNotifier<MediaPlayerState> {
-  MediaPlayerController._() : super(const MediaPlayerState());
+  MediaPlayerController._() : super(const MediaPlayerState()) {
+    SpotifyPlaybackBridge.instance.addListener(_syncPlayback);
+  }
   static final instance = MediaPlayerController._();
 
-  void play(Map<String, dynamic> row) {
+  void _syncPlayback() {
+    final episode = value.episode;
+    if (episode == null) return;
+    final playback = SpotifyPlaybackBridge.instance.value;
     value = MediaPlayerState(
-      episode: MediaPlayerEpisode(
-        id: row['id']?.toString() ?? '',
-        title: row['title']?.toString() ?? 'Podcast episode',
-        artworkUrl: row['artwork_url']?.toString() ?? '',
-        providerUrl: row['provider_url']?.toString() ?? '',
-        embedUrl: row['embed_url']?.toString() ?? '',
-        durationMs: int.tryParse(row['duration_ms']?.toString() ?? '') ?? 0,
-      ),
-    );
+        episode: episode,
+        isPlaying: !playback.isPaused,
+        positionMs: playback.positionMs,
+        durationMs:
+            playback.durationMs > 0 ? playback.durationMs : episode.durationMs);
   }
 
-  void toggleExpanded() => value =
-      MediaPlayerState(episode: value.episode, expanded: !value.expanded);
-  void close() => value = const MediaPlayerState();
+  void play(Map<String, dynamic> row) {
+    final episode = MediaPlayerEpisode.fromRow(row);
+    value = MediaPlayerState(
+        episode: episode, isPlaying: true, durationMs: episode.durationMs);
+    final entity = episode.providerUrl.isNotEmpty
+        ? episode.providerUrl
+        : episode.embedUrl.replaceFirst('/embed/', '/');
+    SpotifyPlaybackBridge.instance.loadAndPlay(entity);
+  }
+
+  void togglePlayback() => SpotifyPlaybackBridge.instance.togglePlay();
+  void seek(int positionMs) {
+    SpotifyPlaybackBridge.instance.seek(positionMs);
+    value = MediaPlayerState(
+        episode: value.episode,
+        isPlaying: value.isPlaying,
+        positionMs: positionMs,
+        durationMs: value.durationMs);
+  }
+
+  void close() {
+    SpotifyPlaybackBridge.instance.pause();
+    value = const MediaPlayerState();
+  }
 }

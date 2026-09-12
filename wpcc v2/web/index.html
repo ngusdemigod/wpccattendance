@@ -14,6 +14,50 @@
   <title>WPCC Community</title>
 </head>
 <body>
+  <div id="wpcc-spotify-player" aria-hidden="true" style="position:fixed;left:-10000px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"></div>
+  <script>
+    (() => {
+      let controller = null;
+      let pendingEntity = null;
+      let playback = { isPaused: true, position: 0, duration: 0 };
+      const playLoadedEntity = (entity) => {
+        controller.loadEntity(entity);
+        window.setTimeout(() => controller && controller.play(), 160);
+      };
+
+      window.wpccSpotifyLoadAndPlay = (entity) => {
+        if (!entity) return;
+        pendingEntity = entity;
+        if (!controller) return;
+        playLoadedEntity(entity);
+      };
+      window.wpccSpotifyTogglePlay = () => controller && controller.togglePlay();
+      window.wpccSpotifyPause = () => controller && controller.pause();
+      window.wpccSpotifySeek = (seconds) => controller && controller.seek(Math.max(0, Math.floor(seconds)));
+      window.wpccSpotifyIsReady = () => controller !== null;
+      window.wpccSpotifyIsPaused = () => playback.isPaused;
+      window.wpccSpotifyPosition = () => playback.position;
+      window.wpccSpotifyDuration = () => playback.duration;
+
+      window.onSpotifyIframeApiReady = (IFrameAPI) => {
+        const element = document.getElementById('wpcc-spotify-player');
+        IFrameAPI.createController(element, {
+          width: 1,
+          height: 1,
+          uri: 'spotify:show:4gxjPQQEFNKjWqkgqT5Ilm'
+        }, (embedController) => {
+          controller = embedController;
+          controller.addListener('playback_update', (event) => {
+            playback = event.data || playback;
+          });
+          if (pendingEntity) {
+            playLoadedEntity(pendingEntity);
+          }
+        });
+      };
+    })();
+  </script>
+  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
   <script src="wpcc-push.js"></script>
   <script src="flutter_bootstrap.js" async></script>
 </body>

@@ -3,11 +3,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme/app_theme.dart';
 import '../features/media/media_player_controller.dart';
-import '../features/media/spotify_episode_player.dart';
 
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.child});
@@ -42,12 +40,37 @@ class AppShell extends StatelessWidget {
         builder: (context, _) {
           final state = MediaPlayerController.instance.value;
           return Column(children: [
-            if (state.episode != null)
-              _PersistentMediaPlayer(
-                state: state,
-                onToggle: MediaPlayerController.instance.toggleExpanded,
-                onClose: MediaPlayerController.instance.close,
+            ClipRect(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  reverseDuration: const Duration(milliseconds: 180),
+                  transitionBuilder: (widget, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position:
+                          Tween(begin: const Offset(0, -.16), end: Offset.zero)
+                              .animate(CurvedAnimation(
+                                  parent: animation,
+                                  curve: Curves.easeOutCubic)),
+                      child: widget,
+                    ),
+                  ),
+                  child: state.episode == null
+                      ? const SizedBox.shrink(key: ValueKey('empty-player'))
+                      : _PersistentMediaPlayer(
+                          key: const ValueKey('media-player'),
+                          state: state,
+                          onToggle:
+                              MediaPlayerController.instance.togglePlayback,
+                          onClose: MediaPlayerController.instance.close,
+                        ),
+                ),
               ),
+            ),
             Expanded(child: child),
           ]);
         },
@@ -141,6 +164,7 @@ class AppShell extends StatelessWidget {
 
 class _PersistentMediaPlayer extends StatelessWidget {
   const _PersistentMediaPlayer({
+    super.key,
     required this.state,
     required this.onToggle,
     required this.onClose,
@@ -198,7 +222,8 @@ class _PersistentMediaPlayer extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: InkWell(
-                onTap: onToggle,
+                onTap: () => context.push('/media/${episode.id}',
+                    extra: episode.toRow()),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -217,12 +242,19 @@ class _PersistentMediaPlayer extends StatelessWidget {
                       style: TextStyle(fontSize: 10, color: WpccColors.muted),
                     ),
                     const SizedBox(height: 6),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: const LinearProgressIndicator(
-                        value: 0,
-                        minHeight: 3,
-                        backgroundColor: WpccColors.line,
+                    SliderTheme(
+                      data: SliderTheme.of(context).copyWith(
+                          trackHeight: 3,
+                          thumbShape: SliderComponentShape.noThumb,
+                          overlayShape: SliderComponentShape.noOverlay),
+                      child: Slider(
+                        value: state.durationMs <= 0
+                            ? 0
+                            : (state.positionMs / state.durationMs).clamp(0, 1),
+                        onChanged: state.durationMs <= 0
+                            ? null
+                            : (value) => MediaPlayerController.instance
+                                .seek((value * state.durationMs).round()),
                       ),
                     ),
                   ],
@@ -230,10 +262,10 @@ class _PersistentMediaPlayer extends StatelessWidget {
               ),
             ),
             IconButton(
-              tooltip: state.expanded ? 'Minimize player' : 'Open player',
+              tooltip: state.isPlaying ? 'Pause' : 'Play',
               onPressed: onToggle,
               icon: Icon(
-                state.expanded ? PhosphorIcons.pause() : PhosphorIcons.play(),
+                state.isPlaying ? PhosphorIcons.pause() : PhosphorIcons.play(),
                 size: 19,
               ),
             ),
@@ -243,28 +275,6 @@ class _PersistentMediaPlayer extends StatelessWidget {
               icon: Icon(PhosphorIcons.x(), size: 18),
             ),
           ]),
-          if (state.expanded && episode.embedUrl.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            SpotifyEpisodePlayer(
-              key: ValueKey(episode.id),
-              embedUrl: episode.embedUrl,
-              providerUrl: episode.providerUrl,
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: episode.providerUrl.isEmpty
-                    ? null
-                    : () => launchUrl(
-                          Uri.parse(episode.providerUrl),
-                          mode: LaunchMode.externalApplication,
-                          webOnlyWindowName: '_blank',
-                        ),
-                icon: Icon(PhosphorIcons.spotifyLogo(), size: 16),
-                label: const Text('Open in Spotify'),
-              ),
-            ),
-          ],
         ]),
       ),
     );
