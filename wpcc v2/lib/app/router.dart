@@ -67,6 +67,7 @@ GoRouter buildRouter() {
         builder: (_, __, child) => AppShell(child: child),
         routes: [
           GoRoute(path: '/home', pageBuilder: (_, state) => _fade(state, const HomePage())),
+          GoRoute(path: '/media', pageBuilder: (_, state) => _fade(state, const MediaPage())),
           GoRoute(path: '/departments', pageBuilder: (_, state) => _fade(state, const DepartmentsPage())),
           GoRoute(path: '/events', pageBuilder: (_, state) => _fade(state, const EventsPage())),
           GoRoute(path: '/give', pageBuilder: (_, state) => _fade(state, const GiveHomePage())),
@@ -90,7 +91,6 @@ GoRouter buildRouter() {
       GoRoute(path: '/prayer-session', pageBuilder: (_, state) => CustomTransitionPage(key: state.pageKey, fullscreenDialog: true, transitionDuration: const Duration(milliseconds: 260), child: PrayerSessionPage(payload: Map<String, dynamic>.from((state.extra as Map?) ?? const {})), transitionsBuilder: (context, animation, __, child) => MediaQuery.disableAnimationsOf(context) ? child : FadeTransition(opacity: animation, child: child))),
       GoRoute(path: '/search', pageBuilder: (_, state) => _slide(state, const SearchPage())),
       GoRoute(path: '/devotional', pageBuilder: (_, state) => _slide(state, const DevotionalPage())),
-      GoRoute(path: '/media', pageBuilder: (_, state) => _slide(state, const MediaPage())),
       GoRoute(path: '/devotional/:id', pageBuilder: (_, state) => _slide(state, DevotionalPostPage(postId: state.pathParameters['id']!, seed: state.extra as Map<String,dynamic>?))),
       GoRoute(path: '/profile/classes', pageBuilder: (_, state) => _slide(state, const ClassesPage())),
       GoRoute(path: '/profile/query', pageBuilder: (_, state) => _slide(state, const QueryPage())),

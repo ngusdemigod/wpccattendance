@@ -80,6 +80,8 @@ void main() {
     );
     final label = tester.widget<Text>(find.text('Home'));
     expect(label.style?.fontSize, greaterThanOrEqualTo(12));
+    expect(find.bySemanticsLabel('Media'), findsOneWidget);
+    expect(find.bySemanticsLabel('Department'), findsNothing);
     semantics.dispose();
   });
 

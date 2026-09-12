@@ -11,7 +11,7 @@ class AppShell extends StatelessWidget {
   final Widget child;
 
   int indexFor(String location) {
-    if (location.startsWith('/departments')) return 1;
+    if (location.startsWith('/media')) return 1;
     if (location.startsWith('/events')) return 2;
     if (location.startsWith('/give')) return 3;
     if (location.startsWith('/profile')) return 4;
@@ -24,19 +24,19 @@ class AppShell extends StatelessWidget {
     final selected = indexFor(location);
     const destinations = [
       '/home',
-      '/departments',
+      '/media',
       '/events',
       '/give',
       '/profile'
     ];
     final icons = [
       PhosphorIcons.house(),
-      PhosphorIcons.usersThree(),
+      PhosphorIcons.microphoneStage(),
       PhosphorIcons.calendarDots(),
       PhosphorIcons.handHeart(),
       PhosphorIcons.userCircle()
     ];
-    final labels = ['Home', 'Department', 'Events', 'Give', 'Profile'];
+    final labels = ['Home', 'Media', 'Events', 'Give', 'Profile'];
 
     return Scaffold(
       extendBody: true,
