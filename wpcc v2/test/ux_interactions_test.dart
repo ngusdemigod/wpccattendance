@@ -97,6 +97,7 @@ void main() {
     ));
 
     expect(find.byType(SingleChildScrollView), findsOneWidget);
+    expect(find.text('Set up Auto Give'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

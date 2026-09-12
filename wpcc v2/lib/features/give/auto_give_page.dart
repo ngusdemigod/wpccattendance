@@ -8,7 +8,8 @@ import '../../core/widgets/section_empty_state.dart';
 import 'give_repository.dart';
 
 class AutoGivePage extends StatefulWidget {
-  const AutoGivePage({super.key});
+  const AutoGivePage({super.key, this.payload = const {}});
+  final Map<String, dynamic> payload;
   @override
   State<AutoGivePage> createState() => _AutoGivePageState();
 }
@@ -26,6 +27,13 @@ class _AutoGivePageState extends State<AutoGivePage> {
   @override
   void initState() {
     super.initState();
+    final initialAmount =
+        int.tryParse(widget.payload['amount_naira']?.toString() ?? '') ?? 0;
+    if (initialAmount > 0) amount.text = initialAmount.toString();
+    final initialType = widget.payload['giving_type']?.toString();
+    if (const {'offering', 'tithe', 'prophet_offering'}.contains(initialType)) {
+      givingType = initialType!;
+    }
     _load();
   }
 

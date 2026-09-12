@@ -220,6 +220,32 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                               : const Text('Continue'),
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 50,
+                        child: OutlinedButton.icon(
+                          onPressed: () => context.push(
+                            '/give/auto',
+                            extra: {
+                              ...widget.payload,
+                              'amount_naira': int.tryParse(digits) ?? 0,
+                            },
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: WpccColors.ink,
+                            side: const BorderSide(color: WpccColors.line),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(18),
+                            ),
+                          ),
+                          icon: Icon(
+                            PhosphorIcons.arrowsClockwise(),
+                            size: 17,
+                          ),
+                          label: const Text('Set up Auto Give'),
+                        ),
+                      ),
                     ],
                   ),
                 ),

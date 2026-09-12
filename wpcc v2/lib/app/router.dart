@@ -83,7 +83,7 @@ GoRouter buildRouter() {
       GoRoute(path: '/departments/:id/files/manage', pageBuilder: (_, state) => _slide(state, DepartmentManageFilesPage(departmentId: state.pathParameters['id']!))),
       GoRoute(path: '/events/:id', pageBuilder: (_, state) => _slide(state, EventDetailPage(eventId: state.pathParameters['id']!, seed: state.extra as Map<String,dynamic>?))),
       GoRoute(path: '/give/payment', pageBuilder: (_, state) => _slide(state, GivePaymentPage(payload: Map<String,dynamic>.from((state.extra as Map?) ?? const {'giving_type':'offering','title':'Give'})))),
-      GoRoute(path: '/give/auto', pageBuilder: (_, state) => _slide(state, const AutoGivePage())),
+      GoRoute(path: '/give/auto', pageBuilder: (_, state) => _slide(state, AutoGivePage(payload: Map<String,dynamic>.from((state.extra as Map?) ?? const {})))),
       GoRoute(path: '/give/history', pageBuilder: (_, state) => _slide(state, const GivingHistoryPage())),
       GoRoute(path: '/give/result', pageBuilder: (_, state) => _fade(state, GiveResultPage(reference: state.uri.queryParameters['reference'] ?? ''))),
       GoRoute(path: '/prayer-alerts', pageBuilder: (_, state) => _slide(state, const PrayerAlertsPage())),
