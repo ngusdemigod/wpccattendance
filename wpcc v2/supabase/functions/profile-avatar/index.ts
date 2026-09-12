@@ -39,19 +39,38 @@ Deno.serve(async (request) => {
   if (contentType.includes("application/json")) {
     const payload = await request.json().catch(() => null) as {
       avatar_url?: string;
+      include_data?: boolean;
     } | null;
     const storedUrl = payload?.avatar_url || "";
     const prefix = `r2://${config.bucket}/`;
     const objectKey = storedUrl.startsWith(prefix)
       ? storedUrl.slice(prefix.length)
       : "";
-    if (!avatarKey.test(objectKey)) {
+    if (
+      !avatarKey.test(objectKey) ||
+      !objectKey.startsWith(`profile-avatars/${user.id}/`)
+    ) {
       return jsonResponse({ error: "Avatar not found" }, { status: 404 });
     }
-    return jsonResponse({
-      url: await presignR2(config, "GET", objectKey, undefined, 300),
-      expires_in: 300,
-    });
+    const signedUrl = await presignR2(config, "GET", objectKey, undefined, 300);
+    if (payload?.include_data) {
+      const object = await fetch(signedUrl);
+      if (!object.ok) {
+        return jsonResponse({ error: "Avatar not found" }, { status: 404 });
+      }
+      const bytes = new Uint8Array(await object.arrayBuffer());
+      let binary = "";
+      const chunkSize = 0x8000;
+      for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+      }
+      return jsonResponse({
+        data_base64: btoa(binary),
+        content_type: object.headers.get("content-type") || "image/jpeg",
+        expires_in: 300,
+      });
+    }
+    return jsonResponse({ url: signedUrl, expires_in: 300 });
   }
 
   const candidate = (await request.formData()).get("file");

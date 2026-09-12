@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -13,23 +16,25 @@ class InitialsAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final child = imageUrl != null && imageUrl!.isNotEmpty
+    final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
+    final fallback = _fallback(context);
+    final child = hasImage
         ? ClipOval(
             child: imageUrl!.startsWith('r2://')
                 ? _PrivateR2Avatar(
                     storedUrl: imageUrl!,
                     size: size,
-                    fallback: _initials(context),
+                    fallback: fallback,
                   )
                 : Image.network(
                     imageUrl!,
                     width: size,
                     height: size,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _initials(context),
+                    errorBuilder: (_, __, ___) => fallback,
                   ),
           )
-        : _initials(context);
+        : fallback;
 
     return Container(
       width: size,
@@ -37,51 +42,55 @@ class InitialsAvatar extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         border: Border.all(color: const Color(0xFFE8EAF0), width: 1),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [WpccColors.lavender, WpccColors.coolBlue, WpccColors.warm],
-          stops: [0, .55, 1],
-          transform: GradientRotation(2.530727),
-        ),
         boxShadow: const [
           BoxShadow(
               color: Color(0x0A31374E), blurRadius: 22, offset: Offset(0, 10))
         ],
       ),
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          child,
-          IgnorePointer(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  center: const Alignment(-.4, -.52),
-                  radius: .72,
-                  colors: [
-                    Colors.white.withValues(alpha: .44),
-                    Colors.transparent
-                  ],
-                  stops: const [0, .55],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
+      clipBehavior: Clip.antiAlias,
+      child: child,
     );
   }
 
-  Widget _initials(BuildContext context) => Center(
-        child: Text(
-          initials,
-          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-                fontSize: size * .25,
-                letterSpacing: -.4,
+  Widget _fallback(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [WpccColors.lavender, WpccColors.coolBlue, WpccColors.warm],
+            stops: [0, .55, 1],
+            transform: GradientRotation(2.530727),
+          ),
+        ),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Center(
+              child: Text(
+                initials,
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      fontSize: size * .25,
+                      letterSpacing: -.4,
+                    ),
               ),
+            ),
+            IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(-.4, -.52),
+                    radius: .72,
+                    colors: [
+                      Colors.white.withValues(alpha: .44),
+                      Colors.transparent
+                    ],
+                    stops: const [0, .55],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       );
 }
@@ -101,51 +110,52 @@ class _PrivateR2Avatar extends StatefulWidget {
 }
 
 class _PrivateR2AvatarState extends State<_PrivateR2Avatar> {
-  static final cache = <String, ({String url, DateTime expiresAt})>{};
-  late Future<String> resolvedUrl;
+  static final cache = <String, ({Uint8List bytes, DateTime expiresAt})>{};
+  late Future<Uint8List> resolvedBytes;
 
   @override
   void initState() {
     super.initState();
-    resolvedUrl = _resolve();
+    resolvedBytes = _resolve();
   }
 
   @override
   void didUpdateWidget(covariant _PrivateR2Avatar oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.storedUrl != widget.storedUrl) resolvedUrl = _resolve();
+    if (oldWidget.storedUrl != widget.storedUrl) resolvedBytes = _resolve();
   }
 
-  Future<String> _resolve() async {
+  Future<Uint8List> _resolve() async {
     final cached = cache[widget.storedUrl];
     if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
-      return cached.url;
+      return cached.bytes;
     }
     final response = await Supabase.instance.client.functions.invoke(
       'profile-avatar',
-      body: {'avatar_url': widget.storedUrl},
+      body: {'avatar_url': widget.storedUrl, 'include_data': true},
     );
     if (response.status >= 400 || response.data is! Map) {
       throw StateError('Avatar unavailable');
     }
     final data = Map<String, dynamic>.from(response.data as Map);
-    final url = data['url']?.toString() ?? '';
-    if (url.isEmpty) throw StateError('Avatar unavailable');
+    final encoded = data['data_base64']?.toString() ?? '';
+    if (encoded.isEmpty) throw StateError('Avatar unavailable');
+    final bytes = base64Decode(encoded);
     cache[widget.storedUrl] = (
-      url: url,
+      bytes: bytes,
       expiresAt: DateTime.now().add(const Duration(minutes: 4)),
     );
-    return url;
+    return bytes;
   }
 
   @override
-  Widget build(BuildContext context) => FutureBuilder<String>(
-        future: resolvedUrl,
+  Widget build(BuildContext context) => FutureBuilder<Uint8List>(
+        future: resolvedBytes,
         builder: (context, snapshot) {
-          final url = snapshot.data;
-          if (url == null) return widget.fallback;
-          return Image.network(
-            url,
+          final bytes = snapshot.data;
+          if (bytes == null) return widget.fallback;
+          return Image.memory(
+            bytes,
             width: widget.size,
             height: widget.size,
             fit: BoxFit.cover,

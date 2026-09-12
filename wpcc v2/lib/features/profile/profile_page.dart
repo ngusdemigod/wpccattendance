@@ -18,6 +18,7 @@ class _ProfilePageState extends State<ProfilePage> {
   final repo = ProfileRepository();
   late Future<Map<String, dynamic>?> future;
   bool uploadingAvatar = false;
+  String? avatarOverride;
   @override
   void initState() {
     super.initState();
@@ -57,7 +58,13 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                     IconButton(
                       onPressed: () => context.push('/search'),
+                      tooltip: 'Search',
                       icon: Icon(PhosphorIcons.magnifyingGlass(), size: 21),
+                    ),
+                    IconButton(
+                      onPressed: () => _edit(p),
+                      tooltip: 'Edit profile',
+                      icon: Icon(PhosphorIcons.pencilSimple(), size: 20),
                     ),
                   ],
                 ),
@@ -69,8 +76,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     clipBehavior: Clip.none,
                     children: [
                       InitialsAvatar(
+                        key: ValueKey(avatarOverride ?? p['avatar']),
                         initials: initials,
-                        imageUrl: p['avatar']?.toString(),
+                        imageUrl: avatarOverride ?? p['avatar']?.toString(),
                         size: 104,
                       ),
                       Positioned(
@@ -215,17 +223,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         p['marital_status'],
                       ),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-                OutlinedButton.icon(
-                  onPressed: () => _edit(p),
-                  icon: Icon(PhosphorIcons.pencilSimple(), size: 17),
-                  label: const Text('Edit allowed details'),
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    foregroundColor: WpccColors.ink,
-                    side: const BorderSide(color: WpccColors.line),
                   ),
                 ),
               ],
@@ -391,8 +388,9 @@ class _ProfilePageState extends State<ProfilePage> {
     if (file == null || !mounted) return;
     setState(() => uploadingAvatar = true);
     try {
-      await repo.uploadAvatar(file);
+      final avatarUrl = await repo.uploadAvatar(file);
       if (mounted) {
+        setState(() => avatarOverride = avatarUrl);
         reload();
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Profile photo updated')),
