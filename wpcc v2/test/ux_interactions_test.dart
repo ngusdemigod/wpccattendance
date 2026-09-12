@@ -91,12 +91,22 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await tester.pumpWidget(const MaterialApp(
-      home: GivePaymentPage(payload: {'title': 'Give'}),
+    await tester.pumpWidget(MaterialApp(
+      home: GivePaymentPage(
+        payload: {'title': 'Give'},
+        eventLoader: () async => {'upcoming': [], 'recurring': []},
+      ),
     ));
 
     expect(find.byType(SingleChildScrollView), findsOneWidget);
-    expect(find.text('Set up Auto Give'), findsOneWidget);
+    expect(find.text('Auto give this amount'), findsOneWidget);
+    expect(find.text('Set up Auto Give'), findsNothing);
+    await tester.tap(find.text('Auto give this amount'));
+    await tester.pump(const Duration(milliseconds: 220));
+    expect(find.text('Mon'), findsOneWidget);
+    expect(find.text('Sun'), findsOneWidget);
+    expect(find.text('Service days'), findsOneWidget);
+    expect(find.text('Charge time'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

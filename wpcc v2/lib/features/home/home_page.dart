@@ -126,10 +126,11 @@ class HomePage extends ConsumerWidget {
                 ),
                 itemBuilder: (context, index) {
                   final action = actions[index];
-                  final comingSoon = action.$1 == 'Counselling';
+                  final comingSoon =
+                      action.$1 == 'Classes' || action.$1 == 'Counselling';
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
-                    onTap: () => context.push(action.$2),
+                    onTap: comingSoon ? null : () => context.push(action.$2),
                     child: Ink(
                       decoration: BoxDecoration(
                         color: Colors.white,

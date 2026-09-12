@@ -62,17 +62,38 @@ class GiveRepository {
     required int amountKobo,
     required String givingType,
     String? projectId,
+    Map<String, dynamic>? autoGive,
   }) async {
     final response = await client.functions.invoke('initialize-giving', body: {
       'amount_kobo': amountKobo,
       'giving_type': givingType,
       'project_id': projectId,
+      if (autoGive != null) 'auto_give': autoGive,
     });
     if (response.status >= 400) {
       throw StateError((response.data as Map?)?['error']?.toString() ??
           'Unable to start payment');
     }
     return Map<String, dynamic>.from(response.data as Map);
+  }
+
+  Future<Map<String, List<Map<String, dynamic>>>> schedulableEvents() async {
+    final upcoming = await client.rpc('community_visible_events', params: {
+      'p_mode': 'upcoming',
+      'p_event_type': 'all',
+      'p_limit': 60,
+      'p_offset': 0,
+    });
+    final recurring = await client
+        .from('my_recurring_events')
+        .select(
+            'recurring_event_id,title,recurrence_type,day_of_week,day_of_month,month,start_time')
+        .eq('is_active', true)
+        .order('created_at', ascending: false)
+        .limit(40);
+    List<Map<String, dynamic>> maps(Object? rows) =>
+        (rows as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    return {'upcoming': maps(upcoming), 'recurring': maps(recurring)};
   }
 
   Future<Map<String, dynamic>> verify(String reference) async {

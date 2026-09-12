@@ -18,12 +18,21 @@ Deno.serve(async (req) => {
     const admin=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:userData,error:userError}=await admin.auth.getUser(token);
     if(userError||!userData.user) return json({error:"Authentication required"},401);
-    const payload=await req.json().catch(()=>null) as {amount_kobo?:number;giving_type?:string;project_id?:string|null}|null;
+    const payload=await req.json().catch(()=>null) as {amount_kobo?:number;giving_type?:string;project_id?:string|null;auto_give?:{rule_keys?:unknown;timezone?:unknown;local_charge_time?:unknown;event_labels?:unknown}}|null;
     const amount=Math.trunc(Number(payload?.amount_kobo||0));
     const type=String(payload?.giving_type||"").trim();
     const projectId=payload?.project_id||null;
     if(!Number.isSafeInteger(amount)||amount<100) return json({error:"Enter a valid amount"},400);
     if(!["offering","tithe","prophet_offering","project","auto_give"].includes(type)) return json({error:"Invalid giving type"},400);
+    let autoGive:Record<string,unknown>|null=null;
+    if(payload?.auto_give){
+      const ruleKeys=Array.isArray(payload.auto_give.rule_keys)?payload.auto_give.rule_keys.map(String):[];
+      const validRule=/^(weekday:[1-7](?::[0-9a-f-]{36})?|monthly:(?:[1-9]|[12][0-9]|3[01])(?::[0-9a-f-]{36})?|yearly:(?:[1-9]|1[0-2]):(?:[1-9]|[12][0-9]|3[01])(?::[0-9a-f-]{36})?|event:\d{4}-\d{2}-\d{2}:[0-9a-f-]{36})$/i;
+      const localTime=String(payload.auto_give.local_charge_time||"");
+      if(ruleKeys.length===0||ruleKeys.length>50||ruleKeys.some((key)=>!validRule.test(key))) return json({error:"Choose valid Auto Give days or services"},400);
+      if(!/^([01]\d|2[0-3]):[0-5]\d:[0-5]\d$/.test(localTime)) return json({error:"Choose a valid Auto Give time"},400);
+      autoGive={rule_keys:ruleKeys,timezone:"Africa/Lagos",local_charge_time:localTime,event_labels:payload.auto_give.event_labels||{}};
+    }
 
     const [{data:priv},{data:profile}]=await Promise.all([
       admin.from("profiles_priv_info").select("email").eq("id",userData.user.id).maybeSingle(),
@@ -39,11 +48,15 @@ Deno.serve(async (req) => {
       p_internal_reference:internalReference,p_paystack_reference:reference,
     });
     if(txError) return json({error:txError.message},400);
+    if(autoGive){
+      const {error:autoError}=await admin.from("giving_transactions").update({pending_auto_give:autoGive,updated_at:new Date().toISOString()}).eq("id",transaction.id);
+      if(autoError) return json({error:"Unable to save Auto Give schedule"},500);
+    }
 
     const appOrigin=(Deno.env.get("WPCC_APP_ORIGIN")||"").trim().replace(/\/$/,"");
     const initializeBody:Record<string,unknown>={
       email,amount,currency:"NGN",reference,
-      metadata:{wpcc_transaction_id:transaction.id,profile_id:userData.user.id,giving_type:type,project_id:projectId},
+      metadata:{wpcc_transaction_id:transaction.id,profile_id:userData.user.id,giving_type:type,project_id:projectId,auto_give_requested:Boolean(autoGive)},
     };
     if(appOrigin) initializeBody.callback_url=`${appOrigin}/give/result?reference=${encodeURIComponent(reference)}`;
     const paystack=await fetch("https://api.paystack.co/transaction/initialize",{

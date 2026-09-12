@@ -183,16 +183,18 @@ class ProfileTabs extends StatelessWidget {
         child: Row(
           children: [
             tab(context, 0, 'Overview', '/profile'),
-            tab(context, 1, 'Classes', '/profile/classes'),
+            tab(context, 1, 'Classes', '/profile/classes', comingSoon: true),
           ],
         ),
       );
-  Widget tab(BuildContext context, int value, String label, String route) =>
+  Widget tab(BuildContext context, int value, String label, String route,
+          {bool comingSoon = false}) =>
       Expanded(
         child: Padding(
           padding: const EdgeInsets.only(right: 10),
           child: InkWell(
-            onTap: value == index ? null : () => context.go(route),
+            onTap:
+                comingSoon || value == index ? null : () => context.go(route),
             borderRadius: BorderRadius.circular(20),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 160),
@@ -207,15 +209,33 @@ class ProfileTabs extends StatelessWidget {
                         ? WpccColors.navActive
                         : WpccColors.lineSubtle),
               ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight:
-                      value == index ? FontWeight.w600 : FontWeight.w500,
-                  color: value == index ? Colors.white : WpccColors.inkSoft,
-                ),
-              ),
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                    Text(label,
+                        style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: value == index
+                                ? FontWeight.w600
+                                : FontWeight.w500,
+                            color: value == index
+                                ? Colors.white
+                                : WpccColors.inkSoft)),
+                    if (comingSoon) ...[
+                      const SizedBox(width: 5),
+                      Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 5, vertical: 2),
+                          decoration: BoxDecoration(
+                              color: WpccColors.primarySoft,
+                              borderRadius: BorderRadius.circular(8)),
+                          child: const Text('Coming soon',
+                              style: TextStyle(
+                                  fontSize: 7,
+                                  fontWeight: FontWeight.w600,
+                                  color: WpccColors.primaryDeep))),
+                    ],
+                  ])),
             ),
           ),
         ),

@@ -27,7 +27,6 @@ import '../features/media/media_page.dart';
 import '../features/prayer/prayer_alert_edit_page.dart';
 import '../features/prayer/prayer_alerts_page.dart';
 import '../features/prayer/prayer_session_page.dart';
-import '../features/profile/classes_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/search/search_page.dart';
 import 'app_shell.dart';
@@ -71,7 +70,6 @@ GoRouter buildRouter() {
           GoRoute(path: '/events', pageBuilder: (_, state) => _fade(state, const EventsPage())),
           GoRoute(path: '/give', pageBuilder: (_, state) => _fade(state, const GiveHomePage())),
           GoRoute(path: '/profile', pageBuilder: (_, state) => _fade(state, const ProfilePage())),
-          GoRoute(path: '/profile/classes', pageBuilder: (_, state) => _fade(state, const ClassesPage())),
         ],
       ),
       GoRoute(path: '/departments/:id', pageBuilder: (_, state) => _slide(state, DepartmentDetailPage(departmentId: state.pathParameters['id']!, seed: state.extra as Map<String, dynamic>?))),
@@ -93,7 +91,6 @@ GoRouter buildRouter() {
       GoRoute(path: '/devotional', pageBuilder: (_, state) => _slide(state, const DevotionalPage())),
       GoRoute(path: '/devotional/:id', pageBuilder: (_, state) => _slide(state, DevotionalPostPage(postId: state.pathParameters['id']!, seed: state.extra as Map<String,dynamic>?))),
       GoRoute(path: '/souls', pageBuilder: (_, state) => _slide(state, const FeatureGapPage(title: 'Souls', message: 'The v76 package defines the Souls entry point but no approved member-facing target-page design. The existing souls and follow-up backend is preserved for a separate approved screen.'))),
-      GoRoute(path: '/counselling', pageBuilder: (_, state) => _slide(state, const FeatureGapPage(title: 'Counselling', message: 'The v76 package defines the Counselling entry point but no approved target-page design. Existing enquiry data remains untouched until that screen is approved.'))),
     ],
   );
 }
