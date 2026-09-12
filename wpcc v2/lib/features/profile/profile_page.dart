@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -16,6 +17,7 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   final repo = ProfileRepository();
   late Future<Map<String, dynamic>?> future;
+  bool uploadingAvatar = false;
   @override
   void initState() {
     super.initState();
@@ -25,211 +27,245 @@ class _ProfilePageState extends State<ProfilePage> {
   void reload() => setState(() => future = repo.profile());
   @override
   Widget build(BuildContext context) => SafeArea(
-    bottom: false,
-    child: FutureBuilder<Map<String, dynamic>?>(
-      future: future,
-      builder: (context, s) {
-        if (s.connectionState != ConnectionState.done) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (s.hasError || s.data == null) {
-          return const Center(child: Text('Unable to load profile'));
-        }
-        final p = s.data!;
-        final initials = _initials(p['full_name']?.toString() ?? 'WPCC Member');
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
-          children: [
-            Row(
+        bottom: false,
+        child: FutureBuilder<Map<String, dynamic>?>(
+          future: future,
+          builder: (context, s) {
+            if (s.connectionState != ConnectionState.done) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (s.hasError || s.data == null) {
+              return const Center(child: Text('Unable to load profile'));
+            }
+            final p = s.data!;
+            final initials =
+                _initials(p['full_name']?.toString() ?? 'WPCC Member');
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
               children: [
-                Expanded(
-                  child: Text(
-                    'Profile',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -.7,
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Profile',
+                        style:
+                            Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  letterSpacing: -.7,
+                                ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => context.push('/search'),
+                      icon: Icon(PhosphorIcons.magnifyingGlass(), size: 21),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+                const ProfileTabs(index: 0),
+                const SizedBox(height: 30),
+                Center(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      InitialsAvatar(
+                        initials: initials,
+                        imageUrl: p['avatar']?.toString(),
+                        size: 104,
+                      ),
+                      Positioned(
+                        right: -4,
+                        bottom: -4,
+                        child: Material(
+                          color: WpccColors.navActive,
+                          shape: const CircleBorder(),
+                          child: IconButton(
+                            tooltip: 'Change profile photo',
+                            onPressed: uploadingAvatar ? null : _changeAvatar,
+                            color: Colors.white,
+                            iconSize: 18,
+                            icon: uploadingAvatar
+                                ? const SizedBox(
+                                    width: 17,
+                                    height: 17,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Icon(PhosphorIcons.camera()),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: WpccColors.successBackground,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text(
+                      'Active',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: WpccColors.success,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
-                IconButton(
-                  onPressed: () => context.push('/search'),
-                  icon: Icon(PhosphorIcons.magnifyingGlass(), size: 21),
-                ),
-              ],
-            ),
-            const SizedBox(height: 15),
-            const ProfileTabs(index: 0),
-            const SizedBox(height: 30),
-            Center(
-              child: InitialsAvatar(
-                initials: initials,
-                imageUrl: p['avatar']?.toString(),
-                size: 104,
-              ),
-            ),
-            const SizedBox(height: 10),
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: BoxDecoration(
-                  color: WpccColors.successBackground,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Text(
-                  'Active',
-                  style: TextStyle(
-                    fontSize: 10,
-                    color: WpccColors.success,
-                    fontWeight: FontWeight.w600,
+                const SizedBox(height: 10),
+                Center(
+                  child: Text(
+                    p['full_name']?.toString() ?? 'WPCC Member',
+                    style: Theme.of(
+                      context,
+                    )
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w600),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            Center(
-              child: Text(
-                p['full_name']?.toString() ?? 'WPCC Member',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Center(
-              child: Text(
-                [p['leadership_title'], p['department_name']]
-                    .where((x) => x != null && x.toString().isNotEmpty)
-                    .join(' · '),
-                style: Theme.of(
-                  context,
-                ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
-              ),
-            ),
-            if ((p['membership_code']?.toString() ?? '').isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 7,
+                const SizedBox(height: 5),
+                Center(
+                  child: Text(
+                    [p['leadership_title'], p['department_name']]
+                        .where((x) => x != null && x.toString().isNotEmpty)
+                        .join(' · '),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
                   ),
+                ),
+                if ((p['membership_code']?.toString() ?? '').isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 7,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        'Member ID: ${p['membership_code']}',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 26),
+                Text(
+                  'PERSONAL DETAILS',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontSize: 11,
+                        color: WpccColors.muted,
+                        letterSpacing: 1.1,
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+                const SizedBox(height: 9),
+                Container(
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: WpccColors.line),
+                    borderRadius: BorderRadius.circular(24),
                   ),
-                  child: Text(
-                    'Member ID: ${p['membership_code']}',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w500,
-                    ),
+                  child: Column(
+                    children: [
+                      _row(
+                        PhosphorIcons.identificationCard(),
+                        'Membership code',
+                        p['membership_code'],
+                      ),
+                      _row(PhosphorIcons.envelopeSimple(), 'Email', p['email']),
+                      _row(PhosphorIcons.phone(), 'Phone', p['phone']),
+                      _row(PhosphorIcons.mapPin(), 'Branch', p['branch_name']),
+                      _row(
+                        PhosphorIcons.usersThree(),
+                        'Department',
+                        p['department_name'],
+                      ),
+                      _row(
+                        PhosphorIcons.briefcase(),
+                        'Occupation',
+                        p['occupation'],
+                      ),
+                      _row(
+                        PhosphorIcons.houseLine(),
+                        'Address',
+                        p['residential_address'],
+                      ),
+                      _row(PhosphorIcons.user(), 'Gender', p['gender']),
+                      _row(
+                        PhosphorIcons.heart(),
+                        'Marital status',
+                        p['marital_status'],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-            const SizedBox(height: 26),
-            Text(
-              'PERSONAL DETAILS',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontSize: 11,
-                color: WpccColors.muted,
-                letterSpacing: 1.1,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 9),
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: WpccColors.line),
-                borderRadius: BorderRadius.circular(24),
-              ),
+                const SizedBox(height: 20),
+                OutlinedButton.icon(
+                  onPressed: () => _edit(p),
+                  icon: Icon(PhosphorIcons.pencilSimple(), size: 17),
+                  label: const Text('Edit allowed details'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(48),
+                    foregroundColor: WpccColors.ink,
+                    side: const BorderSide(color: WpccColors.line),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+  Widget _row(IconData icon, String label, dynamic value) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, size: 18, color: WpccColors.inkSoft),
+            const SizedBox(width: 11),
+            Expanded(
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _row(
-                    PhosphorIcons.identificationCard(),
-                    'Membership code',
-                    p['membership_code'],
+                  Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(color: WpccColors.muted),
                   ),
-                  _row(PhosphorIcons.envelopeSimple(), 'Email', p['email']),
-                  _row(PhosphorIcons.phone(), 'Phone', p['phone']),
-                  _row(PhosphorIcons.mapPin(), 'Branch', p['branch_name']),
-                  _row(
-                    PhosphorIcons.usersThree(),
-                    'Department',
-                    p['department_name'],
-                  ),
-                  _row(
-                    PhosphorIcons.briefcase(),
-                    'Occupation',
-                    p['occupation'],
-                  ),
-                  _row(
-                    PhosphorIcons.houseLine(),
-                    'Address',
-                    p['residential_address'],
-                  ),
-                  _row(PhosphorIcons.user(), 'Gender', p['gender']),
-                  _row(
-                    PhosphorIcons.heart(),
-                    'Marital status',
-                    p['marital_status'],
+                  const SizedBox(height: 3),
+                  Text(
+                    (value?.toString().trim().isNotEmpty ?? false)
+                        ? value.toString()
+                        : '—',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
-            OutlinedButton.icon(
-              onPressed: () => _edit(p),
-              icon: Icon(PhosphorIcons.pencilSimple(), size: 17),
-              label: const Text('Edit allowed details'),
-              style: OutlinedButton.styleFrom(
-                minimumSize: const Size.fromHeight(48),
-                foregroundColor: WpccColors.ink,
-                side: const BorderSide(color: WpccColors.line),
-              ),
-            ),
           ],
-        );
-      },
-    ),
-  );
-  Widget _row(IconData icon, String label, dynamic value) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, size: 18, color: WpccColors.inkSoft),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: WpccColors.muted),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                (value?.toString().trim().isNotEmpty ?? false)
-                    ? value.toString()
-                    : '—',
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
         ),
-      ],
-    ),
-  );
+      );
   Future<void> _edit(Map<String, dynamic> p) async {
     final bio = TextEditingController(text: p['bio']?.toString() ?? '');
     final occupation = TextEditingController(
@@ -343,6 +379,38 @@ class _ProfilePageState extends State<ProfilePage> {
     occupation.dispose();
     address.dispose();
     if (saved == true && mounted) reload();
+  }
+
+  Future<void> _changeAvatar() async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+      allowMultiple: false,
+    );
+    final file = result?.files.singleOrNull;
+    if (file == null || !mounted) return;
+    setState(() => uploadingAvatar = true);
+    try {
+      await repo.uploadAvatar(file);
+      if (mounted) {
+        reload();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile photo updated')),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              error.toString().replaceFirst('Bad state: ', ''),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => uploadingAvatar = false);
+    }
   }
 
   String _initials(String name) => name

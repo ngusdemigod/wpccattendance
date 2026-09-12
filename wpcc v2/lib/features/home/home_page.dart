@@ -19,7 +19,6 @@ class HomePage extends ConsumerWidget {
     ('Souls', '/souls', Icons.favorite_border_rounded),
     ('Classes', '/profile/classes', Icons.school_outlined),
     ('Counselling', '/counselling', Icons.question_answer_outlined),
-    ('Query', '/profile/query', Icons.help_outline_rounded),
   ];
 
   @override
@@ -112,7 +111,7 @@ class HomePage extends ConsumerWidget {
             _SectionCard(
               header: const _SectionHeader(
                 title: 'Quick Actions',
-                trailing: '8 Actions',
+                trailing: '7 Actions',
               ),
               child: GridView.builder(
                 padding: EdgeInsets.zero,

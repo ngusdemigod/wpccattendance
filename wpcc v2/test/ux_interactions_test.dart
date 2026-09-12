@@ -10,7 +10,6 @@ import 'package:wpcc_community/core/widgets/animated_search_filter.dart';
 import 'package:wpcc_community/features/auth/login_page.dart';
 import 'package:wpcc_community/features/give/give_payment_page.dart';
 import 'package:wpcc_community/features/prayer/prayer_alert_edit_page.dart';
-import 'package:wpcc_community/features/profile/query_page.dart';
 
 void main() {
   setUpAll(() async {
@@ -99,19 +98,6 @@ void main() {
     expect(find.byType(SingleChildScrollView), findsOneWidget);
     expect(find.text('Set up Auto Give'), findsOneWidget);
     expect(tester.takeException(), isNull);
-  });
-
-  testWidgets('query validation identifies each invalid field', (tester) async {
-    await tester.pumpWidget(const MaterialApp(home: QueryPage()));
-
-    await tester.drag(find.byType(ListView), const Offset(0, -520));
-    await tester.pump();
-    await tester.tap(find.text('Submit query'));
-    await tester.pump();
-
-    expect(find.text('Enter a subject with at least 3 characters.'),
-        findsOneWidget);
-    expect(find.text('Add at least 10 characters of detail.'), findsOneWidget);
   });
 
   testWidgets('prayer time control exposes button name and value',

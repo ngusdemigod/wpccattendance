@@ -184,7 +184,6 @@ class ProfileTabs extends StatelessWidget {
           children: [
             tab(context, 0, 'Overview', '/profile'),
             tab(context, 1, 'Classes', '/profile/classes'),
-            tab(context, 2, 'Query', '/profile/query'),
           ],
         ),
       );

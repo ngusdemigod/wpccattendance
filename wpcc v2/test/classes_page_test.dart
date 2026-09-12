@@ -20,6 +20,7 @@ void main() {
 
     expect(find.text('Profile'), findsOneWidget);
     expect(find.text('Classes'), findsOneWidget);
+    expect(find.text('Query'), findsNothing);
     expect(find.text('Completed'), findsOneWidget);
     expect(find.text('In progress'), findsOneWidget);
     expect(find.text('Due soon'), findsOneWidget);

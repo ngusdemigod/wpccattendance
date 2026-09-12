@@ -29,7 +29,6 @@ import '../features/prayer/prayer_alerts_page.dart';
 import '../features/prayer/prayer_session_page.dart';
 import '../features/profile/classes_page.dart';
 import '../features/profile/profile_page.dart';
-import '../features/profile/query_page.dart';
 import '../features/search/search_page.dart';
 import 'app_shell.dart';
 
@@ -93,7 +92,6 @@ GoRouter buildRouter() {
       GoRoute(path: '/search', pageBuilder: (_, state) => _slide(state, const SearchPage())),
       GoRoute(path: '/devotional', pageBuilder: (_, state) => _slide(state, const DevotionalPage())),
       GoRoute(path: '/devotional/:id', pageBuilder: (_, state) => _slide(state, DevotionalPostPage(postId: state.pathParameters['id']!, seed: state.extra as Map<String,dynamic>?))),
-      GoRoute(path: '/profile/query', pageBuilder: (_, state) => _slide(state, const QueryPage())),
       GoRoute(path: '/souls', pageBuilder: (_, state) => _slide(state, const FeatureGapPage(title: 'Souls', message: 'The v76 package defines the Souls entry point but no approved member-facing target-page design. The existing souls and follow-up backend is preserved for a separate approved screen.'))),
       GoRoute(path: '/counselling', pageBuilder: (_, state) => _slide(state, const FeatureGapPage(title: 'Counselling', message: 'The v76 package defines the Counselling entry point but no approved target-page design. Existing enquiry data remains untouched until that screen is approved.'))),
     ],
