@@ -5,128 +5,110 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'profile_repository.dart';
 
+typedef ClassesLoader = Future<List<Map<String, dynamic>>> Function();
+
 class ClassesPage extends StatefulWidget {
-  const ClassesPage({super.key});
+  const ClassesPage({super.key, this.loadClasses});
+
+  final ClassesLoader? loadClasses;
   @override
   State<ClassesPage> createState() => _ClassesPageState();
 }
 
 class _ClassesPageState extends State<ClassesPage> {
-  final repo = ProfileRepository();
+  ProfileRepository? repo;
   late Future<List<Map<String, dynamic>>> future;
   @override
   void initState() {
     super.initState();
-    future = repo.classes();
+    future = _load();
   }
 
-  void retry() => setState(() => future = repo.classes());
+  Future<List<Map<String, dynamic>>> _load() =>
+      widget.loadClasses?.call() ?? (repo ??= ProfileRepository()).classes();
+
+  void retry() => setState(() => future = _load());
   @override
   Widget build(BuildContext context) => SafeArea(
-    bottom: false,
-    child: FutureBuilder<List<Map<String, dynamic>>>(
-      future: future,
-      builder: (context, s) {
-        final rows = s.data ?? const <Map<String, dynamic>>[];
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
-          children: [
-            const Text(
-              'Profile',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 15),
-            const ProfileTabs(index: 1),
-            const SizedBox(height: 34),
-            const Text(
-              'My classes',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -.7,
-              ),
-            ),
-            const SizedBox(height: 6),
-            const Text(
-              'Track your assigned classes and learning progress.',
-              style: TextStyle(fontSize: 12, color: WpccColors.muted),
-            ),
-            const SizedBox(height: 24),
-            if (s.connectionState != ConnectionState.done)
-              const SectionEmptyState(
-                icon: Icons.school_outlined,
-                message: 'Loading your classes…',
-                height: 300,
-              )
-            else if (s.hasError) ...[
-              SectionEmptyState(
-                icon: PhosphorIcons.warningCircle(),
-                message: 'Unable to load classes',
-                height: 260,
-              ),
-              TextButton(onPressed: retry, child: const Text('Try again')),
-            ] else ...[
-              _metrics(rows),
-              const SizedBox(height: 22),
-              const Text(
-                'CURRENT CLASSES',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: WpccColors.muted,
-                  letterSpacing: 1.1,
-                ),
-              ),
-              const SizedBox(height: 10),
-              if (rows.isEmpty)
-                const SectionEmptyState(
-                  icon: Icons.school_outlined,
-                  message: 'No classes assigned',
-                  height: 300,
-                )
-              else
-                ...rows.map(_course),
-            ],
-          ],
-        );
-      },
-    ),
-  );
+        bottom: false,
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: future,
+          builder: (context, s) {
+            final rows = s.data ?? const <Map<String, dynamic>>[];
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+              children: [
+                const Text('Profile',
+                    style:
+                        TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 15),
+                const ProfileTabs(index: 1),
+                const SizedBox(height: 20),
+                if (s.connectionState != ConnectionState.done)
+                  const SectionEmptyState(
+                    icon: Icons.school_outlined,
+                    message: 'Loading your classes…',
+                    height: 300,
+                  )
+                else if (s.hasError) ...[
+                  SectionEmptyState(
+                    icon: PhosphorIcons.warningCircle(),
+                    message: 'Unable to load classes',
+                    height: 260,
+                  ),
+                  TextButton(onPressed: retry, child: const Text('Try again')),
+                ] else ...[
+                  _metrics(rows),
+                  const SizedBox(height: 18),
+                  if (rows.isEmpty)
+                    const SectionEmptyState(
+                      icon: Icons.school_outlined,
+                      message: 'No classes assigned',
+                      height: 150,
+                    )
+                  else
+                    ...rows.map(_course),
+                ],
+              ],
+            );
+          },
+        ),
+      );
   Widget _metrics(List<Map<String, dynamic>> rows) {
     final a = rows.where((r) => r['status'] == 'completed').length,
         b = rows.where((r) => r['status'] == 'in_progress').length,
         c = rows
             .where((r) => r['due_at'] != null && r['status'] != 'completed')
             .length;
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: WpccColors.line),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      child: Row(
-        children: [
-          _metric('$a', 'Completed'),
-          _metric('$b', 'In progress'),
-          _metric('$c', 'Due'),
-        ],
-      ),
-    );
+    return Row(children: [
+      _metric('$a', 'Completed'),
+      const SizedBox(width: 10),
+      _metric('$b', 'In progress'),
+      const SizedBox(width: 10),
+      _metric('$c', 'Due soon'),
+    ]);
   }
 
   Widget _metric(String v, String l) => Expanded(
-    child: Column(
-      children: [
-        Text(
-          v,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        child: Container(
+          key: ValueKey('class-metric-$l'),
+          height: 76,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: WpccColors.lineSubtle),
+            borderRadius: BorderRadius.circular(22),
+          ),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text(v,
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(l,
+                maxLines: 1,
+                style: const TextStyle(fontSize: 11, color: WpccColors.muted)),
+          ]),
         ),
-        const SizedBox(height: 3),
-        Text(l, style: const TextStyle(fontSize: 10, color: WpccColors.muted)),
-      ],
-    ),
-  );
+      );
   Widget _course(Map<String, dynamic> r) {
     final p = ((r['progress_percent'] as num?)?.toDouble() ?? 0).clamp(0, 100);
     return InkWell(
@@ -197,39 +179,43 @@ class ProfileTabs extends StatelessWidget {
   final int index;
   @override
   Widget build(BuildContext context) => SizedBox(
-    height: 42,
-    child: Row(
-      children: [
-        tab(context, 0, 'Overview', '/profile'),
-        tab(context, 1, 'Classes', '/profile/classes'),
-        tab(context, 2, 'Query', '/profile/query'),
-      ],
-    ),
-  );
+        height: 42,
+        child: Row(
+          children: [
+            tab(context, 0, 'Overview', '/profile'),
+            tab(context, 1, 'Classes', '/profile/classes'),
+            tab(context, 2, 'Query', '/profile/query'),
+          ],
+        ),
+      );
   Widget tab(BuildContext context, int value, String label, String route) =>
-      Padding(
-        padding: const EdgeInsets.only(right: 10),
-        child: InkWell(
-          onTap: value == index ? null : () => context.go(route),
-          borderRadius: BorderRadius.circular(20),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 160),
-            height: 42,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: value == index ? WpccColors.navActive : Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: value == index
-                  ? WpccColors.navActive
-                  : WpccColors.lineSubtle),
-            ),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: value == index ? FontWeight.w600 : FontWeight.w500,
-                color: value == index ? Colors.white : WpccColors.inkSoft,
+      Expanded(
+        child: Padding(
+          padding: const EdgeInsets.only(right: 10),
+          child: InkWell(
+            onTap: value == index ? null : () => context.go(route),
+            borderRadius: BorderRadius.circular(20),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 160),
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: value == index ? WpccColors.navActive : Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: value == index
+                        ? WpccColors.navActive
+                        : WpccColors.lineSubtle),
+              ),
+              child: Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight:
+                      value == index ? FontWeight.w600 : FontWeight.w500,
+                  color: value == index ? Colors.white : WpccColors.inkSoft,
+                ),
               ),
             ),
           ),

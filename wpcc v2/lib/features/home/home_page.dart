@@ -127,6 +127,7 @@ class HomePage extends ConsumerWidget {
                 ),
                 itemBuilder: (context, index) {
                   final action = actions[index];
+                  final comingSoon = action.$1 == 'Counselling';
                   return InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap: () => context.push(action.$2),
@@ -136,34 +137,59 @@ class HomePage extends ConsumerWidget {
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: WpccColors.line),
                       ),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 4,
-                          vertical: 10,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(action.$3, size: 22, color: WpccColors.ink),
-                            const SizedBox(height: 8),
-                            Text(
-                              action.$1,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .labelSmall
-                                  ?.copyWith(
-                                    fontSize: action.$1 == 'Wisdom Devotional'
-                                        ? 9
-                                        : 11,
-                                    height: 1.1,
-                                    fontWeight: FontWeight.w400,
+                      child: Stack(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 10),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(action.$3,
+                                    size: 22, color: WpccColors.ink),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: Text(
+                                    action.$1,
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          fontSize:
+                                              action.$1 == 'Wisdom Devotional'
+                                                  ? 9
+                                                  : 11,
+                                          height: 1.1,
+                                          fontWeight: FontWeight.w400,
+                                        ),
                                   ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
+                          ),
+                          if (comingSoon)
+                            Positioned(
+                              top: 5,
+                              right: 5,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 5, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: WpccColors.primarySoft,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Text('Coming soon',
+                                    style: TextStyle(
+                                        fontSize: 7,
+                                        fontWeight: FontWeight.w600,
+                                        color: WpccColors.primaryDeep)),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   );
