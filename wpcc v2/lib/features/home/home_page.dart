@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/wpcc_time.dart';
@@ -11,14 +12,14 @@ import '../data/providers.dart';
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
 
-  static const actions = <(String, String, IconData)>[
-    ('Prayer alerts', '/prayer-alerts', Icons.notifications_none_outlined),
-    ('Wisdom Devotional', '/devotional', Icons.menu_book_outlined),
-    ('Events', '/events', Icons.calendar_month_outlined),
-    ('Department', '/departments', Icons.group_outlined),
-    ('Souls', '/souls', Icons.favorite_border_rounded),
-    ('Classes', '/profile/classes', Icons.school_outlined),
-    ('Counselling', '/counselling', Icons.question_answer_outlined),
+  static final actions = <(String, String, IconData)>[
+    ('Prayer alerts', '/prayer-alerts', PhosphorIcons.bell()),
+    ('Wisdom Devotional', '/devotional', PhosphorIcons.bookOpen()),
+    ('Events', '/events', PhosphorIcons.calendarDots()),
+    ('Department', '/departments', PhosphorIcons.users()),
+    ('Souls', '/souls', PhosphorIcons.userPlus()),
+    ('Classes', '/profile/classes', PhosphorIcons.graduationCap()),
+    ('Counselling', '/counselling', PhosphorIcons.chats()),
   ];
 
   @override
