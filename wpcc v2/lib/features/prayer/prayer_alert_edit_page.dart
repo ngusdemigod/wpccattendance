@@ -261,15 +261,16 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                 ),
           ),
           const SizedBox(height: 8),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(7, (index) {
-                final day = index + 1;
-                return SizedBox(
-                  width: 112,
-                  child: Padding(
-                    padding: EdgeInsets.only(right: index == 6 ? 0 : 5),
+          Row(
+            children: List.generate(7, (index) {
+              final day = index + 1;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: index == 0 || index == 6 ? 0 : 3,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
                     child: ChoiceChip(
                       selected: days.contains(day),
                       onSelected: (selected) {
@@ -283,7 +284,13 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                       },
                       showCheckmark: false,
                       selectedColor: WpccColors.ink,
-                      label: Text(labels[index]),
+                      label: SizedBox(
+                        width: double.infinity,
+                        child: Text(labels[index], textAlign: TextAlign.center),
+                      ),
+                      labelPadding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       labelStyle: TextStyle(
                         fontSize: 11,
                         color:
@@ -292,9 +299,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                       side: BorderSide.none,
                     ),
                   ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
           ),
           const SizedBox(height: 20),
           SwitchListTile(

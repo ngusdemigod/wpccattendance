@@ -119,22 +119,12 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
                   ).textTheme.bodySmall?.copyWith(color: WpccColors.inkSoft),
                 ),
                 const SizedBox(height: 32),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'Church prayer alerts',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                Text(
+                  'Church prayer alerts',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                    const Text(
-                      'Admin managed',
-                      style: TextStyle(fontSize: 12, color: WpccColors.muted),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 8),
                 if (global.isEmpty)
@@ -155,28 +145,12 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
                     ),
                   ),
                 const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        'My prayer alerts',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
+                Text(
+                  'My prayer alerts',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                    ),
-                    TextButton(
-                      onPressed: () async {
-                        await context.push('/prayer-alerts/new');
-                        reload();
-                      },
-                      child: const Text(
-                        'Edit',
-                        style: TextStyle(fontSize: 12, color: WpccColors.muted),
-                      ),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 8),
                 if (personal.isEmpty)
@@ -200,27 +174,6 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
                       onCalendar: () => calendarService.downloadAlert(a),
                     ),
                   ),
-                const SizedBox(height: 10),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      PhosphorIcons.info(),
-                      size: 15,
-                      color: WpccColors.muted,
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Personal alerts use the sound you choose. Global alerts use the song selected by the church administrator.',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              color: WpccColors.muted,
-                              height: 1.4,
-                            ),
-                      ),
-                    ),
-                  ],
-                ),
                 if (AppConfig.vapidPublicKey.isNotEmpty &&
                     !pushEnabledThisSession) ...[
                   const SizedBox(height: 10),

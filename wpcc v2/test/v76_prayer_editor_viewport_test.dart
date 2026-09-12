@@ -30,6 +30,12 @@ void main() {
 
       expect(find.text('New prayer alert'), findsOneWidget);
       expect(find.text('Test prayer alert'), findsOneWidget);
+      expect(find.byType(ChoiceChip), findsNWidgets(7));
+      for (final chip in find.byType(ChoiceChip).evaluate()) {
+        final rect = tester.getRect(find.byWidget(chip.widget));
+        expect(rect.left, greaterThanOrEqualTo(0));
+        expect(rect.right, lessThanOrEqualTo(width));
+      }
       expect(tester.takeException(), isNull);
     });
   }
