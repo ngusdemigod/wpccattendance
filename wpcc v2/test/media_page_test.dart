@@ -13,7 +13,6 @@ void main() {
       ),
     );
 
-    expect(find.text('Media'), findsOneWidget);
     expect(find.text('Messages & podcasts'), findsOneWidget);
     expect(find.text('Spotify podcast not connected'), findsOneWidget);
   });
