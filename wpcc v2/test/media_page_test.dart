@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/features/media/media_page.dart';
+import 'package:wpcc_community/features/media/media_player_controller.dart';
 
 void main() {
   testWidgets('media page clearly exposes its empty Spotify state',
@@ -13,7 +14,7 @@ void main() {
       ),
     );
 
-    expect(find.text('Messages & podcasts'), findsOneWidget);
+    expect(find.text('Media'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('No episodes yet'), findsOneWidget);
   });
@@ -42,10 +43,13 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(find.text('Sunday message'), findsOneWidget);
-    expect(find.text('Play'), findsOneWidget);
+    expect(find.text('Featured message'), findsOneWidget);
+    expect(find.text('Listen'), findsOneWidget);
 
-    await tester.tap(find.text('Play'));
-    await tester.pumpAndSettle();
-    expect(find.text('Listen on Spotify'), findsOneWidget);
+    await tester.tap(find.text('Listen'));
+    await tester.pump();
+    expect(
+        MediaPlayerController.instance.value.episode?.title, 'Sunday message');
+    MediaPlayerController.instance.close();
   });
 }
