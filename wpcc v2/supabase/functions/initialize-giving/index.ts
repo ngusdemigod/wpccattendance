@@ -18,7 +18,7 @@ Deno.serve(async (req) => {
     const admin=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:userData,error:userError}=await admin.auth.getUser(token);
     if(userError||!userData.user) return json({error:"Authentication required"},401);
-    const payload=await req.json().catch(()=>null) as {amount_kobo?:number;giving_type?:string;project_id?:string|null;auto_give?:{rule_keys?:unknown;timezone?:unknown;local_charge_time?:unknown;event_labels?:unknown}}|null;
+    const payload=await req.json().catch(()=>null) as {amount_kobo?:number;giving_type?:string;project_id?:string|null;app_origin?:string;auto_give?:{rule_keys?:unknown;timezone?:unknown;local_charge_time?:unknown;event_labels?:unknown}}|null;
     const amount=Math.trunc(Number(payload?.amount_kobo||0));
     const type=String(payload?.giving_type||"").trim();
     const projectId=payload?.project_id||null;
@@ -53,12 +53,22 @@ Deno.serve(async (req) => {
       if(autoError) return json({error:"Unable to save Auto Give schedule"},500);
     }
 
-    const appOrigin=(Deno.env.get("WPCC_APP_ORIGIN")||"").trim().replace(/\/$/,"");
+    const configuredOrigin=(Deno.env.get("WPCC_APP_ORIGIN")||"").trim().replace(/\/$/,"");
+    const requestedOrigin=String(payload?.app_origin||"").trim().replace(/\/$/,"");
+    let appOrigin=configuredOrigin;
+    if(requestedOrigin){
+      const candidate=new URL(requestedOrigin);
+      const local=["localhost","127.0.0.1","::1"].includes(candidate.hostname);
+      const configuredMatch=Boolean(configuredOrigin)&&candidate.origin===new URL(configuredOrigin).origin;
+      if(!local&&!configuredMatch) return json({error:"Invalid payment return origin"},400);
+      if(candidate.protocol!=="https:"&&!local) return json({error:"Payment return origin must use HTTPS"},400);
+      appOrigin=candidate.origin;
+    }
     const initializeBody:Record<string,unknown>={
       email,amount,currency:"NGN",reference,
       metadata:{wpcc_transaction_id:transaction.id,profile_id:userData.user.id,giving_type:type,project_id:projectId,auto_give_requested:Boolean(autoGive)},
     };
-    if(appOrigin) initializeBody.callback_url=`${appOrigin}/give/result?reference=${encodeURIComponent(reference)}`;
+    if(appOrigin) initializeBody.callback_url=`${appOrigin}/#/give/result?reference=${encodeURIComponent(reference)}`;
     const paystack=await fetch("https://api.paystack.co/transaction/initialize",{
       method:"POST",headers:{Authorization:`Bearer ${env("PAYSTACK_SECRET_KEY")}`,"Content-Type":"application/json"},body:JSON.stringify(initializeBody),
     });

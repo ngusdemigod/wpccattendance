@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -207,6 +208,7 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
         amountKobo: amountKobo,
         givingType: widget.payload['giving_type']?.toString() ?? 'offering',
         projectId: widget.payload['project_id']?.toString(),
+        appOrigin: kIsWeb ? Uri.base.origin : null,
         autoGive: autoGive
             ? {
                 'rule_keys': rules,

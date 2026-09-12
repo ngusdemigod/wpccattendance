@@ -63,11 +63,13 @@ class GiveRepository {
     required String givingType,
     String? projectId,
     Map<String, dynamic>? autoGive,
+    String? appOrigin,
   }) async {
     final response = await client.functions.invoke('initialize-giving', body: {
       'amount_kobo': amountKobo,
       'giving_type': givingType,
       'project_id': projectId,
+      if (appOrigin != null) 'app_origin': appOrigin,
       if (autoGive != null) 'auto_give': autoGive,
     });
     if (response.status >= 400) {
