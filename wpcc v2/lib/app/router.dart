@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../core/widgets/feature_gap_page.dart';
 import '../features/auth/login_page.dart';
 import '../features/departments/admin/department_announcement_page.dart';
 import '../features/departments/admin/department_create_event_page.dart';
@@ -21,16 +20,20 @@ import '../features/give/auto_give_page.dart';
 import '../features/give/give_home_page.dart';
 import '../features/give/give_payment_page.dart';
 import '../features/give/give_result_page.dart';
-import '../features/give/giving_history_page.dart';
 import '../features/home/home_page.dart';
 import '../features/media/media_page.dart';
+import '../features/media/media_album_detail_page.dart';
 import '../features/media/media_episode_detail_page.dart';
 import '../features/prayer/prayer_alert_edit_page.dart';
 import '../features/prayer/prayer_alerts_page.dart';
 import '../features/prayer/prayer_session_page.dart';
 import '../features/profile/profile_page.dart';
 import '../features/search/search_page.dart';
+import '../features/search/search_filter_sheet.dart';
+import '../features/souls/souls_page.dart';
 import 'app_shell.dart';
+import '../core/theme/member_theme.dart';
+import '../core/theme/app_motion.dart';
 
 class AuthRefreshListenable extends ChangeNotifier {
   AuthRefreshListenable() {
@@ -47,17 +50,39 @@ class AuthRefreshListenable extends ChangeNotifier {
 
 GoRouter buildRouter() {
   final authRefresh = AuthRefreshListenable();
-  // Email links use a path/query URL even when Flutter uses hash routing.
-  final emailCallback = Uri.base.path == '/login' &&
-      Uri.base.queryParameters.containsKey('token_hash');
+  // Magic links can return either a token_hash query (custom template) or
+  // access/refresh tokens in the URL fragment (Supabase implicit flow). The
+  // fragment must never be treated as a GoRouter hash route.
+  final callbackTokenHash = Uri.base.queryParameters['token_hash'] ??
+      Uri.base.queryParameters['token'];
+  // Self-hosted email templates may point at the configured Site URL (`/`)
+  // instead of the requested `/login` redirect. A valid token query is the
+  // authoritative callback signal regardless of the landing path.
+  final emailCallback =
+      callbackTokenHash != null && callbackTokenHash.isNotEmpty;
+  final implicitAuthCallback = Uri.base.fragment.contains('access_token=') ||
+      Uri.base.fragment.contains('refresh_token=');
+  final authenticated = Supabase.instance.client.auth.currentSession != null;
+  final initialLocation = emailCallback
+      ? '/login?${Uri.base.query}'
+      : authenticated
+          ? '/home'
+          : '/login';
   return GoRouter(
-    initialLocation: emailCallback ? '/login?${Uri.base.query}' : '/home',
-    overridePlatformDefaultLocation: emailCallback,
+    initialLocation: initialLocation,
+    // Flutter web uses the URL fragment for hash routing, while Supabase's
+    // implicit flow uses it for credentials. Supabase restores the session
+    // during initialize; always overriding prevents those credentials from
+    // being parsed as an application route afterwards.
+    overridePlatformDefaultLocation: emailCallback || implicitAuthCallback,
     refreshListenable: authRefresh,
     redirect: (context, state) {
       final authenticated =
           Supabase.instance.client.auth.currentSession != null;
       final atLogin = state.matchedLocation == '/login';
+      if (state.matchedLocation == '/') {
+        return authenticated ? '/home' : '/login';
+      }
       if (!authenticated && !atLogin) return '/login';
       if (authenticated && atLogin) return '/home';
       return null;
@@ -67,188 +92,243 @@ GoRouter buildRouter() {
           path: '/login',
           builder: (_, state) => LoginPage(
                 key: ValueKey(state.uri.toString()),
-                tokenHash: state.uri.queryParameters['token_hash'],
+                tokenHash: state.uri.queryParameters['token_hash'] ??
+                    state.uri.queryParameters['token'],
                 linkType: state.uri.queryParameters['type'],
               )),
       ShellRoute(
-        builder: (_, __, child) => AppShell(child: child),
+        builder: (_, state, child) => MemberTheme(
+            media: state.uri.path.startsWith('/media'),
+            child: MemberSearchScope(child: AppShell(child: child))),
         routes: [
           GoRoute(
               path: '/home',
-              pageBuilder: (_, state) => _fade(state, const HomePage())),
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const HomePage())),
           GoRoute(
               path: '/media',
-              pageBuilder: (_, state) => _fade(state, const MediaPage())),
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const MediaPage()),
+              routes: [
+                GoRoute(
+                    path: 'albums/:id',
+                    pageBuilder: (context, state) => _slide(
+                        context,
+                        state,
+                        MediaAlbumDetailPage(
+                            albumId: state.pathParameters['id']!,
+                            seed: state.extra as Map<String, dynamic>?))),
+              ]),
           GoRoute(
               path: '/media/:id',
-              pageBuilder: (_, state) => _slide(
+              pageBuilder: (context, state) => _memberPage(
+                  context,
                   state,
                   MediaEpisodeDetailPage(
                       episodeId: state.pathParameters['id']!,
                       seed: state.extra as Map<String, dynamic>?))),
           GoRoute(
               path: '/departments',
-              pageBuilder: (_, state) => _fade(state, const DepartmentsPage())),
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const DepartmentsPage())),
           GoRoute(
               path: '/events',
-              pageBuilder: (_, state) => _fade(state, const EventsPage())),
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const EventsPage())),
           GoRoute(
               path: '/give',
-              pageBuilder: (_, state) => _fade(state, const GiveHomePage())),
+              pageBuilder: (context, state) => _memberPage(
+                  context,
+                  state,
+                  GiveHomePage(
+                      initialHistory:
+                          state.uri.queryParameters['tab'] == 'history'))),
           GoRoute(
               path: '/profile',
-              pageBuilder: (_, state) => _fade(state, const ProfilePage())),
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const ProfilePage())),
+          GoRoute(
+              path: '/events/:id',
+              pageBuilder: (context, state) => _memberPage(
+                  context,
+                  state,
+                  EventDetailPage(
+                      eventId: state.pathParameters['id']!,
+                      seed: state.extra as Map<String, dynamic>?))),
+          GoRoute(
+              path: '/prayer-alerts',
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const PrayerAlertsPage())),
+          GoRoute(
+              path: '/search',
+              pageBuilder: (context, state) => _memberPage(
+                  context,
+                  state,
+                  SearchPage(
+                      initialFilter: state.uri.queryParameters['filter']))),
+          GoRoute(
+              path: '/devotional',
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const DevotionalPage())),
+          GoRoute(
+              path: '/souls',
+              pageBuilder: (context, state) =>
+                  _memberPage(context, state, const SoulsPage())),
         ],
       ),
       GoRoute(
           path: '/departments/:id',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               DepartmentDetailPage(
                   departmentId: state.pathParameters['id']!,
                   seed: state.extra as Map<String, dynamic>?))),
       GoRoute(
           path: '/departments/:id/wallet/new',
-          pageBuilder: (_, state) => _slide(state,
+          pageBuilder: (context, state) => _slide(context, state,
               DepartmentWalletPage(departmentId: state.pathParameters['id']!))),
       GoRoute(
           path: '/departments/:id/profile/edit',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               DepartmentProfileEditPage(
                   departmentId: state.pathParameters['id']!))),
       GoRoute(
           path: '/departments/:id/event/new',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               DepartmentCreateEventPage(
                   departmentId: state.pathParameters['id']!))),
       GoRoute(
           path: '/departments/:id/announcement',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               DepartmentAnnouncementPage(
                   departmentId: state.pathParameters['id']!))),
       GoRoute(
           path: '/departments/:id/files/manage',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               DepartmentManageFilesPage(
                   departmentId: state.pathParameters['id']!))),
       GoRoute(
-          path: '/events/:id',
-          pageBuilder: (_, state) => _slide(
-              state,
-              EventDetailPage(
-                  eventId: state.pathParameters['id']!,
-                  seed: state.extra as Map<String, dynamic>?))),
-      GoRoute(
           path: '/give/payment',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               GivePaymentPage(
                   payload: Map<String, dynamic>.from((state.extra as Map?) ??
                       const {'giving_type': 'offering', 'title': 'Give'})))),
       GoRoute(
           path: '/give/auto',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               AutoGivePage(
                   payload: Map<String, dynamic>.from(
                       (state.extra as Map?) ?? const {})))),
-      GoRoute(
-          path: '/give/history',
-          pageBuilder: (_, state) => _slide(state, const GivingHistoryPage())),
+      GoRoute(path: '/give/history', redirect: (_, __) => '/give?tab=history'),
       GoRoute(
           path: '/give/result',
-          pageBuilder: (_, state) => _fade(
+          pageBuilder: (context, state) => _fade(
+              context,
               state,
               GiveResultPage(
                   reference: state.uri.queryParameters['reference'] ?? ''))),
       GoRoute(
-          path: '/prayer-alerts',
-          pageBuilder: (_, state) => _slide(state, const PrayerAlertsPage())),
-      GoRoute(
           path: '/prayer-alerts/new',
-          pageBuilder: (_, state) =>
-              _slide(state, const PrayerAlertEditPage())),
+          pageBuilder: (context, state) =>
+              _slide(context, state, const PrayerAlertEditPage())),
       GoRoute(
           path: '/prayer-alerts/:id/edit',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               PrayerAlertEditPage(
                   alertId: state.pathParameters['id']!,
                   alert: state.extra as Map<String, dynamic>?))),
       GoRoute(
           path: '/prayer-session',
-          pageBuilder: (_, state) => CustomTransitionPage(
+          pageBuilder: (context, state) => CustomTransitionPage(
               key: state.pageKey,
               fullscreenDialog: true,
-              transitionDuration: const Duration(milliseconds: 260),
+              transitionDuration: AppMotion.duration(context, AppMotion.page),
+              reverseTransitionDuration:
+                  AppMotion.duration(context, AppMotion.exit),
               child: PrayerSessionPage(
                   payload: Map<String, dynamic>.from(
                       (state.extra as Map?) ?? const {})),
               transitionsBuilder: (context, animation, __, child) =>
-                  MediaQuery.disableAnimationsOf(context)
-                      ? child
-                      : FadeTransition(opacity: animation, child: child))),
-      GoRoute(
-          path: '/search',
-          pageBuilder: (_, state) => _slide(state, const SearchPage())),
-      GoRoute(
-          path: '/devotional',
-          pageBuilder: (_, state) => _slide(state, const DevotionalPage())),
+                  AppRouteMotion(
+                      animation: animation,
+                      offset: const Offset(0, 16),
+                      child: child))),
       GoRoute(
           path: '/devotional/:id',
-          pageBuilder: (_, state) => _slide(
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
               DevotionalPostPage(
                   postId: state.pathParameters['id']!,
                   seed: state.extra as Map<String, dynamic>?))),
       GoRoute(
-          path: '/souls',
-          pageBuilder: (_, state) => _slide(
+          path: '/souls/:id',
+          pageBuilder: (context, state) => _slide(
+              context,
               state,
-              const FeatureGapPage(
-                  title: 'Souls',
-                  message:
-                      'The v76 package defines the Souls entry point but no approved member-facing target-page design. The existing souls and follow-up backend is preserved for a separate approved screen.'))),
+              SoulDetailPage(
+                  soulId: state.pathParameters['id']!,
+                  seed: state.extra as Map<String, dynamic>?))),
     ],
   );
 }
 
-CustomTransitionPage<void> _fade(GoRouterState state, Widget child) =>
+CustomTransitionPage<void> _memberPage(
+        BuildContext context, GoRouterState state, Widget child) =>
+    !const ['/home', '/media', '/events', '/give', '/profile']
+            .contains(state.uri.path)
+        ? _slide(context, state, child)
+        : CustomTransitionPage<void>(
+            key: state.pageKey,
+            child: child,
+            transitionDuration: AppMotion.duration(context, AppMotion.tab),
+            reverseTransitionDuration: Duration.zero,
+            transitionsBuilder: (context, animation, secondary, child) =>
+                AppRouteMotion(animation: animation, child: child));
+
+CustomTransitionPage<void> _fade(
+        BuildContext context, GoRouterState state, Widget child) =>
     CustomTransitionPage(
       key: state.pageKey,
-      transitionDuration: const Duration(milliseconds: 210),
-      reverseTransitionDuration: const Duration(milliseconds: 190),
+      transitionDuration: AppMotion.duration(context, AppMotion.page),
+      reverseTransitionDuration: AppMotion.duration(context, AppMotion.exit),
       child: child,
       transitionsBuilder: (context, animation, __, child) {
         if (MediaQuery.disableAnimationsOf(context)) return child;
-        return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-                position: Tween(begin: const Offset(0, .018), end: Offset.zero)
-                    .animate(CurvedAnimation(
-                        parent: animation, curve: Curves.easeOutCubic)),
-                child: child));
+        return AppRouteMotion(
+            animation: animation, offset: const Offset(0, 16), child: child);
       },
     );
 
-CustomTransitionPage<void> _slide(GoRouterState state, Widget child) =>
+CustomTransitionPage<void> _slide(
+        BuildContext context, GoRouterState state, Widget child) =>
     CustomTransitionPage(
       key: state.pageKey,
-      transitionDuration: const Duration(milliseconds: 210),
-      reverseTransitionDuration: const Duration(milliseconds: 190),
+      transitionDuration: AppMotion.duration(context, AppMotion.page),
+      reverseTransitionDuration: AppMotion.duration(context, AppMotion.exit),
       child: child,
       transitionsBuilder: (context, animation, __, child) {
         if (MediaQuery.disableAnimationsOf(context)) return child;
-        return FadeTransition(
-            opacity: animation,
-            child: SlideTransition(
-                position: Tween(begin: const Offset(.025, 0), end: Offset.zero)
-                    .animate(CurvedAnimation(
-                        parent: animation, curve: Curves.easeOutCubic)),
-                child: child));
+        return AppRouteMotion(
+            animation: animation,
+            offset: state.uri.path == '/give/payment'
+                ? const Offset(0, 16)
+                : const Offset(16, 0),
+            child: child);
       },
     );

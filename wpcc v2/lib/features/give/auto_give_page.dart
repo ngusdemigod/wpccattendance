@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_motion.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -99,7 +100,8 @@ class _AutoGivePageState extends State<AutoGivePage> {
       symbol: '₦',
       decimalDigits: 0,
     ).format((int.tryParse(mandate['amount_kobo'].toString()) ?? 0) / 100);
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showMotionDialog<bool>(
+      animationStyle: AppMotion.dialogStyle(context),
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Cancel Auto Give?'),
@@ -190,7 +192,8 @@ class _AutoGivePageState extends State<AutoGivePage> {
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
-                ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+                ).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
               const SizedBox(height: 22),
               TextField(
@@ -240,12 +243,12 @@ class _AutoGivePageState extends State<AutoGivePage> {
                               ? selected.add(rule.$1)
                               : selected.remove(rule.$1),
                         ),
-                        selectedColor: WpccColors.ink,
+                        selectedColor: Theme.of(context).colorScheme.onSurface,
                         labelStyle: TextStyle(
                           fontSize: 11,
                           color: selected.contains(rule.$1)
                               ? Colors.white
-                              : WpccColors.inkSoft,
+                              : Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         backgroundColor: Colors.white,
                         side: BorderSide.none,
@@ -335,7 +338,7 @@ class _AutoGivePageState extends State<AutoGivePage> {
               FilledButton(
                 onPressed: busy ? null : save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: WpccColors.ink,
+                  backgroundColor: Theme.of(context).colorScheme.onSurface,
                   minimumSize: const Size.fromHeight(50),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(24),
@@ -384,7 +387,7 @@ class _AutoGivePageState extends State<AutoGivePage> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(13),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: Theme.of(context).colorScheme.surface,
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
@@ -424,7 +427,9 @@ class _AutoGivePageState extends State<AutoGivePage> {
                                         .bodySmall
                                         ?.copyWith(
                                           fontSize: 10,
-                                          color: WpccColors.muted,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .onSurfaceVariant,
                                         ),
                                   ),
                                 ],

@@ -1,11 +1,12 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{"Content-Type":"application/json"}});
 const env=(n:string)=>{const v=Deno.env.get(n)?.trim();if(!v)throw new Error(`Missing ${n}`);return v;};
+const serviceKey=()=>Deno.env.get("SUPABASE_SECRET_KEY")?.trim()||Deno.env.get("SERVICE_ROLE_KEY")?.trim()||env("SUPABASE_SERVICE_ROLE_KEY");
 Deno.serve(async(req)=>{
   if(req.method!=="POST")return json({error:"Method not allowed"},405);
   try{
     if(req.headers.get("x-worker-secret")!==env("WPCC_GIVING_WORKER_SECRET"))return json({error:"Unauthorized"},401);
-    const admin=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
+    const admin=createClient(env("SUPABASE_URL"),serviceKey(),{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:due,error}=await admin.rpc("wpcc_claim_due_auto_give",{p_limit:25,p_lease_seconds:600});if(error)throw error;
     const results=[];
     for(const m of due||[]){

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/initials_avatar.dart';
 import 'devotional_repository.dart';
 
@@ -130,26 +129,27 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                 Text(
                   'Wisdom Devotional',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontSize: 27,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: -1,
-                  ),
+                        fontSize: 27,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -1,
+                      ),
                 ),
                 const SizedBox(height: 5),
                 Text(
                   'Short devotionals to help you pray, reflect, and stay rooted through the week.',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: WpccColors.inkSoft,
-                    height: 1.45,
-                  ),
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        height: 1.45,
+                      ),
                 ),
                 const SizedBox(height: 16),
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.surface,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: WpccColors.line),
+                    border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,9 +165,11 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                       Text(
                         current['body']?.toString() ?? '',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          height: 1.65,
-                          color: WpccColors.inkSoft,
-                        ),
+                              height: 1.65,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                       ),
                     ],
                   ),
@@ -194,13 +196,16 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                               onSelected: updatingReactions.contains(type)
                                   ? null
                                   : (_) =>
-                                        _toggle(type, selected.contains(type)),
-                              selectedColor: WpccColors.ink,
+                                      _toggle(type, selected.contains(type)),
+                              selectedColor:
+                                  Theme.of(context).colorScheme.onSurface,
                               labelStyle: TextStyle(
                                 fontSize: 11,
                                 color: selected.contains(type)
                                     ? Colors.white
-                                    : WpccColors.inkSoft,
+                                    : Theme.of(context)
+                                        .colorScheme
+                                        .onSurfaceVariant,
                               ),
                               backgroundColor: Colors.white,
                               side: BorderSide.none,
@@ -217,17 +222,19 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                       child: Text(
                         'Comments',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
                       ),
                     ),
                     if (current['comments_count'] != null)
                       Text(
                         current['comments_count'].toString(),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: WpccColors.muted,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                       ),
                   ],
                 ),
@@ -249,16 +256,16 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                     'No comments yet.',
                     style: Theme.of(
                       context,
-                    ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+                    ).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   )
                 else ...[
                   ...comments.map(_commentRow),
                   if (hasMoreComments)
                     Center(
                       child: TextButton(
-                        onPressed: loadingMoreComments
-                            ? null
-                            : _loadMoreComments,
+                        onPressed:
+                            loadingMoreComments ? null : _loadMoreComments,
                         child: loadingMoreComments
                             ? const SizedBox(
                                 width: 18,
@@ -290,7 +297,8 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                     IconButton.filled(
                       onPressed: sending ? null : _send,
                       style: IconButton.styleFrom(
-                        backgroundColor: WpccColors.ink,
+                        backgroundColor:
+                            Theme.of(context).colorScheme.onSurface,
                       ),
                       icon: sending
                           ? const SizedBox(
@@ -398,11 +406,11 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
   }
 
   String _label(String type) => switch (type) {
-    'amen' => 'Amen',
-    'helpful' => 'Helpful',
-    'inspired' => 'Inspired',
-    _ => type,
-  };
+        'amen' => 'Amen',
+        'helpful' => 'Helpful',
+        'inspired' => 'Inspired',
+        _ => type,
+      };
 
   String _initials(String name) => name
       .split(RegExp(r'\s+'))

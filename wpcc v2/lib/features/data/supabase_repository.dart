@@ -25,8 +25,37 @@ class SupabaseRepository {
             .toList();
       });
 
-  Future<List<Map<String, dynamic>>> myDepartments() =>
-      departments(filter: 'mine');
+  Future<List<Map<String, dynamic>>> myDepartments() async {
+    final members = await departments(filter: 'mine');
+    final uid = client.auth.currentUser?.id;
+    if (uid == null) return members;
+    final pending = await client
+        .from('department_requests')
+        .select('id,department_id,status,departments(name)')
+        .eq('user_id', uid)
+        .eq('status', 'pending');
+    return [
+      ...members,
+      ...pending.map((row) => <String, dynamic>{
+            'department_id': row['department_id'],
+            'name': (row['departments'] as Map?)?['name'] ?? 'Department',
+            'status': 'pending',
+          })
+    ];
+  }
+
+  Future<List<Map<String, dynamic>>> departmentDirectory() async {
+    final rows = await client.rpc('community_department_directory');
+    return (rows as List)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList();
+  }
+
+  Future<void> requestDepartment(String departmentId) async {
+    await client.rpc('community_request_department',
+        params: {'p_department_id': departmentId});
+    cache.invalidate('departments:');
+  }
 
   Future<List<Map<String, dynamic>>> upcomingEvents({int limit = 5}) =>
       cache.get('events:upcoming:$limit', () async {

@@ -3,12 +3,12 @@ class AppConfig {
 
   static const supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: 'https://pgpihzhvysbadrzjhvxw.supabase.co',
+    defaultValue: 'https://api.wisdompowercc.org',
   );
 
   static const supabasePublishableKey = String.fromEnvironment(
     'SUPABASE_PUBLISHABLE_KEY',
-    defaultValue: 'sb_publishable_5YAfKwXF--agw-5Dil9uwA_4IAEarod',
+    defaultValue: 'sb_publishable_M2d6gv3fLQpQjt4Ft5WHhz_uu8383Kv',
   );
 
   static const appOrigin = String.fromEnvironment('APP_ORIGIN');

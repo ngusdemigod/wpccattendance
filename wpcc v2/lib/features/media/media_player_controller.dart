@@ -5,6 +5,7 @@ import 'spotify_playback_bridge.dart';
 class MediaPlayerEpisode {
   const MediaPlayerEpisode(
       {required this.id,
+      required this.externalId,
       required this.title,
       required this.artworkUrl,
       required this.providerUrl,
@@ -15,6 +16,7 @@ class MediaPlayerEpisode {
   factory MediaPlayerEpisode.fromRow(Map<String, dynamic> row) =>
       MediaPlayerEpisode(
           id: row['id']?.toString() ?? '',
+          externalId: row['external_id']?.toString() ?? '',
           title: row['title']?.toString() ?? 'Podcast episode',
           artworkUrl: row['artwork_url']?.toString() ?? '',
           providerUrl: row['provider_url']?.toString() ?? '',
@@ -23,6 +25,7 @@ class MediaPlayerEpisode {
           description: row['description']?.toString() ?? '',
           publishedAt: row['source_published_at']?.toString() ?? '');
   final String id,
+      externalId,
       title,
       artworkUrl,
       providerUrl,
@@ -32,6 +35,7 @@ class MediaPlayerEpisode {
   final int durationMs;
   Map<String, dynamic> toRow() => {
         'id': id,
+        'external_id': externalId,
         'title': title,
         'artwork_url': artworkUrl,
         'provider_url': providerUrl,
@@ -75,9 +79,11 @@ class MediaPlayerController extends ValueNotifier<MediaPlayerState> {
     final episode = MediaPlayerEpisode.fromRow(row);
     value = MediaPlayerState(
         episode: episode, isPlaying: true, durationMs: episode.durationMs);
-    final entity = episode.providerUrl.isNotEmpty
-        ? episode.providerUrl
-        : episode.embedUrl.replaceFirst('/embed/', '/');
+    final entity = episode.externalId.isNotEmpty
+        ? 'spotify:episode:${episode.externalId}'
+        : episode.providerUrl.isNotEmpty
+            ? episode.providerUrl
+            : episode.embedUrl.replaceFirst('/embed/', '/');
     SpotifyPlaybackBridge.instance.loadAndPlay(entity);
   }
 

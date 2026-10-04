@@ -3,441 +3,511 @@ import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-
-import '../../core/theme/app_theme.dart';
-import '../../core/widgets/section_empty_state.dart';
+import '../../core/widgets/member_skeleton.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/widgets/member_components.dart';
 import 'give_repository.dart';
+import 'giving_history_page.dart';
+import 'giving_backdrop.dart';
 
 typedef GiveListLoader = Future<List<Map<String, dynamic>>> Function();
 
 class GiveHomePage extends StatefulWidget {
-  const GiveHomePage({super.key, this.loadAccounts, this.loadMandates});
+  const GiveHomePage(
+      {super.key,
+      this.loadAccounts,
+      this.loadMandates,
+      this.loadProjects,
+      this.loadHistory,
+      this.initialHistory = false});
   final GiveListLoader? loadAccounts;
   final GiveListLoader? loadMandates;
+  final GiveListLoader? loadProjects;
+  final GivingHistoryLoader? loadHistory;
+  final bool initialHistory;
   @override
   State<GiveHomePage> createState() => _GiveHomePageState();
 }
 
-class _GiveHomePageState extends State<GiveHomePage> {
+class _GiveHomePageState extends State<GiveHomePage>
+    with SingleTickerProviderStateMixin {
+  late final tabAnimation =
+      AnimationController(vsync: this, duration: AppMotion.tab, value: 1);
   GiveRepository? repo;
   late Future<List<Map<String, dynamic>>> accounts;
   late Future<List<Map<String, dynamic>>> mandates;
+  late Future<List<Map<String, dynamic>>> projects;
+  final projectSection = GlobalKey();
+  String selectedType = 'offering';
+  late bool history;
+  late bool historyVisited;
+  static const types = {
+    'offering': 'Offering',
+    'tithe': 'Tithe',
+    'prophet_offering': 'Prophet offering',
+    'project': 'Projects'
+  };
 
   @override
   void initState() {
     super.initState();
+    history = historyVisited = widget.initialHistory;
     _load();
   }
 
+  @override
+  void didUpdateWidget(covariant GiveHomePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialHistory != widget.initialHistory) {
+      history = widget.initialHistory;
+      historyVisited = historyVisited || history;
+    }
+  }
+
   void _load() {
-    final repository = repo ??=
-        widget.loadAccounts == null || widget.loadMandates == null
-            ? GiveRepository()
-            : null;
+    final repository = repo ??= widget.loadAccounts == null ||
+            widget.loadMandates == null ||
+            widget.loadProjects == null
+        ? GiveRepository()
+        : null;
     accounts = widget.loadAccounts?.call() ?? repository!.accounts();
     mandates = widget.loadMandates?.call() ?? repository!.mandates();
+    projects = widget.loadProjects?.call() ?? repository!.projects();
   }
 
   Future<void> _refresh() async {
     setState(_load);
-    await Future.wait([accounts, mandates]);
+    try {
+      await Future.wait([accounts, mandates, projects]);
+    } catch (_) {}
+  }
+
+  void _showProjects() {
+    final target = projectSection.currentContext;
+    if (target != null) {
+      Scrollable.ensureVisible(target,
+          duration: AppMotion.duration(context, AppMotion.page),
+          curve: AppMotion.curve,
+          alignment: .1);
+    }
+  }
+
+  void _selectTab(bool value) {
+    if (history == value) return;
+    setState(() {
+      history = value;
+      historyVisited = historyVisited || value;
+    });
+    if (MediaQuery.disableAnimationsOf(context)) {
+      tabAnimation.value = 1;
+    } else {
+      tabAnimation.forward(from: 0);
+    }
   }
 
   @override
-  Widget build(BuildContext context) => SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
-            children: [
-              Row(children: [
-                Expanded(
-                  child: Text('Give',
-                      style: Theme.of(context)
-                          .textTheme
-                          .headlineSmall
-                          ?.copyWith(
-                              fontWeight: FontWeight.w600, letterSpacing: -.7)),
-                ),
-                TextButton(
-                    onPressed: () => context.push('/give/history'),
-                    child: const Text('History')),
-              ]),
-              const SizedBox(height: 20),
-              const _SectionTitle('Church accounts'),
-              const SizedBox(height: 10),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: accounts,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const SizedBox(
-                        height: 112,
-                        child: Center(child: CircularProgressIndicator()));
-                  }
-                  if (snapshot.hasError) {
-                    return SectionEmptyState(
-                        icon: PhosphorIcons.warningCircle(),
-                        message: 'Unable to load church accounts',
-                        height: 112);
-                  }
-                  final rows = snapshot.data ?? const [];
-                  if (rows.isEmpty) {
-                    return SectionEmptyState(
-                        icon: PhosphorIcons.bank(),
-                        message: 'No giving accounts configured',
-                        height: 112);
-                  }
-                  return _AccountRail(rows: rows);
-                },
-              ),
-              const SizedBox(height: 24),
-              const _SectionTitle('Quick accounts'),
-              const SizedBox(height: 10),
-              _ListPanel(children: [
-                _GivingOption(
-                    title: 'Offering',
-                    subtitle: 'Give your church offering',
-                    icon: PhosphorIcons.handCoins(),
-                    onTap: () => _pay('offering', 'Offering')),
-                const _Divider(),
-                _GivingOption(
-                    title: 'Tithe',
-                    subtitle: 'Give your tithe securely',
-                    icon: PhosphorIcons.wallet(),
-                    onTap: () => _pay('tithe', 'Tithe')),
-                const _Divider(),
-                _GivingOption(
-                    title: 'Prophet offering',
-                    subtitle: 'Give a prophet offering',
-                    icon: PhosphorIcons.heartStraight(),
-                    onTap: () => _pay('prophet_offering', 'Prophet offering')),
-              ]),
-              const SizedBox(height: 24),
-              const _SectionTitle('Scheduled givings'),
-              const SizedBox(height: 10),
-              FutureBuilder<List<Map<String, dynamic>>>(
-                future: mandates,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const SizedBox(
-                        height: 112,
-                        child: Center(child: CircularProgressIndicator()));
-                  }
-                  if (snapshot.hasError) {
-                    return SectionEmptyState(
-                        icon: PhosphorIcons.warningCircle(),
-                        message: 'Unable to load scheduled givings',
-                        height: 112);
-                  }
-                  final rows = snapshot.data ?? const [];
-                  if (rows.isEmpty) {
-                    return SectionEmptyState(
-                        icon: PhosphorIcons.calendarBlank(),
-                        message: 'No scheduled givings',
-                        height: 112);
-                  }
-                  return _ListPanel(children: [
-                    for (var i = 0; i < rows.length; i++) ...[
-                      _ScheduledGivingRow(row: rows[i]),
-                      if (i != rows.length - 1) const _Divider(),
-                    ],
-                  ]);
-                },
-              ),
-            ],
-          ),
-        ),
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) tabAnimation.value = 1;
+  }
+
+  @override
+  void dispose() {
+    tabAnimation.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => GivingBackdrop(
+        child: SafeArea(
+            bottom: false,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 820),
+                  child: Column(children: [
+                    Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
+                        child: Row(children: [
+                          Expanded(
+                              child: _GivingType(
+                                  title: 'Give',
+                                  selected: !history,
+                                  onTap: () => _selectTab(false))),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: _GivingType(
+                                  title: 'History',
+                                  selected: history,
+                                  onTap: () => _selectTab(true))),
+                        ])),
+                    Expanded(
+                        child: FadeTransition(
+                            opacity: tabAnimation
+                                .drive(CurveTween(curve: AppMotion.curve)),
+                            child:
+                                IndexedStack(index: history ? 1 : 0, children: [
+                              TickerMode(
+                                  enabled: !history,
+                                  child: _giveContent(context)),
+                              if (historyVisited)
+                                TickerMode(
+                                    enabled: history,
+                                    child: GivingHistoryPage(
+                                        embedded: true,
+                                        loadHistory: widget.loadHistory))
+                              else
+                                const SizedBox.shrink(),
+                            ]))),
+                  ])),
+            )),
       );
+
+  Widget _giveContent(BuildContext context) => RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+          key: const PageStorageKey('give-home-scroll'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: memberPagePadding(context, bottom: 124),
+          children: [
+            Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+              SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(children: [
+                    for (final entry in types.entries)
+                      Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: _GivingType(
+                              title: entry.value,
+                              selected: selectedType == entry.key,
+                              onTap: () {
+                                setState(() => selectedType = entry.key);
+                                if (entry.key == 'project') _showProjects();
+                              })),
+                  ])),
+              const SizedBox(height: 16),
+              FilledButton.icon(
+                  onPressed: selectedType == 'project'
+                      ? _showProjects
+                      : () => _pay(selectedType, types[selectedType]!),
+                  icon: Icon(PhosphorIcons.arrowUpRight(), size: 20),
+                  iconAlignment: IconAlignment.end,
+                  style: FilledButton.styleFrom(
+                      minimumSize: const Size.fromHeight(56)),
+                  label: Text(selectedType == 'project'
+                      ? 'Choose a project'
+                      : 'Give now')),
+              const SizedBox(height: 28),
+              const MemberSectionHeader(title: 'Church accounts'),
+              _section(
+                  accounts,
+                  'Unable to load church accounts',
+                  'No giving accounts configured',
+                  (rows) => LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                          key: const PageStorageKey('giving-accounts'),
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                for (var i = 0; i < rows.length; i++) ...[
+                                  if (i > 0) const SizedBox(width: 16),
+                                  SizedBox(
+                                      width: (constraints.maxWidth *
+                                              (rows.length > 1 ? .88 : 1))
+                                          .clamp(0.0, 420.0),
+                                      child: _ChurchAccountRow(row: rows[i])),
+                                ]
+                              ])))),
+              const SizedBox(height: 28),
+              MemberSectionHeader(
+                  key: projectSection, title: 'Church projects'),
+              _section(
+                  projects,
+                  'Unable to load church projects',
+                  'No active church projects',
+                  (rows) => LayoutBuilder(builder: (context, constraints) {
+                        final columns = constraints.maxWidth >= 336 &&
+                                MediaQuery.textScalerOf(context).scale(14) <= 22
+                            ? 2
+                            : 1;
+                        final width =
+                            (constraints.maxWidth - (columns - 1) * 16) /
+                                columns;
+                        return Wrap(spacing: 16, runSpacing: 16, children: [
+                          for (final project in rows)
+                            SizedBox(
+                                width: width,
+                                child: _project(context, project)),
+                        ]);
+                      })),
+              const SizedBox(height: 24),
+              _PlainGivingAction(onTap: () => context.push('/give/auto')),
+              _section(
+                  mandates,
+                  'Unable to load scheduled givings',
+                  'No scheduled gifts',
+                  (rows) => Column(children: [
+                        for (final row in rows) _ScheduledGivingRow(row: row),
+                      ])),
+            ])
+          ]));
+
+  Widget _section(Future<List<Map<String, dynamic>>> future, String error,
+          String empty, Widget Function(List<Map<String, dynamic>>) content) =>
+      FutureBuilder<List<Map<String, dynamic>>>(
+          future: future,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const MemberSkeleton(rows: 2);
+            }
+            if (snapshot.hasError) {
+              return MemberStatus(
+                  icon: PhosphorIcons.warningCircle(),
+                  message: error,
+                  onRetry: () => setState(() {
+                        if (identical(future, accounts)) {
+                          accounts =
+                              widget.loadAccounts?.call() ?? repo!.accounts();
+                        } else if (identical(future, projects)) {
+                          projects =
+                              widget.loadProjects?.call() ?? repo!.projects();
+                        } else {
+                          mandates =
+                              widget.loadMandates?.call() ?? repo!.mandates();
+                        }
+                      }));
+            }
+            final rows = snapshot.data ?? [];
+            if (rows.isEmpty) {
+              return MemberStatus(icon: PhosphorIcons.gift(), message: empty);
+            }
+            return content(rows);
+          });
+
+  Widget _project(BuildContext context, Map<String, dynamic> project) {
+    final title = project['title']?.toString() ?? 'Church project';
+    final description = project['description']?.toString().trim() ?? '';
+    final image = project['image_url']?.toString() ?? '';
+    final target =
+        num.tryParse(project['target_amount_kobo']?.toString() ?? '');
+    return Material(
+        color: Theme.of(context).colorScheme.surface,
+        clipBehavior: Clip.antiAlias,
+        borderRadius: BorderRadius.circular(20),
+        child: InkWell(
+            onTap: project['id'] == null
+                ? null
+                : () => context.push('/give/payment', extra: {
+                      'giving_type': 'project',
+                      'project_id': project['id'],
+                      'title': title
+                    }),
+            child:
+                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              AspectRatio(
+                  aspectRatio: 1.6,
+                  child: image.isEmpty
+                      ? Center(child: Icon(PhosphorIcons.church(), size: 36))
+                      : Image.network(image,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => Center(
+                              child: Icon(PhosphorIcons.church(), size: 36)))),
+              Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: Theme.of(context).textTheme.titleMedium),
+                        if (description.isNotEmpty) ...[
+                          const SizedBox(height: 6),
+                          Text(description,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodySmall)
+                        ],
+                        if (target != null && target > 0) ...[
+                          const SizedBox(height: 10),
+                          Text(
+                              'Target: ${NumberFormat.currency(locale: 'en_NG', symbol: 'NGN ', decimalDigits: 0).format(target / 100)}',
+                              style: Theme.of(context).textTheme.bodySmall)
+                        ],
+                      ])),
+            ])));
+  }
 
   void _pay(String type, String title) => context
       .push('/give/payment', extra: {'giving_type': type, 'title': title});
 }
 
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle(this.label);
-  final String label;
+class _GivingType extends StatelessWidget {
+  const _GivingType(
+      {required this.title, required this.selected, required this.onTap});
+  final String title;
+  final bool selected;
+  final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Text(label,
-      style: Theme.of(context)
-          .textTheme
-          .titleSmall
-          ?.copyWith(fontSize: 14, fontWeight: FontWeight.w500));
-}
-
-class _ListPanel extends StatelessWidget {
-  const _ListPanel({required this.children});
-  final List<Widget> children;
-  @override
-  Widget build(BuildContext context) => Container(
-      decoration: BoxDecoration(
-          color: Colors.white,
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        child: Material(
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: WpccColors.line)),
-      clipBehavior: Clip.antiAlias,
-      child: Column(children: children));
-}
-
-class _AccountRail extends StatefulWidget {
-  const _AccountRail({required this.rows});
-  final List<Map<String, dynamic>> rows;
-
-  @override
-  State<_AccountRail> createState() => _AccountRailState();
-}
-
-class _AccountRailState extends State<_AccountRail> {
-  final controller = ScrollController();
-  int selected = 0;
-
-  @override
-  void dispose() {
-    controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          final cardWidth = (constraints.maxWidth * .88).clamp(260.0, 360.0);
-          return Column(children: [
-            SizedBox(
-              height: 172,
-              child: NotificationListener<ScrollNotification>(
-                onNotification: (notification) {
-                  if (notification is ScrollUpdateNotification ||
-                      notification is ScrollEndNotification) {
-                    final next = (controller.offset / (cardWidth + 10))
-                        .round()
-                        .clamp(0, widget.rows.length - 1);
-                    if (next != selected) setState(() => selected = next);
-                  }
-                  return false;
-                },
-                child: ListView.separated(
-                  controller: controller,
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  padding: const EdgeInsets.only(right: 18),
-                  itemCount: widget.rows.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 10),
-                  itemBuilder: (context, index) => SizedBox(
-                    width: cardWidth,
-                    child: _ChurchAccountCard(
-                        row: widget.rows[index], variant: index % 3),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 7),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: List.generate(
-                widget.rows.length,
-                (index) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  width: selected == index ? 18 : 5,
-                  height: 5,
-                  margin: const EdgeInsets.symmetric(horizontal: 2.5),
-                  decoration: BoxDecoration(
-                    color: selected == index
-                        ? WpccColors.ink
-                        : const Color(0xFFD5D7DC),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-            ),
-          ]);
-        },
-      );
-}
-
-class _ChurchAccountCard extends StatelessWidget {
-  const _ChurchAccountCard({required this.row, required this.variant});
-  final Map<String, dynamic> row;
-  final int variant;
-
-  @override
-  Widget build(BuildContext context) {
-    final number = row['account_number']?.toString() ?? '';
-    final dark = variant == 0;
-    final warm = variant == 2;
-    final foreground = dark ? Colors.white : WpccColors.ink;
-    final muted =
-        dark ? Colors.white.withValues(alpha: .7) : WpccColors.inkSoft;
-    final colors = dark
-        ? const [Color(0xFF202229), Color(0xFF111217)]
-        : warm
-            ? const [Color(0xFFFBF6ED), Color(0xFFF3EADB)]
-            : const [Colors.white, Color(0xFFF5F5F6)];
-    return Container(
-      padding: const EdgeInsets.all(18),
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: colors),
-        borderRadius: BorderRadius.circular(27),
-        border: Border.all(
-            color: dark
-                ? Colors.white.withValues(alpha: .08)
-                : warm
-                    ? const Color(0xFFEEE4D2)
-                    : WpccColors.line),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x121C1E24), blurRadius: 28, offset: Offset(0, 12))
-        ],
-      ),
-      child: Stack(children: [
-        Positioned(
-          width: 150,
-          height: 150,
-          right: -72,
-          top: -70,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: dark
-                  ? Colors.white.withValues(alpha: .07)
-                  : WpccColors.ink.withValues(alpha: .035),
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 48),
+              child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 5),
+                  child: AnimatedContainer(
+                    duration: AppMotion.duration(context, AppMotion.tab),
+                    curve: AppMotion.curve,
+                    decoration: BoxDecoration(
+                        color: selected
+                            ? (Theme.of(context).brightness == Brightness.light
+                                ? const Color(0xFFD5EACF)
+                                : const Color(0xFF314134))
+                            : Theme.of(context).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(24)),
+                    child: ConstrainedBox(
+                        constraints: const BoxConstraints(minHeight: 38),
+                        child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 10, vertical: 6),
+                            child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Flexible(
+                                      child: Text(title,
+                                          textAlign: TextAlign.center,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                  height: 18 / 14,
+                                                  color: selected
+                                                      ? Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurface
+                                                      : Theme.of(context)
+                                                          .colorScheme
+                                                          .onSurfaceVariant)))
+                                ]))),
+                  )),
             ),
           ),
         ),
-        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(row['bank_name']?.toString() ?? 'Church bank',
-                  style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: foreground)),
-              const SizedBox(height: 2),
-              Text(row['wallet_name']?.toString() ?? 'Church account',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 10, color: muted)),
-            ]),
-            _BankLogo(
-                url: row['bank_logo_url']?.toString() ?? '',
-                fallbackColor: foreground),
-          ]),
-          const SizedBox(height: 26),
-          Text(number,
-              style: TextStyle(
-                  fontSize: 27,
-                  height: 1,
-                  letterSpacing: .8,
-                  fontWeight: FontWeight.w600,
-                  color: foreground)),
-          const Spacer(),
-          Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('ACCOUNT NAME',
-                        style: TextStyle(fontSize: 9, color: muted)),
-                    const SizedBox(height: 2),
-                    Text(row['account_name']?.toString() ?? 'Church account',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: foreground)),
-                  ]),
-            ),
-            IconButton.filledTonal(
-                tooltip: 'Copy account number',
-                style: IconButton.styleFrom(
-                  fixedSize: const Size(38, 38),
-                  backgroundColor: dark
-                      ? Colors.white.withValues(alpha: .11)
-                      : Colors.white.withValues(alpha: .72),
-                  foregroundColor: foreground,
-                  side: BorderSide(
-                      color: dark
-                          ? Colors.white.withValues(alpha: .18)
-                          : WpccColors.line),
-                ),
-                onPressed: number.isEmpty
-                    ? null
-                    : () async {
-                        await Clipboard.setData(ClipboardData(text: number));
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Account number copied')));
-                        }
-                      },
-                icon: Icon(PhosphorIcons.copy(), size: 17)),
-          ]),
+      );
+}
+
+class _ChurchAccountRow extends StatelessWidget {
+  const _ChurchAccountRow({required this.row});
+  final Map<String, dynamic> row;
+  @override
+  Widget build(BuildContext context) {
+    final number = row['account_number']?.toString() ?? '';
+    final bank = row['bank_name']?.toString() ?? '';
+    final purpose = row['purpose']?.toString().trim() ?? '';
+    final name = row['account_name']?.toString() ??
+        row['wallet_name']?.toString() ??
+        'Church account';
+    final theme = Theme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.brightness == Brightness.light
+            ? Colors.white
+            : const Color(0xFF262629),
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(
+            color: theme.colorScheme.onSurface.withValues(alpha: .06)),
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Row(children: [
+          _BankLogo(url: row['bank_logo_url']?.toString() ?? ''),
+          const SizedBox(width: 12),
+          Expanded(
+              child: Text(bank.isEmpty ? 'Church account' : bank,
+                  style: theme.textTheme.titleMedium
+                      ?.copyWith(fontWeight: FontWeight.w600))),
         ]),
+        const SizedBox(height: 30),
+        Text('Account number', style: theme.textTheme.bodySmall),
+        const SizedBox(height: 4),
+        Row(children: [
+          Expanded(
+              child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(number.isEmpty ? 'Account unavailable' : number,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                          fontSize: number.isEmpty ? 16 : 26,
+                          height: 1.25,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0)))),
+          IconButton(
+            tooltip: 'Copy account number',
+            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            icon: Icon(PhosphorIcons.copy(), size: 22),
+            onPressed: number.isEmpty
+                ? null
+                : () async {
+                    await Clipboard.setData(ClipboardData(text: number));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                          content: Text('Account number copied')));
+                    }
+                  },
+          ),
+        ]),
+        const SizedBox(height: 24),
+        if (purpose.isNotEmpty) ...[
+          Text(purpose, style: theme.textTheme.bodyMedium),
+          const SizedBox(height: 8),
+        ],
+        Text(name,
+            style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
       ]),
     );
   }
 }
 
 class _BankLogo extends StatelessWidget {
-  const _BankLogo({required this.url, required this.fallbackColor});
+  const _BankLogo({required this.url});
   final String url;
-  final Color fallbackColor;
-
   @override
   Widget build(BuildContext context) => Container(
-        width: 34,
-        height: 34,
-        padding: const EdgeInsets.all(5),
+        width: 40,
+        height: 40,
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: .9),
-          borderRadius: BorderRadius.circular(10),
-        ),
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            borderRadius: BorderRadius.circular(12)),
         child: url.isEmpty
-            ? Icon(PhosphorIcons.bank(), size: 20, color: fallbackColor)
-            : Image.network(
-                url,
+            ? Icon(PhosphorIcons.gift(), size: 20)
+            : Image.network(url,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) =>
-                    Icon(PhosphorIcons.bank(), size: 20, color: fallbackColor),
-              ),
+                    Icon(PhosphorIcons.bank(), size: 20)),
       );
 }
 
-class _GivingOption extends StatelessWidget {
-  const _GivingOption(
-      {required this.title,
-      required this.subtitle,
-      required this.icon,
-      required this.onTap});
-  final String title;
-  final String subtitle;
-  final IconData icon;
+class _PlainGivingAction extends StatelessWidget {
+  const _PlainGivingAction({required this.onTap});
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => InkWell(
-      onTap: onTap,
-      child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(children: [
-            _LeadingIcon(icon: icon),
-            const SizedBox(width: 12),
-            Expanded(
-                child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                  Text(title,
-                      style: const TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 3),
-                  Text(subtitle,
-                      style: const TextStyle(
-                          fontSize: 11, color: WpccColors.muted)),
-                ])),
-            Icon(PhosphorIcons.caretRight(), size: 17, color: WpccColors.muted),
-          ])));
+  Widget build(BuildContext context) => Tooltip(
+        message: 'Manage scheduled givings',
+        child: MemberListRow(
+            plain: true,
+            title: 'Scheduled giving',
+            subtitle: 'Recurring gifts',
+            onTap: onTap),
+      );
 }
 
 class _ScheduledGivingRow extends StatelessWidget {
@@ -448,67 +518,52 @@ class _ScheduledGivingRow extends StatelessWidget {
     final amount =
         (int.tryParse(row['amount_kobo']?.toString() ?? '') ?? 0) / 100;
     final rules = ((row['rule_keys'] as List?) ?? const [])
-        .map((rule) => rule.toString().replaceAll('_', ' '))
+        .map((rule) {
+          final parts = rule.toString().split(':');
+          final day = parts.length > 1 ? int.tryParse(parts[1]) : null;
+          if (parts.first == 'weekday' && day != null && day >= 1 && day <= 7) {
+            return const [
+              'Monday',
+              'Tuesday',
+              'Wednesday',
+              'Thursday',
+              'Friday',
+              'Saturday',
+              'Sunday'
+            ][day - 1];
+          }
+          return 'Service day';
+        })
+        .toSet()
         .join(' · ');
     final rawType = row['giving_type']?.toString().replaceAll('_', ' ') ??
         'Scheduled giving';
     final type = rawType.isEmpty
         ? rawType
         : '${rawType[0].toUpperCase()}${rawType.substring(1)}';
+    final status = row['status']?.toString() == 'active' ? 'Active' : 'Paused';
     return Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Row(children: [
-          _LeadingIcon(icon: PhosphorIcons.calendarCheck()),
+          Icon(PhosphorIcons.calendarCheck(), size: 20),
           const SizedBox(width: 12),
           Expanded(
               child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                 Text(
-                    '$type · ${NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 0).format(amount)}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.w500)),
-                if (rules.isNotEmpty) ...[
-                  const SizedBox(height: 3),
-                  Text(rules,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 11, color: WpccColors.muted)),
-                ],
+                    '$type · ${NumberFormat.currency(locale: 'en_NG', symbol: 'NGN ', decimalDigits: 0).format(amount)}',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontSize: 15,
+                        height: 21 / 15,
+                        fontWeight: FontWeight.w500)),
+                const SizedBox(height: 4),
+                Text([status, if (rules.isNotEmpty) rules].join(' · '),
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodySmall
+                        ?.copyWith(height: 1.5)),
               ])),
-          Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                  color: WpccColors.successBackground,
-                  borderRadius: BorderRadius.circular(12)),
-              child: Text(
-                  row['status']?.toString() == 'active' ? 'Active' : 'Paused',
-                  style: const TextStyle(
-                      fontSize: 9,
-                      color: WpccColors.success,
-                      fontWeight: FontWeight.w600))),
         ]));
   }
-}
-
-class _LeadingIcon extends StatelessWidget {
-  const _LeadingIcon({required this.icon});
-  final IconData icon;
-  @override
-  Widget build(BuildContext context) => Container(
-      width: 42,
-      height: 42,
-      decoration: BoxDecoration(
-          color: WpccColors.subtle, borderRadius: BorderRadius.circular(14)),
-      child: Icon(icon, size: 19, color: WpccColors.ink));
-}
-
-class _Divider extends StatelessWidget {
-  const _Divider();
-  @override
-  Widget build(BuildContext context) => const Divider(
-      height: 1, indent: 68, endIndent: 14, color: WpccColors.lineSubtle);
 }

@@ -115,7 +115,7 @@ begin
     '17 * * * *',
     $job$
       select net.http_post(
-        url := 'https://pgpihzhvysbadrzjhvxw.supabase.co/functions/v1/sync-spotify-sermons',
+        url := 'https://api.wisdompowercc.org/functions/v1/sync-spotify-sermons',
         headers := jsonb_build_object(
           'Content-Type', 'application/json',
           'x-sync-secret', (

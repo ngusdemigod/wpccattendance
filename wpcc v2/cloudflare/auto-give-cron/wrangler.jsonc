@@ -1,0 +1,15 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wpcc-auto-give-cron",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+  "triggers": {
+    "crons": ["* * * * *"]
+  },
+  "vars": {
+    "WPCC_PROJECT_URL": "https://api.wisdompowercc.org"
+  },
+  "observability": {
+    "enabled": true
+  }
+}

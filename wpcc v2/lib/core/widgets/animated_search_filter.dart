@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
+import '../theme/app_motion.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-
-import '../theme/app_theme.dart';
 
 class AnimatedSearchFilter extends StatefulWidget {
   const AnimatedSearchFilter({
@@ -45,17 +44,21 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
   Widget build(BuildContext context) {
     return Row(mainAxisSize: MainAxisSize.min, children: [
       AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : AppMotion.control,
+        curve: AppMotion.curve,
         width: expanded ? 218 : 50,
         height: 50,
         decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: .94),
-            borderRadius: BorderRadius.circular(999),
-            border: Border.all(color: WpccColors.line)),
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: .94),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant)),
         child: Row(children: [
           IconButton(
               onPressed: expanded ? () => focusNode.requestFocus() : open,
+              tooltip: 'Search',
               icon: Icon(PhosphorIcons.magnifyingGlass(), size: 18),
               padding: EdgeInsets.zero,
               constraints:
@@ -65,7 +68,10 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
               child: TextField(
                 controller: controller,
                 focusNode: focusNode,
-                onChanged: widget.onSearch,
+                onChanged: (value) {
+                  widget.onSearch(value);
+                  setState(() {});
+                },
                 onTapOutside: (_) {
                   focusNode.unfocus();
                   if (controller.text.isEmpty) setState(() => expanded = false);
@@ -93,8 +99,8 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
         tooltip: 'Filter',
         initialValue: widget.selectedFilter,
         onSelected: widget.onFilter,
-        color: Colors.white.withValues(alpha: .96),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        color: Theme.of(context).colorScheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         itemBuilder: (context) => widget.filterOptions
             .map((option) => PopupMenuItem(
                   value: option,
@@ -104,14 +110,16 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
                         const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
                     decoration: BoxDecoration(
                         color: widget.selectedFilter == option
-                            ? WpccColors.ink
+                            ? Theme.of(context).colorScheme.onSurface
                             : Colors.transparent,
                         borderRadius: BorderRadius.circular(12)),
                     child: Text(option,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: widget.selectedFilter == option
-                                ? Colors.white
-                                : WpccColors.inkSoft)),
+                                ? Theme.of(context).colorScheme.surface
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)),
                   ),
                 ))
             .toList(),
@@ -120,18 +128,18 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
           height: 48,
           decoration: BoxDecoration(
               color: widget.selectedFilter == widget.filterOptions.first
-                  ? Colors.white
-                  : WpccColors.ink,
-              borderRadius: BorderRadius.circular(999),
+                  ? Theme.of(context).colorScheme.surface
+                  : Theme.of(context).colorScheme.onSurface,
+              borderRadius: BorderRadius.circular(8),
               border: Border.all(
                   color: widget.selectedFilter == widget.filterOptions.first
-                      ? WpccColors.line
-                      : WpccColors.ink)),
+                      ? Theme.of(context).colorScheme.outlineVariant
+                      : Theme.of(context).colorScheme.onSurface)),
           child: Icon(PhosphorIcons.funnelSimple(),
               size: 18,
               color: widget.selectedFilter == widget.filterOptions.first
-                  ? WpccColors.ink
-                  : Colors.white),
+                  ? Theme.of(context).colorScheme.onSurface
+                  : Theme.of(context).colorScheme.surface),
         ),
       ),
     ]);

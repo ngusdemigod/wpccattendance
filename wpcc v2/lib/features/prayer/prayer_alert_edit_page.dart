@@ -238,7 +238,7 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                       Icon(
                         PhosphorIcons.clock(),
                         size: 42,
-                        color: WpccColors.ink,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ],
                   ),
@@ -283,7 +283,7 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                         });
                       },
                       showCheckmark: false,
-                      selectedColor: WpccColors.ink,
+                      selectedColor: Theme.of(context).colorScheme.onSurface,
                       label: SizedBox(
                         width: double.infinity,
                         child: Text(labels[index], textAlign: TextAlign.center),
@@ -293,8 +293,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       labelStyle: TextStyle(
                         fontSize: 11,
-                        color:
-                            days.contains(day) ? Colors.white : WpccColors.ink,
+                        color: days.contains(day)
+                            ? Colors.white
+                            : Theme.of(context).colorScheme.onSurface,
                       ),
                       side: BorderSide.none,
                     ),
@@ -316,7 +317,8 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                   : 'No duration · count up',
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+              ).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             value: hasDuration,
             onChanged: (value) => setState(() => hasDuration = value),
@@ -341,7 +343,8 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
               'Used by supported installed PWA/browser notifications',
               style: Theme.of(
                 context,
-              ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+              ).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant),
             ),
             value: vibrationEnabled,
             onChanged: (value) => setState(() => vibrationEnabled = value),
@@ -363,7 +366,7 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: Theme.of(context).colorScheme.surface,
               borderRadius: BorderRadius.circular(20),
             ),
             child: Column(
@@ -379,7 +382,8 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                       'No published prayer audio selected',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+                  ).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
               ],
             ),
@@ -394,8 +398,9 @@ class _PrayerAlertEditPageState extends State<PrayerAlertEditPage> {
                         'Save this alert first, then open it from Prayer alerts to test the full session.',
                       ),
               style: OutlinedButton.styleFrom(
-                foregroundColor: WpccColors.ink,
-                side: const BorderSide(color: WpccColors.line),
+                foregroundColor: Theme.of(context).colorScheme.onSurface,
+                side: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant),
                 backgroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),

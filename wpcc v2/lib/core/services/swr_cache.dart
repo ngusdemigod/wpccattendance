@@ -17,6 +17,7 @@ class SwrCache {
 
   static const defaultFreshFor = Duration(minutes: 5);
   static const defaultMaxStale = Duration(hours: 1);
+  static const maximumEntries = 200;
 
   void bind(SupabaseClient client) {
     if (identical(_client, client)) return;
@@ -25,6 +26,7 @@ class SwrCache {
       _client!.removeChannel(_channel!);
     }
     _client = client;
+    clear();
     _authSubscription = client.auth.onAuthStateChange.listen((_) => clear());
     _channel = client
         .channel('wpcc-swr-invalidation')
@@ -44,11 +46,16 @@ class SwrCache {
   }) async {
     final scopedKey = _scoped(key);
     final cached = _entries[scopedKey];
+    if (cached != null) {
+      _entries.remove(scopedKey);
+      _entries[scopedKey] = cached;
+    }
     final age =
         cached == null ? null : DateTime.now().difference(cached.savedAt);
-    if (cached != null && age! <= freshFor) return cached.value as T;
+    if (cached != null && age! < freshFor) return cached.value as T;
     if (cached != null && age! <= maxStale) {
-      unawaited(_refresh(scopedKey, loader));
+      unawaited(_refresh(scopedKey, loader)
+          .then<void>((_) {}, onError: (Object _, StackTrace __) {}));
       return cached.value as T;
     }
     return _refresh(scopedKey, loader);
@@ -57,11 +64,19 @@ class SwrCache {
   Future<T> _refresh<T>(String key, SwrLoader<T> loader) {
     final existing = _inFlight[key];
     if (existing != null) return existing.then((value) => value as T);
-    final request = loader().then<Object?>((value) {
-      _entries[key] = _SwrEntry(value, DateTime.now());
+    late final Future<Object?> request;
+    request = Future<T>.sync(loader).then<Object?>((value) {
+      // Invalidated or previous-session responses must never repopulate cache.
+      if (identical(_inFlight[key], request)) {
+        _entries.remove(key);
+        _entries[key] = _SwrEntry(value, DateTime.now());
+        while (_entries.length > maximumEntries) {
+          _entries.remove(_entries.keys.first);
+        }
+      }
       return value;
     }).whenComplete(() {
-      _inFlight.remove(key);
+      if (identical(_inFlight[key], request)) _inFlight.remove(key);
     });
     _inFlight[key] = request;
     return request.then((value) => value as T);
@@ -69,11 +84,12 @@ class SwrCache {
 
   void invalidate([String? keyPrefix]) {
     if (keyPrefix == null) {
-      _entries.clear();
+      clear();
       return;
     }
     final scopedPrefix = _scoped(keyPrefix);
     _entries.removeWhere((key, _) => key.startsWith(scopedPrefix));
+    _inFlight.removeWhere((key, _) => key.startsWith(scopedPrefix));
   }
 
   void clear() {

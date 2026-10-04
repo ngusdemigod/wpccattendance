@@ -45,7 +45,7 @@ export async function presignR2(config:PrivateR2Config, method:"GET"|"PUT"|"DELE
   return `${config.endpoint}${uri}?${query}&X-Amz-Signature=${signature}`;
 }
 export async function putPrivateObject(config:PrivateR2Config,key:string,contentType:string,bytes:Uint8Array){
-  const response=await fetch(await presignR2(config,"PUT",key,contentType),{method:"PUT",headers:{"Content-Type":contentType,"Content-Length":String(bytes.length)},body:bytes});
+  const response=await fetch(await presignR2(config,"PUT",key,contentType),{method:"PUT",headers:{"Content-Type":contentType,"Content-Length":String(bytes.length)},body:new Uint8Array(bytes).buffer});
   if(!response.ok) throw new Error("Private R2 upload failed");
 }
 export async function deletePrivateObject(config:PrivateR2Config,key:string){

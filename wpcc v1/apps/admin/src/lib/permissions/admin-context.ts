@@ -1,0 +1,6 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { AccessPreset, Permission } from './catalogue';
+export type AdminContext={userId:string;role:'admin'|'globaladmin';branchId:string;preset:AccessPreset;permissions:Permission[]};
+export const can=(context:AdminContext,permission:Permission)=>context.permissions.includes(permission);
+export const canAny=(context:AdminContext,permissions:Permission[])=>permissions.some(permission=>can(context,permission));
+export async function resolveAdminContext(client:SupabaseClient):Promise<AdminContext|null>{const{data:userData,error:userError}=await client.auth.getUser();const userId=userData.user?.id??'';if(userError||!userId)return null;const{data,error}=await client.rpc('churchmetric_admin_context',{});if(error||!data||typeof data!=='object'||Array.isArray(data))return null;const context=data as Record<string,unknown>,role=typeof context.role==='string'?context.role.toLowerCase():'';if(role!=='admin'&&role!=='globaladmin')return null;return{userId,role,branchId:typeof context.branch_id==='string'?context.branch_id:'',preset:typeof context.preset==='string'?context.preset as AccessPreset:role==='globaladmin'?'super_admin':'administrator',permissions:Array.isArray(context.permissions)?context.permissions.filter((value):value is Permission=>typeof value==='string'):[]};}

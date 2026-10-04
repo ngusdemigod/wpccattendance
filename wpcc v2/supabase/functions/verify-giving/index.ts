@@ -2,6 +2,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 const cors={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type","Access-Control-Allow-Methods":"POST, OPTIONS"};
 const json=(body:unknown,status=200)=>new Response(JSON.stringify(body),{status,headers:{...cors,"Content-Type":"application/json"}});
 const env=(n:string)=>{const v=Deno.env.get(n)?.trim();if(!v)throw new Error(`Missing ${n}`);return v;};
+const serviceKey=()=>Deno.env.get("SUPABASE_SECRET_KEY")?.trim()||Deno.env.get("SERVICE_ROLE_KEY")?.trim()||env("SUPABASE_SERVICE_ROLE_KEY");
 async function record(admin:any,reference:string,data:any){
   const authorization=data?.authorization||{}; const customer=data?.customer||{};
   return await admin.rpc("wpcc_record_paystack_transaction",{
@@ -19,7 +20,7 @@ Deno.serve(async(req)=>{
   try{
     const auth=req.headers.get("authorization")||""; const token=auth.toLowerCase().startsWith("bearer ")?auth.slice(7).trim():"";
     if(!token)return json({error:"Authentication required"},401);
-    const admin=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
+    const admin=createClient(env("SUPABASE_URL"),serviceKey(),{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:userData}=await admin.auth.getUser(token); if(!userData.user)return json({error:"Authentication required"},401);
     const body=await req.json().catch(()=>null) as {reference?:string}|null; const reference=String(body?.reference||"").trim();
     if(!reference)return json({error:"Reference is required"},400);

@@ -24,13 +24,17 @@ void main() {
     await Supabase.instance.dispose();
   });
 
-  testWidgets('blank membership code shows inline validation', (tester) async {
+  testWidgets('blank membership code cannot be submitted', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: LoginPage()));
+    await tester.pump(const Duration(milliseconds: 700));
 
-    await tester.tap(find.text('Send sign in link'));
+    await tester.tap(find.text('Sign in with membership code'));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
 
-    expect(find.text('Enter your membership code.'), findsOneWidget);
+    final continueButton = find.widgetWithText(FilledButton, 'Continue');
+    expect(tester.widget<FilledButton>(continueButton).onPressed, isNull);
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('search and filter controls meet minimum target size',
@@ -55,8 +59,7 @@ void main() {
     expect(filterButton.height, greaterThanOrEqualTo(48));
   });
 
-  testWidgets(
-      'bottom navigation exposes selected semantics and readable labels',
+  testWidgets('navigation exposes labels, selected semantics and tooltips',
       (tester) async {
     final router = GoRouter(
       initialLocation: '/home',
@@ -77,11 +80,43 @@ void main() {
           .isSelected,
       Tristate.isTrue,
     );
-    final label = tester.widget<Text>(find.text('Home'));
-    expect(label.style?.fontSize, greaterThanOrEqualTo(12));
+    expect(find.text('Home'),
+        findsNothing); // Icon-only dock retains its semantic label.
+    expect(find.byTooltip('Home'), findsOneWidget);
     expect(find.bySemanticsLabel('Media'), findsOneWidget);
     expect(find.bySemanticsLabel('Department'), findsNothing);
     semantics.dispose();
+  });
+
+  testWidgets('all tabs remain reachable with large text on a small phone',
+      (tester) async {
+    tester.view.physicalSize = const Size(320, 600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const paths = ['/home', '/media', '/events', '/give', '/profile'];
+    const labels = ['Home', 'Media', 'Events', 'Give', 'Profile'];
+    final router = GoRouter(initialLocation: '/home', routes: [
+      for (final path in paths)
+        GoRoute(
+            path: path,
+            builder: (_, __) =>
+                AppShell(child: Center(child: Text('Screen $path')))),
+    ]);
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(
+      routerConfig: router,
+      builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context)
+              .copyWith(textScaler: const TextScaler.linear(2)),
+          child: child!),
+    ));
+    for (var i = 0; i < paths.length; i++) {
+      await tester.tap(find.byTooltip(labels[i]));
+      await tester.pumpAndSettle();
+      expect(find.text('Screen ${paths[i]}'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    }
   });
 
   testWidgets('give payment remains scrollable on a short viewport',
@@ -99,9 +134,9 @@ void main() {
     ));
 
     expect(find.byType(CustomScrollView), findsOneWidget);
-    expect(find.text('Auto give this amount'), findsOneWidget);
+    expect(find.text('Auto give'), findsOneWidget);
     expect(find.text('Set up Auto Give'), findsNothing);
-    await tester.tap(find.text('Auto give this amount'));
+    await tester.tap(find.text('Auto give'));
     await tester.pump(const Duration(milliseconds: 220));
     expect(find.text('Mon'), findsOneWidget);
     expect(find.text('Sun'), findsOneWidget);
@@ -109,6 +144,37 @@ void main() {
     expect(find.text('Charge time'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
+
+  for (final size in [const Size(390, 844), const Size(834, 1194)]) {
+    testWidgets('giving keypad and schedule at $size', (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      await tester.pumpWidget(MaterialApp(
+        home: GivePaymentPage(
+          payload: {'title': 'Offering'},
+          eventLoader: () async => {'upcoming': [], 'recurring': []},
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+          isNull);
+      await tester.tap(find.text('1'));
+      await tester.tap(find.text('00'));
+      await tester.pump();
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+          isNotNull);
+      await tester.tap(find.bySemanticsLabel('Delete last digit'));
+      await tester.pump();
+      expect(tester.widget<FilledButton>(find.byType(FilledButton)).onPressed,
+          isNull);
+      await tester.tap(find.text('Auto give'));
+      await tester.pumpAndSettle();
+      expect(find.text('Service days'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('prayer time control exposes button name and value',
       (tester) async {

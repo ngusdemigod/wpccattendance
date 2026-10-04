@@ -8,11 +8,16 @@ import '../theme/app_theme.dart';
 
 class InitialsAvatar extends StatelessWidget {
   const InitialsAvatar(
-      {super.key, required this.initials, this.size = 40, this.imageUrl});
+      {super.key,
+      required this.initials,
+      this.size = 40,
+      this.imageUrl,
+      this.memberStyle = false});
 
   final String initials;
   final double size;
   final String? imageUrl;
+  final bool memberStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -41,58 +46,81 @@ class InitialsAvatar extends StatelessWidget {
       height: size,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFE8EAF0), width: 1),
-        boxShadow: const [
-          BoxShadow(
-              color: Color(0x0A31374E), blurRadius: 22, offset: Offset(0, 10))
-        ],
+        border: Border.all(
+            color: memberStyle
+                ? Theme.of(context).colorScheme.outlineVariant
+                : const Color(0xFFE8EAF0),
+            width: 1),
+        boxShadow: memberStyle
+            ? const []
+            : const [
+                BoxShadow(
+                    color: Color(0x0A31374E),
+                    blurRadius: 22,
+                    offset: Offset(0, 10))
+              ],
       ),
       clipBehavior: Clip.antiAlias,
       child: child,
     );
   }
 
-  Widget _fallback(BuildContext context) => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [WpccColors.lavender, WpccColors.coolBlue, WpccColors.warm],
-            stops: [0, .55, 1],
-            transform: GradientRotation(2.530727),
-          ),
-        ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Center(
-              child: Text(
-                initials,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+  Widget _fallback(BuildContext context) => memberStyle
+      ? ColoredBox(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          child: Center(
+              child: Text(initials,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      fontSize: size * .25,
-                      letterSpacing: -.4,
-                    ),
-              ),
+                      fontSize: size * 24 / 76,
+                      letterSpacing: 0,
+                      color: Theme.of(context).colorScheme.onSurface))),
+        )
+      : Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                WpccColors.lavender,
+                WpccColors.coolBlue,
+                WpccColors.warm
+              ],
+              stops: [0, .55, 1],
+              transform: GradientRotation(2.530727),
             ),
-            IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: const Alignment(-.4, -.52),
-                    radius: .72,
-                    colors: [
-                      Colors.white.withValues(alpha: .44),
-                      Colors.transparent
-                    ],
-                    stops: const [0, .55],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: Text(
+                  initials,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontSize: size * .25,
+                        letterSpacing: -.4,
+                      ),
+                ),
+              ),
+              IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: const Alignment(-.4, -.52),
+                      radius: .72,
+                      colors: [
+                        Colors.white.withValues(alpha: .44),
+                        Colors.transparent
+                      ],
+                      stops: const [0, .55],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      );
+            ],
+          ),
+        );
 }
 
 class _PrivateR2Avatar extends StatefulWidget {
@@ -126,7 +154,10 @@ class _PrivateR2AvatarState extends State<_PrivateR2Avatar> {
   }
 
   Future<Uint8List> _resolve() async {
-    final cached = cache[widget.storedUrl];
+    final user = Supabase.instance.client.auth.currentUser?.id;
+    if (user == null) throw StateError('Authentication required');
+    final cacheKey = '$user:${widget.storedUrl}';
+    final cached = cache[cacheKey];
     if (cached != null && cached.expiresAt.isAfter(DateTime.now())) {
       return cached.bytes;
     }
@@ -141,7 +172,8 @@ class _PrivateR2AvatarState extends State<_PrivateR2Avatar> {
     final encoded = data['data_base64']?.toString() ?? '';
     if (encoded.isEmpty) throw StateError('Avatar unavailable');
     final bytes = base64Decode(encoded);
-    cache[widget.storedUrl] = (
+    if (cache.length >= 32) cache.remove(cache.keys.first);
+    cache[cacheKey] = (
       bytes: bytes,
       expiresAt: DateTime.now().add(const Duration(minutes: 4)),
     );

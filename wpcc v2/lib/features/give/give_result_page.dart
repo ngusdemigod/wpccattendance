@@ -110,10 +110,12 @@ class _GiveResultPageState extends State<GiveResultPage> {
                 ),
                 const SizedBox(height: 8),
                 if (successful)
-                  const Text(
+                  Text(
                     'Thank you for giving. Your receipt is ready.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 12, color: WpccColors.muted),
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 if (successful) const SizedBox(height: 18),
                 Text(
@@ -127,8 +129,9 @@ class _GiveResultPageState extends State<GiveResultPage> {
                 Container(
                   padding: const EdgeInsets.all(15),
                   decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: WpccColors.line),
+                    color: Theme.of(context).colorScheme.surface,
+                    border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant),
                     borderRadius: BorderRadius.circular(24),
                   ),
                   child: Column(
@@ -184,7 +187,7 @@ class _GiveResultPageState extends State<GiveResultPage> {
                 FilledButton(
                   onPressed: () => context.go('/give'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: WpccColors.ink,
+                    backgroundColor: Theme.of(context).colorScheme.onSurface,
                     minimumSize: const Size.fromHeight(50),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(18),
@@ -242,7 +245,9 @@ class _GiveResultPageState extends State<GiveResultPage> {
               width: 112,
               child: Text(
                 label,
-                style: const TextStyle(fontSize: 11, color: WpccColors.muted),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
             Expanded(

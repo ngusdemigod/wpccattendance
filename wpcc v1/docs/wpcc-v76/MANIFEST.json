@@ -1,0 +1,203 @@
+[
+  {
+    "page_bundle": "01-home",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "01-home.png"
+    ]
+  },
+  {
+    "page_bundle": "02-departments-list",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "02-departments-list.png"
+    ]
+  },
+  {
+    "page_bundle": "03-department-detail",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "03-department-overview.png",
+      "04-department-actions-menu.png",
+      "05-department-members.png",
+      "06-department-member-public-sheet.png",
+      "07-department-member-avatar-expanded.png",
+      "08-department-members-search.png",
+      "09-department-members-filter.png",
+      "10-department-attendance-events.png",
+      "11-department-attendance-event-members.png",
+      "12-department-attendance-filter.png",
+      "13-department-files.png",
+      "14-department-files-search.png",
+      "15-department-files-filter.png"
+    ]
+  },
+  {
+    "page_bundle": "04-department-new-wallet",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "16-department-new-wallet.png"
+    ]
+  },
+  {
+    "page_bundle": "05-department-change-profile",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "17-department-change-profile.png"
+    ]
+  },
+  {
+    "page_bundle": "06-department-create-event",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "18-department-create-event.png"
+    ]
+  },
+  {
+    "page_bundle": "07-department-post-announcement",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "19-department-post-announcement.png"
+    ]
+  },
+  {
+    "page_bundle": "08-department-manage-files",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "20-department-manage-files.png"
+    ]
+  },
+  {
+    "page_bundle": "09-events-list",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "21-events-list.png"
+    ]
+  },
+  {
+    "page_bundle": "10-event-detail",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "22-event-detail-overview.png",
+      "23-event-detail-attendance.png"
+    ]
+  },
+  {
+    "page_bundle": "11-give-home",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "24-give-home.png"
+    ]
+  },
+  {
+    "page_bundle": "12-give-payment",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "25-give-payment.png"
+    ]
+  },
+  {
+    "page_bundle": "13-auto-give",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "26-auto-give.png"
+    ]
+  },
+  {
+    "page_bundle": "14-give-success",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "27-give-success.png"
+    ]
+  },
+  {
+    "page_bundle": "15-giving-history-invoice",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "28-giving-history.png",
+      "29-giving-invoice-sheet.png"
+    ]
+  },
+  {
+    "page_bundle": "16-profile-overview",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "30-profile-overview.png",
+      "31-profile-overview-scrolled.png"
+    ]
+  },
+  {
+    "page_bundle": "17-profile-classes",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "32-profile-classes.png"
+    ]
+  },
+  {
+    "page_bundle": "18-profile-query",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "33-profile-query.png"
+    ]
+  },
+  {
+    "page_bundle": "19-search",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "34-search-default.png",
+      "35-search-results.png",
+      "36-search-empty.png"
+    ]
+  },
+  {
+    "page_bundle": "20-wisdom-devotional-list",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "37-wisdom-devotional.png"
+    ]
+  },
+  {
+    "page_bundle": "21-wisdom-devotional-post",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "38-wisdom-devotional-post.png"
+    ]
+  },
+  {
+    "page_bundle": "22-prayer-alerts",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "39-prayer-alerts.png",
+      "40-prayer-leaderboard-deferred.png"
+    ]
+  },
+  {
+    "page_bundle": "23-prayer-alert-edit",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "41-prayer-alert-edit.png"
+    ]
+  },
+  {
+    "page_bundle": "24-prayer-session",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "42-prayer-session-countdown.png",
+      "43-prayer-session-count-up.png"
+    ]
+  },
+  {
+    "page_bundle": "25-souls-entrypoint",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "01-home.png"
+    ]
+  },
+  {
+    "page_bundle": "26-counselling-entrypoint",
+    "prompt": "PROMPT.md",
+    "screenshots": [
+      "01-home.png"
+    ]
+  }
+]

@@ -7,9 +7,16 @@ import '../../core/services/receipt_export_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'give_repository.dart';
+import '../../core/widgets/member_skeleton.dart';
+import '../../core/widgets/member_sheet.dart';
+
+typedef GivingHistoryLoader = Future<List<Map<String, dynamic>>> Function(
+    {required int limit, required int offset});
 
 class GivingHistoryPage extends StatefulWidget {
-  const GivingHistoryPage({super.key});
+  const GivingHistoryPage({super.key, this.embedded = false, this.loadHistory});
+  final bool embedded;
+  final GivingHistoryLoader? loadHistory;
 
   @override
   State<GivingHistoryPage> createState() => _GivingHistoryPageState();
@@ -17,12 +24,16 @@ class GivingHistoryPage extends StatefulWidget {
 
 class _GivingHistoryPageState extends State<GivingHistoryPage> {
   static const pageSize = 25;
-  final repo = GiveRepository();
+  late final repo = widget.loadHistory == null ? GiveRepository() : null;
+  Future<List<Map<String, dynamic>>> _fetch(int offset) =>
+      widget.loadHistory?.call(limit: pageSize, offset: offset) ??
+      repo!.history(limit: pageSize, offset: offset);
   final rows = <Map<String, dynamic>>[];
   bool loading = true;
   bool loadingMore = false;
   bool hasMore = true;
   Object? error;
+  int generation = 0;
 
   @override
   void initState() {
@@ -31,137 +42,153 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
   }
 
   Future<void> _refresh() async {
+    final requestGeneration = ++generation;
     if (mounted) {
       setState(() {
         loading = true;
+        loadingMore = false;
         error = null;
         hasMore = true;
         rows.clear();
       });
     }
     try {
-      final first = await repo.history(limit: pageSize, offset: 0);
-      if (!mounted) return;
+      final first = await _fetch(0);
+      if (!mounted || requestGeneration != generation) return;
       setState(() {
         rows.addAll(first);
         hasMore = first.length == pageSize;
       });
     } catch (e) {
-      if (mounted) setState(() => error = e);
+      if (mounted && requestGeneration == generation) setState(() => error = e);
     } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted && requestGeneration == generation) {
+        setState(() => loading = false);
+      }
     }
   }
 
   Future<void> _loadMore() async {
-    if (loadingMore || !hasMore) return;
+    if (loading || loadingMore || !hasMore) return;
+    final requestGeneration = generation;
     setState(() => loadingMore = true);
     try {
-      final next = await repo.history(limit: pageSize, offset: rows.length);
-      if (!mounted) return;
+      final next = await _fetch(rows.length);
+      if (!mounted || requestGeneration != generation) return;
       setState(() {
         rows.addAll(next);
         hasMore = next.length == pageSize;
       });
     } catch (e) {
-      if (mounted) {
+      if (mounted && requestGeneration == generation) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Unable to load more giving history: $e')),
         );
       }
     } finally {
-      if (mounted) setState(() => loadingMore = false);
+      if (mounted && requestGeneration == generation) {
+        setState(() => loadingMore = false);
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      leading: IconButton(
-        onPressed: () => context.pop(),
-        icon: Icon(PhosphorIcons.caretLeft(), size: 20),
-      ),
-      title: const Text(
-        'Giving history',
-        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-      ),
-    ),
-    body: RefreshIndicator(
-      onRefresh: _refresh,
-      child: Builder(
-        builder: (context) {
-          if (loading) {
-            return ListView(
-              children: const [
-                SizedBox(
-                  height: 260,
-                  child: Center(child: CircularProgressIndicator()),
+        backgroundColor: Colors.transparent,
+        appBar: widget.embedded
+            ? null
+            : AppBar(
+                leading: IconButton(
+                  onPressed: () => context.pop(),
+                  icon: Icon(PhosphorIcons.caretLeft(), size: 20),
                 ),
-              ],
-            );
-          }
-          if (error != null) {
-            return ListView(
-              padding: const EdgeInsets.all(18),
-              children: [
-                SectionEmptyState(
-                  icon: PhosphorIcons.warningCircle(),
-                  message: 'Unable to load giving history',
-                  height: 220,
+                title: const Text(
+                  'Giving history',
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
-              ],
-            );
-          }
-          if (rows.isEmpty) {
-            return ListView(
-              padding: const EdgeInsets.all(18),
-              children: [
-                SectionEmptyState(
-                  icon: PhosphorIcons.receipt(),
-                  message: 'No giving transactions yet',
-                  height: 260,
-                ),
-              ],
-            );
-          }
-
-          return NotificationListener<ScrollNotification>(
-            onNotification: (notification) {
-              if (notification.metrics.extentAfter < 220) _loadMore();
-              return false;
-            },
-            child: ListView.separated(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 28),
-              itemCount: rows.length + (hasMore ? 1 : 0),
-              separatorBuilder: (_, index) => index < rows.length - 1
-                  ? const Divider(height: 1)
-                  : const SizedBox.shrink(),
-              itemBuilder: (context, index) {
-                if (index == rows.length) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 18),
-                    child: Center(
-                      child: loadingMore
-                          ? const SizedBox(
-                              width: 22,
-                              height: 22,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : TextButton(
-                              onPressed: _loadMore,
-                              child: const Text('Load more'),
-                            ),
+              ),
+        body: RefreshIndicator(
+          onRefresh: _refresh,
+          child: Builder(
+            builder: (context) {
+              if (loading) {
+                return ListView(
+                  children: const [
+                    SizedBox(
+                      height: 260,
+                      child: Padding(
+                          padding: EdgeInsets.all(20), child: MemberSkeleton()),
                     ),
-                  );
-                }
-                return _row(context, rows[index]);
-              },
-            ),
-          );
-        },
-      ),
-    ),
-  );
+                  ],
+                );
+              }
+              if (error != null) {
+                return ListView(
+                  padding: const EdgeInsets.all(18),
+                  children: [
+                    SectionEmptyState(
+                      icon: PhosphorIcons.warningCircle(),
+                      message: 'Unable to load giving history',
+                      height: 220,
+                    ),
+                    TextButton(onPressed: _refresh, child: const Text('Retry')),
+                  ],
+                );
+              }
+              if (rows.isEmpty) {
+                return ListView(
+                  padding: const EdgeInsets.all(18),
+                  children: [
+                    SectionEmptyState(
+                      icon: PhosphorIcons.receipt(),
+                      message: 'No giving transactions yet',
+                      height: 260,
+                    ),
+                  ],
+                );
+              }
+
+              return NotificationListener<ScrollNotification>(
+                onNotification: (notification) {
+                  if (notification.metrics.extentAfter < 220) _loadMore();
+                  return false;
+                },
+                child: ListView.separated(
+                  key: const PageStorageKey('giving-history-scroll'),
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                      20, 12, 20, widget.embedded ? 124 : 28),
+                  itemCount: rows.length + (hasMore ? 1 : 0),
+                  separatorBuilder: (_, index) => index < rows.length - 1
+                      ? const Divider(height: 1)
+                      : const SizedBox.shrink(),
+                  itemBuilder: (context, index) {
+                    if (index == rows.length) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 18),
+                        child: Center(
+                          child: loadingMore
+                              ? const SizedBox(
+                                  width: 22,
+                                  height: 22,
+                                  child:
+                                      CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : TextButton(
+                                  onPressed: _loadMore,
+                                  child: const Text('Load more'),
+                                ),
+                        ),
+                      );
+                    }
+                    return _row(context, rows[index]);
+                  },
+                ),
+              );
+            },
+          ),
+        ),
+      );
 
   Widget _row(BuildContext context, Map<String, dynamic> tx) {
     final successful = tx['status'] == 'successful';
@@ -177,7 +204,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
               decoration: BoxDecoration(
                 color: successful
                     ? WpccColors.successBackground
-                    : WpccColors.subtle,
+                    : Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(
@@ -187,7 +214,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                 size: 18,
                 color: successful
                     ? WpccColors.success
-                    : WpccColors.inkSoft,
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
             const SizedBox(width: 10),
@@ -207,7 +234,8 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                     _date(tx),
                     style: Theme.of(
                       context,
-                    ).textTheme.labelSmall?.copyWith(color: WpccColors.muted),
+                    ).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
                   ),
                 ],
               ),
@@ -225,9 +253,9 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                 Text(
                   _label(tx['status']),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    fontSize: 9,
-                    color: WpccColors.muted,
-                  ),
+                        fontSize: 9,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
               ],
             ),
@@ -237,19 +265,17 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
     );
   }
 
-  Future<void> _invoice(Map<String, dynamic> tx) => showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    showDragHandle: true,
-    useSafeArea: true,
-    builder: (context) => _InvoiceSheet(tx: tx),
-  );
+  Future<void> _invoice(Map<String, dynamic> tx) => showMemberSheet<void>(
+        context: context,
+        title: 'Giving receipt',
+        builder: (context) => _InvoiceSheet(tx: tx),
+      );
 
   String _amount(Map<String, dynamic> tx) => NumberFormat.currency(
-    locale: 'en_NG',
-    symbol: '₦',
-    decimalDigits: 2,
-  ).format((int.tryParse(tx['amount_kobo']?.toString() ?? '') ?? 0) / 100);
+        locale: 'en_NG',
+        symbol: '₦',
+        decimalDigits: 2,
+      ).format((int.tryParse(tx['amount_kobo']?.toString() ?? '') ?? 0) / 100);
 
   String _date(Map<String, dynamic> tx) {
     final d = DateTime.tryParse(
@@ -302,30 +328,25 @@ class _InvoiceSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Giving receipt',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 6),
-          Text(
             amount,
             style: Theme.of(
               context,
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 18),
-          _detail('Status', tx['status']),
-          _detail('Date', dateLabel),
+          _detail(context, 'Status', tx['status']),
+          _detail(context, 'Date', dateLabel),
           _detail(
+            context,
             'Reference',
             tx['paystack_reference'] ?? tx['internal_reference'],
           ),
           _detail(
+            context,
             'Payment source',
             tx['source_summary'] ?? tx['payment_channel'] ?? 'Paystack',
           ),
-          _detail('Receipt type', tx['receipt_type'] ?? 'PDF receipt'),
+          _detail(context, 'Receipt type', tx['receipt_type'] ?? 'PDF receipt'),
           const SizedBox(height: 18),
           Row(
             children: [
@@ -333,7 +354,7 @@ class _InvoiceSheet extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () => exporter.downloadPdf(tx),
                   style: FilledButton.styleFrom(
-                    backgroundColor: WpccColors.ink,
+                    backgroundColor: Theme.of(context).colorScheme.onSurface,
                   ),
                   icon: Icon(PhosphorIcons.filePdf(), size: 17),
                   label: const Text('Download PDF'),
@@ -354,25 +375,28 @@ class _InvoiceSheet extends StatelessWidget {
     );
   }
 
-  Widget _detail(String label, dynamic value) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 7),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(
-          width: 110,
-          child: Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: WpccColors.muted),
-          ),
+  Widget _detail(BuildContext context, String label, dynamic value) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 110,
+              child: Text(
+                label,
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ),
+            Expanded(
+              child: Text(
+                (value?.toString() ?? '—').replaceAll('_', ' '),
+                style:
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+              ),
+            ),
+          ],
         ),
-        Expanded(
-          child: Text(
-            (value?.toString() ?? '—').replaceAll('_', ' '),
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-          ),
-        ),
-      ],
-    ),
-  );
+      );
 }

@@ -8,6 +8,45 @@ void main() {
 
   setUp(cache.clear);
 
+  test('late invalidated requests cannot replace newer cached data', () async {
+    final old = Completer<int>();
+    final first = cache.get('events:race', () => old.future);
+    cache.invalidate('events:');
+    expect(await cache.get('events:race', () async => 2), 2);
+    old.complete(1);
+    await first;
+    expect(await cache.get('events:race', () async => 3), 2);
+  });
+
+  test('logout clear prevents pending requests from restoring cache', () async {
+    final old = Completer<int>();
+    final first = cache.get('private', () => old.future);
+    cache.clear();
+    old.complete(1);
+    await first;
+    expect(await cache.get('private', () async => 2), 2);
+  });
+
+  test('failed background refresh retains cached data without uncaught errors',
+      () async {
+    await cache.get('offline', () async => 1);
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    expect(
+        await cache.get<int>('offline', () async => throw StateError('offline'),
+            freshFor: Duration.zero),
+        1);
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+    expect(await cache.get('offline', () async => 2), 1);
+  });
+
+  test('cache has a bounded least-recently-used capacity', () async {
+    for (var i = 0; i <= SwrCache.maximumEntries; i++) {
+      await cache.get('item:$i', () async => i);
+    }
+    expect(await cache.get('item:0', () async => -1), -1);
+    expect(await cache.get('item:200', () async => -1), 200);
+  });
+
   test('reuses fresh data without issuing another request', () async {
     var requests = 0;
     Future<int> load() async => ++requests;

@@ -9,6 +9,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'prayer_repository.dart';
+import '../rewards/rewards_repository.dart';
 
 class PrayerSessionPage extends StatefulWidget {
   const PrayerSessionPage({super.key, required this.payload});
@@ -21,6 +22,8 @@ class PrayerSessionPage extends StatefulWidget {
 class _PrayerSessionPageState extends State<PrayerSessionPage>
     with WidgetsBindingObserver {
   final repo = PrayerRepository();
+  final rewards = RewardsRepository();
+  bool foreground = true;
   Timer? timer;
   Timer? serverSyncTimer;
   int elapsed = 0;
@@ -53,7 +56,17 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
     );
   }
 
+  Future<void> _rewardHeartbeat() async {
+    if (!foreground) return;
+    try {
+      await rewards.heartbeat(session['id'].toString());
+    } catch (_) {
+      // A later heartbeat retries; the display timer never grants points.
+    }
+  }
+
   Future<void> _syncServerClock() async {
+    if (foreground && !finishing) unawaited(_rewardHeartbeat());
     try {
       final active = await repo.activeSession();
       if (mounted && active != null) {
@@ -69,7 +82,8 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) _syncServerClock();
+    foreground = state == AppLifecycleState.resumed;
+    if (foreground) _syncServerClock();
   }
 
   @override
@@ -84,6 +98,7 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
     if (finishing) return;
     setState(() => finishing = true);
     try {
+      await _rewardHeartbeat();
       await repo.endSession(session['id'].toString(), status: status);
       if (mounted) context.pop();
     } catch (_) {
@@ -161,7 +176,8 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                           child: CircularProgressIndicator(
                             value: progress,
                             strokeWidth: 16,
-                            backgroundColor: WpccColors.line,
+                            backgroundColor:
+                                Theme.of(context).colorScheme.outlineVariant,
                             color: WpccColors.lavender,
                           ),
                         ),
@@ -178,7 +194,8 @@ class _PrayerSessionPageState extends State<PrayerSessionPage>
                       : 'Countdown · ${math.max(1, total ~/ 60)} min',
                   style: Theme.of(
                     context,
-                  ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
+                  ).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
                 ),
                 const SizedBox(height: 38),
                 Expanded(
@@ -231,9 +248,9 @@ class _TimerText extends StatelessWidget {
     return Text(
       value,
       style: Theme.of(context).textTheme.displayMedium?.copyWith(
-        fontWeight: FontWeight.w500,
-        letterSpacing: -2,
-      ),
+            fontWeight: FontWeight.w500,
+            letterSpacing: -2,
+          ),
     );
   }
 }
@@ -296,54 +313,56 @@ class _SongRowState extends State<_SongRow> {
 
   @override
   Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 8),
-    constraints: const BoxConstraints(minHeight: 102),
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                widget.track.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 4),
-              const Text(
-                'Prayer audio',
-                style: TextStyle(fontSize: 12, color: WpccColors.muted),
-              ),
-            ],
-          ),
+        margin: const EdgeInsets.only(bottom: 8),
+        constraints: const BoxConstraints(minHeight: 102),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(20),
         ),
-        IconButton.filled(
-          tooltip: state == PlayerState.playing
-              ? 'Pause ${widget.track.title}'
-              : 'Play ${widget.track.title}',
-          onPressed: toggle,
-          style: IconButton.styleFrom(
-            backgroundColor: WpccColors.ink,
-            foregroundColor: Colors.white,
-            minimumSize: const Size(48, 48),
-          ),
-          icon: Icon(
-            state == PlayerState.playing
-                ? PhosphorIcons.pause()
-                : PhosphorIcons.play(),
-            size: 18,
-          ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.track.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Prayer audio',
+                    style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                ],
+              ),
+            ),
+            IconButton.filled(
+              tooltip: state == PlayerState.playing
+                  ? 'Pause ${widget.track.title}'
+                  : 'Play ${widget.track.title}',
+              onPressed: toggle,
+              style: IconButton.styleFrom(
+                backgroundColor: Theme.of(context).colorScheme.onSurface,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(48, 48),
+              ),
+              icon: Icon(
+                state == PlayerState.playing
+                    ? PhosphorIcons.pause()
+                    : PhosphorIcons.play(),
+                size: 18,
+              ),
+            ),
+          ],
         ),
-      ],
-    ),
-  );
+      );
 }

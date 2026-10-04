@@ -1,25 +1,32 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/widgets/member_skeleton.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/widgets/adaptive_layout.dart';
+import '../../core/widgets/member_components.dart';
 import '../../core/widgets/initials_avatar.dart';
 import '../departments/department_repository.dart';
+import '../home/home_page.dart';
 import 'search_repository.dart';
+import 'search_filter_sheet.dart';
 
 class SearchPage extends StatefulWidget {
-  const SearchPage({super.key});
+  const SearchPage({super.key, this.loadSearch, this.initialFilter});
+  final Future<List<Map<String, dynamic>>> Function(String query)? loadSearch;
+  final String? initialFilter;
 
   @override
   State<SearchPage> createState() => _SearchPageState();
 }
 
 class _SearchPageState extends State<SearchPage> {
-  final repo = SearchRepository();
-  final departmentRepo = DepartmentRepository();
+  late final repo = SearchRepository();
+  late final departmentRepo = DepartmentRepository();
   final controller = TextEditingController();
   Timer? timer;
   List<String> recent = [];
@@ -28,11 +35,29 @@ class _SearchPageState extends State<SearchPage> {
   String? searchError;
   final searchRequests = SearchRequestCoordinator();
   String filter = 'All';
+  bool _filterInitialized = false;
 
   @override
   void initState() {
     super.initState();
     _loadRecent();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_filterInitialized) return;
+    final selection = MemberSearchScope.maybeOf(context);
+    final requested = widget.initialFilter ?? selection?.value ?? 'All';
+    filter =
+        sections.any((section) => section.$1 == requested) ? requested : 'All';
+    selection?.value = filter;
+    _filterInitialized = true;
+  }
+
+  void _selectFilter(String selected) {
+    MemberSearchScope.maybeOf(context)?.value = selected;
+    setState(() => filter = selected);
   }
 
   @override
@@ -62,8 +87,13 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   void _changed(String value) {
-    setState(() {});
     timer?.cancel();
+    searchRequests.begin();
+    setState(() {
+      loading = value.trim().isNotEmpty;
+      searchError = null;
+      if (!loading) results = [];
+    });
     timer = Timer(const Duration(milliseconds: 320), () => _search(value));
   }
 
@@ -85,7 +115,7 @@ class _SearchPageState extends State<SearchPage> {
       searchError = null;
     });
     try {
-      final found = await repo.search(query);
+      final found = await (widget.loadSearch ?? repo.search)(query);
       if (!mounted || !searchRequests.isCurrent(generation)) return;
       setState(() => results = found);
       if (remember) await _saveRecent(query);
@@ -103,186 +133,134 @@ class _SearchPageState extends State<SearchPage> {
   List<Map<String, dynamic>> get visible => filter == 'All'
       ? results
       : results
-            .where(
-              (row) =>
-                  _sectionLabel(row['section']?.toString() ?? '') == filter,
-            )
-            .toList();
+          .where(
+            (row) => _sectionLabel(row['section']?.toString() ?? '') == filter,
+          )
+          .toList();
+
+  static const sections = searchSections;
+
+  Future<void> _filters() async {
+    final selected = await showSearchFilterSheet(context, selected: filter);
+    if (!mounted || selected == null) return;
+    _selectFilter(selected);
+  }
+
+  Widget _heading(String title) => Padding(
+      padding: const EdgeInsets.only(bottom: 13),
+      child: Text(title,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontSize: 17, height: 24 / 17, fontWeight: FontWeight.w600)));
 
   @override
   Widget build(BuildContext context) {
     final hasQuery = controller.text.trim().isNotEmpty;
+    final groups = <String, List<Map<String, dynamic>>>{};
+    for (final row in visible) {
+      groups
+          .putIfAbsent(
+              _sectionLabel(row['section']?.toString() ?? ''), () => [])
+          .add(row);
+    }
     return Scaffold(
       body: SafeArea(
+        bottom: false,
         child: ListView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          padding: const EdgeInsets.fromLTRB(19, 12, 19, 32),
+          padding: memberPagePadding(context, top: 20, bottom: 124),
           children: [
-            Row(
-              children: [
-                IconButton.outlined(
-                  tooltip: 'Back',
-                  onPressed: () => context.pop(),
-                  style: IconButton.styleFrom(
-                    minimumSize: const Size(44, 44),
-                    side: const BorderSide(color: WpccColors.line),
-                    backgroundColor: Colors.white,
-                  ),
-                  icon: Icon(PhosphorIcons.arrowLeft(), size: 19),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: TextField(
+            MemberPageHeader(
+                title: 'Search',
+                onBack: () =>
+                    context.canPop() ? context.pop() : context.go('/home')),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                    maxWidth: MediaQuery.sizeOf(context).width >= 900
+                        ? 720
+                        : double.infinity),
+                child: MemberSearchBar(
                     controller: controller,
                     autofocus: true,
                     onChanged: _changed,
                     onSubmitted: (value) => _search(value, remember: true),
-                    decoration: InputDecoration(
-                      hintText: 'Search giving, events, departments',
-                      suffixIcon: controller.text.isEmpty
-                          ? Padding(
-                              padding: const EdgeInsets.all(9),
-                              child: DecoratedBox(
-                                decoration: const BoxDecoration(
-                                  color: WpccColors.primarySoft,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  PhosphorIcons.magnifyingGlass(),
-                                  size: 17,
-                                ),
-                              ),
-                            )
-                          : IconButton(
-                              tooltip: 'Clear search',
-                              onPressed: () {
-                                controller.clear();
-                                _changed('');
-                              },
-                              icon: Icon(PhosphorIcons.x(), size: 15),
-                            ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+                    onClear: controller.text.isEmpty
+                        ? null
+                        : () {
+                            controller.clear();
+                            _changed('');
+                          },
+                    onFilter: _filters),
+              ),
             ),
             const SizedBox(height: 12),
-            Text(
-              'Search across the app and jump straight to what you need.',
-              style: Theme.of(
-                context,
-              ).textTheme.bodySmall?.copyWith(color: WpccColors.inkSoft),
-            ),
-            if (!hasQuery && recent.isNotEmpty) ...[
-              const SizedBox(height: 22),
-              Text(
-                'Recent searches',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const SizedBox(height: 9),
-              Wrap(
-                spacing: 7,
-                runSpacing: 7,
-                children: recent
-                    .map(
-                      (term) => InputChip(
-                        label: Text(term),
-                        onPressed: () {
-                          controller.text = term;
-                          _search(term, remember: true);
-                          setState(() {});
-                        },
-                        onDeleted: () async {
-                          recent.remove(term);
-                          final prefs = await SharedPreferences.getInstance();
-                          await prefs.setStringList(
-                            'wpcc_recent_searches',
-                            recent,
-                          );
-                          if (mounted) setState(() {});
-                        },
-                        labelStyle: const TextStyle(fontSize: 11),
-                        backgroundColor: Colors.white,
-                        side: BorderSide.none,
-                      ),
-                    )
-                    .toList(),
-              ),
-            ],
-            const SizedBox(height: 28),
-            Text(
-              'Search Results',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(height: 10),
+            SizedBox(
+                height: 48,
+                child: ListView(scrollDirection: Axis.horizontal, children: [
+                  for (final section in sections)
+                    Padding(
+                        padding: const EdgeInsets.only(right: 7),
+                        child: MemberFilterChip(
+                            label: section.$1,
+                            icon: section.$2,
+                            selected: filter == section.$1,
+                            onPressed: () => _selectFilter(section.$1))),
+                ])),
+            const SizedBox(height: 25),
             if (hasQuery) ...[
               if (loading)
-                const Center(
-                  child: Padding(
-                    padding: EdgeInsets.all(36),
-                    child: CircularProgressIndicator(),
-                  ),
-                )
+                const MemberSkeleton(label: 'Searching')
               else if (searchError != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 100),
-                  child: Column(
-                    children: [
-                      Icon(
-                        PhosphorIcons.warningCircle(),
-                        size: 28,
-                        color: WpccColors.muted,
-                      ),
-                      const SizedBox(height: 9),
-                      Text(
-                        searchError!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: WpccColors.muted,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () => _search(controller.text),
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
+                MemberStatus(
+                    message: searchError!,
+                    icon: PhosphorIconsRegular.warningCircle,
+                    onRetry: () => _search(controller.text))
               else if (visible.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 120),
-                  child: Column(
-                    children: [
-                      Text(
-                        'No result found',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: WpccColors.inkSoft,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
+                const MemberStatus(
+                    message: 'No results',
+                    icon: PhosphorIconsRegular.magnifyingGlass)
               else
-                Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .94),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: WpccColors.line),
-                  ),
-                  child: Column(children: visible.map(_result).toList()),
-                ),
+                for (final group in groups.entries) ...[
+                  _heading(group.key),
+                  AdaptiveCards(
+                      minimumWidth: 420,
+                      maximumColumns: 2,
+                      gap: 7,
+                      children: group.value.map(_result).toList()),
+                  const SizedBox(height: 22),
+                ],
+            ] else ...[
+              if (recent.isNotEmpty) ...[
+                _heading('Recent searches'),
+                for (final term in recent)
+                  Padding(
+                      padding: const EdgeInsets.only(bottom: 7),
+                      child: MemberListRow(
+                          title: term,
+                          leading:
+                              const Icon(PhosphorIconsRegular.clock, size: 20),
+                          onTap: () {
+                            controller.text = term;
+                            _search(term, remember: true);
+                            setState(() {});
+                          },
+                          trailing: MemberIconButton(
+                              icon: PhosphorIconsRegular.x,
+                              label: 'Remove $term from recent searches',
+                              plain: true,
+                              onPressed: () async {
+                                recent.remove(term);
+                                final prefs =
+                                    await SharedPreferences.getInstance();
+                                await prefs.setStringList(
+                                    'wpcc_recent_searches', recent);
+                                if (mounted) setState(() {});
+                              }))),
+                const SizedBox(height: 22),
+              ],
+              _heading('Explore'),
+              const HomeQuickLinks(),
             ],
           ],
         ),
@@ -294,70 +272,24 @@ class _SearchPageState extends State<SearchPage> {
     final section = row['section']?.toString() ?? '';
     final title = row['title']?.toString() ?? '';
     final image = row['image_url']?.toString();
-    return InkWell(
+    final subtitle = row['subtitle']?.toString() ??
+        row['body']?.toString() ??
+        _sectionLabel(section);
+    return MemberListRow(
+      title: title,
+      subtitleWidget: Text(subtitle,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall),
+      leading: section == 'people'
+          ? InitialsAvatar(
+              memberStyle: true,
+              initials: _initials(title),
+              imageUrl: image,
+              size: 64)
+          : MemberArtwork(
+              imageUrl: image, size: 64, height: 66, icon: _icon(section)),
       onTap: () => _open(row),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: WpccColors.line)),
-        ),
-        child: Row(
-          children: [
-            if (section == 'people')
-              InitialsAvatar(
-                initials: _initials(title),
-                imageUrl: image,
-                size: 58,
-              )
-            else
-              Container(
-                width: 58,
-                height: 58,
-                decoration: BoxDecoration(
-                  color: WpccColors.subtle,
-                  borderRadius: BorderRadius.circular(13),
-                  image: image != null && image.isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(image),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: image == null || image.isEmpty
-                    ? Icon(_icon(section), size: 19)
-                    : null,
-              ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    row['subtitle']?.toString() ??
-                        row['body']?.toString() ??
-                        _sectionLabel(section),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(
-                      context,
-                    ).textTheme.bodySmall?.copyWith(color: WpccColors.muted),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -389,6 +321,7 @@ class _SearchPageState extends State<SearchPage> {
       final member = await departmentRepo.publicMember(id);
       if (!mounted || member == null) return;
       await showModalBottomSheet<void>(
+        sheetAnimationStyle: AppMotion.sheetStyle(context),
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
@@ -407,19 +340,19 @@ class _SearchPageState extends State<SearchPage> {
   }
 
   String _sectionLabel(String section) => switch (section) {
-    'events' => 'Events',
-    'departments' => 'Departments',
-    'announcements' => 'Announcements',
-    'people' => 'People',
-    _ => 'All',
-  };
+        'events' => 'Events',
+        'departments' => 'Departments',
+        'announcements' => 'Announcements',
+        'people' => 'People',
+        _ => 'All',
+      };
 
   IconData _icon(String section) => switch (section) {
-    'events' => PhosphorIcons.calendarDots(),
-    'departments' => PhosphorIcons.usersThree(),
-    'announcements' => PhosphorIcons.megaphone(),
-    _ => PhosphorIcons.fileText(),
-  };
+        'events' => PhosphorIcons.calendarDots(),
+        'departments' => PhosphorIcons.usersThree(),
+        'announcements' => PhosphorIcons.megaphone(),
+        _ => PhosphorIcons.fileText(),
+      };
 
   String _initials(String name) => name
       .split(RegExp(r'\s+'))
@@ -445,8 +378,7 @@ class _PublicMemberSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final departments =
         (member['departments'] as List?)?.cast<dynamic>() ?? const [];
-    final name =
-        member['full_name']?.toString() ??
+    final name = member['full_name']?.toString() ??
         member['display_name']?.toString() ??
         'Member';
     final initials = member['initials']?.toString() ?? '--';
@@ -458,9 +390,9 @@ class _PublicMemberSheet extends StatelessWidget {
         18,
         24 + MediaQuery.paddingOf(context).bottom,
       ),
-      decoration: const BoxDecoration(
-        color: WpccColors.background,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       child: SafeArea(
         top: false,
@@ -471,7 +403,7 @@ class _PublicMemberSheet extends StatelessWidget {
               width: 42,
               height: 4,
               decoration: BoxDecoration(
-                color: WpccColors.line,
+                color: Theme.of(context).colorScheme.outlineVariant,
                 borderRadius: BorderRadius.circular(99),
               ),
             ),
@@ -480,11 +412,12 @@ class _PublicMemberSheet extends StatelessWidget {
               message: 'View $name photo',
               child: Semantics(
                 button: true,
-                excludeSemantics: true,
+                excludeSemantics: false,
                 label: 'View $name photo',
                 child: InkWell(
                   customBorder: const CircleBorder(),
-                  onTap: () => showDialog<void>(
+                  onTap: () => showMotionDialog<void>(
+                    animationStyle: AppMotion.dialogStyle(context),
                     context: context,
                     barrierColor: Colors.black87,
                     builder: (_) => Dialog.fullscreen(
@@ -493,6 +426,7 @@ class _PublicMemberSheet extends StatelessWidget {
                         children: [
                           Center(
                             child: InitialsAvatar(
+                              memberStyle: true,
                               initials: initials,
                               imageUrl: avatar,
                               size: 280,
@@ -506,8 +440,9 @@ class _PublicMemberSheet extends StatelessWidget {
                                 context,
                                 rootNavigator: true,
                               ).pop(),
+                              tooltip: 'Close photo',
                               icon: const Icon(
-                                Icons.close,
+                                PhosphorIconsRegular.x,
                                 color: Colors.white,
                               ),
                             ),
@@ -517,6 +452,7 @@ class _PublicMemberSheet extends StatelessWidget {
                     ),
                   ),
                   child: InitialsAvatar(
+                    memberStyle: true,
                     initials: initials,
                     imageUrl: avatar,
                     size: 92,
@@ -531,7 +467,7 @@ class _PublicMemberSheet extends StatelessWidget {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
-                letterSpacing: -.4,
+                letterSpacing: 0,
               ),
             ),
             const SizedBox(height: 20),
@@ -546,9 +482,10 @@ class _PublicMemberSheet extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: Theme.of(context).colorScheme.surface,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: WpccColors.line),
+                border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,8 +497,10 @@ class _PublicMemberSheet extends StatelessWidget {
                       Text(
                         'Departments',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: WpccColors.muted,
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant,
+                            ),
                       ),
                     ],
                   ),
@@ -579,7 +518,8 @@ class _PublicMemberSheet extends StatelessWidget {
                           vertical: 7,
                         ),
                         decoration: BoxDecoration(
-                          color: WpccColors.subtle,
+                          color:
+                              Theme.of(context).colorScheme.surfaceContainerLow,
                           borderRadius: BorderRadius.circular(99),
                         ),
                         child: Text(
@@ -606,40 +546,43 @@ class _PublicMemberSheet extends StatelessWidget {
     IconData icon,
     String label,
     String value,
-  ) => Container(
-    width: double.infinity,
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      border: Border.all(color: WpccColors.line),
-    ),
-    child: Row(
-      children: [
-        Icon(icon, size: 18),
-        const SizedBox(width: 11),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(color: WpccColors.muted),
-              ),
-              const SizedBox(height: 3),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
+  ) =>
+      Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          borderRadius: BorderRadius.circular(22),
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
-      ],
-    ),
-  );
+        child: Row(
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: 11),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.labelSmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
 }

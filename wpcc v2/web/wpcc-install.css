@@ -1,0 +1,34 @@
+@font-face{font-family:InstallDM;src:url('assets/assets/DMSans-Regular.ttf') format('truetype');font-weight:400;font-display:swap}
+@font-face{font-family:InstallDM;src:url('assets/assets/DMSans-Medium.ttf') format('truetype');font-weight:500;font-display:swap}
+@font-face{font-family:InstallDM;src:url('assets/assets/DMSans-SemiBold.ttf') format('truetype');font-weight:600;font-display:swap}
+@font-face{font-family:InstallManrope;src:url('assets/assets/Manrope-ExtraBold.ttf') format('truetype');font-weight:800;font-display:swap}
+#wpcc-install{position:fixed;inset:0;z-index:9999;overflow:auto;--install-text:#111;--install-muted:#707382;--install-line:rgba(17,17,17,.08);--install-purple:#8b6cf6;--install-surface:rgba(255,255,255,.88);--install-tabs:rgba(244,244,247,.92);--install-active:#fff;--install-note:#8a8e9c;box-sizing:border-box;min-height:100vh;min-height:100dvh;color:var(--install-text);background:radial-gradient(circle at 12% 8%,rgba(139,108,246,.08),transparent 22%),radial-gradient(circle at 88% 12%,rgba(96,211,137,.06),transparent 22%),#f7f7fa;font:400 12px/1.45 InstallDM,sans-serif;display:flex;justify-content:center}
+#wpcc-install *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+#wpcc-install .install-sheet{width:100%;max-width:430px;margin:auto 0;padding:max(20px,env(safe-area-inset-top)) 24px calc(34px + env(safe-area-inset-bottom));animation:install-page-in .48s cubic-bezier(.22,.72,.18,1) both}
+#wpcc-install .install-content{display:flex;flex-direction:column;gap:22px}
+#wpcc-install .install-header{display:flex;flex-direction:column;align-items:flex-start;gap:18px}
+#wpcc-install .install-logo{width:64px;height:64px;border-radius:18px;background:#fff;display:grid;place-items:center;box-shadow:inset 0 0 0 1px rgba(17,17,17,.05)}
+#wpcc-install .install-logo img{width:42px;height:42px;object-fit:contain}
+#wpcc-install h1{margin:1px 0 8px;font:800 15px/1.2 InstallManrope,sans-serif;letter-spacing:-.035em}
+#wpcc-install .install-title p{margin:0;color:var(--install-muted);font-size:12px;line-height:1.45}
+#wpcc-install .install-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;padding:4px;border:1px solid var(--install-line);border-radius:16px;background:var(--install-tabs)}
+#wpcc-install .install-tabs button{appearance:none;border:0;background:transparent;color:var(--install-muted);height:42px;border-radius:13px;font:400 12px InstallDM,sans-serif;cursor:pointer;transition:background .18s cubic-bezier(.23,1,.32,1),color .18s cubic-bezier(.23,1,.32,1),box-shadow .18s cubic-bezier(.23,1,.32,1),transform .14s cubic-bezier(.23,1,.32,1)}
+#wpcc-install .install-tabs button:active{transform:scale(.985);transition-duration:.18s,.18s,.18s,.1s}
+#wpcc-install .install-tabs button.active{background:var(--install-active);color:var(--install-text);box-shadow:0 8px 18px #1111110f}
+#wpcc-install .install-panel{border:1px solid var(--install-line);border-radius:22px;padding:8px 10px;background:var(--install-surface);box-shadow:0 14px 34px #11111109}
+#wpcc-install .install-steps{display:flex;gap:10px;flex-direction:column;animation:install-panel-in .18s cubic-bezier(.23,1,.32,1) both}
+#wpcc-install .install-step{display:grid;grid-template-columns:34px 1fr;gap:12px;align-items:start;padding:12px 8px;border-radius:16px}
+#wpcc-install .install-num{width:34px;height:34px;margin-top:2px;border-radius:50%;display:grid;place-items:center;background:#8b6cf61f;color:var(--install-purple);font-size:12px;line-height:1}
+#wpcc-install h3{margin:0 0 4px;font-size:14px;font-weight:600;line-height:1.35;letter-spacing:-.01em}
+#wpcc-install .install-step p{margin:0;color:var(--install-muted);font-size:12px;line-height:1.5}
+#wpcc-install .install-note{color:var(--install-note);font-size:11px;line-height:1.45;text-align:center;padding:6px 8px 0;max-width:330px;margin:0 auto}
+#wpcc-install #install-action{border:0;border-radius:16px;min-height:48px;background:var(--install-purple);color:#fff;font:600 13px InstallDM,sans-serif;cursor:pointer;transition:transform .14s cubic-bezier(.23,1,.32,1)}
+#wpcc-install #install-action:active{transform:scale(.975);transition-duration:.1s;transition-timing-function:ease-out}
+#wpcc-install :focus-visible{outline:3px solid var(--install-purple);outline-offset:3px}
+#wpcc-install [hidden]{display:none!important}
+:root[data-startup-theme="dark"] #wpcc-install{--install-text:#f3edf7;--install-muted:#beb5ca;--install-line:#ffffff24;--install-surface:#24202de0;--install-tabs:#211d29;--install-active:#36303f;--install-note:#aaa1b8;background:radial-gradient(circle at 12% 8%,#8b6cf61a,transparent 30%),#17131f}
+@keyframes install-page-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes install-panel-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:380px){#wpcc-install .install-sheet{padding-left:20px;padding-right:20px}}
+@media(min-width:600px){#wpcc-install .install-sheet{max-width:640px;padding:40px 32px calc(40px + env(safe-area-inset-bottom))}}
+@media(prefers-reduced-motion:reduce){#wpcc-install .install-sheet,#wpcc-install .install-steps{animation:none}#wpcc-install button{transition:none!important}#wpcc-install button:active{transform:none!important}}

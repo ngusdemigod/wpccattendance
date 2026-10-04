@@ -1,0 +1,17 @@
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "churchmetric-email-scheduler",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-05",
+  "compatibility_flags": ["nodejs_compat"],
+  "triggers": {
+    "crons": ["*/2 * * * *"]
+  },
+  "vars": {
+    "DISPATCH_URL": "https://pgpihzhvysbadrzjhvxw.supabase.co/functions/v1/dispatch-churchmetric-email"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

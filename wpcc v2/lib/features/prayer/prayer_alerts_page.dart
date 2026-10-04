@@ -1,26 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/config/app_config.dart';
-import '../../core/theme/app_theme.dart';
-import '../../core/widgets/section_empty_state.dart';
 import 'prayer_repository.dart';
+import 'prayer_alerts_content.dart';
 import 'prayer_calendar_service.dart';
 import 'push_subscription_service.dart';
 
 class PrayerAlertsPage extends StatefulWidget {
-  const PrayerAlertsPage({super.key});
+  const PrayerAlertsPage({super.key, this.loadAlerts});
+  final Future<List<Map<String, dynamic>>> Function()? loadAlerts;
   @override
   State<PrayerAlertsPage> createState() => _PrayerAlertsPageState();
 }
 
 class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
-  final repo = PrayerRepository();
+  late final repo = PrayerRepository();
   final pushService = PushSubscriptionService();
   final calendarService = const PrayerCalendarService();
-  late Future<List<Map<String, dynamic>>> future = repo.alerts();
+  late Future<List<Map<String, dynamic>>> future =
+      (widget.loadAlerts ?? repo.alerts)();
   bool enablingPush = false;
   bool pushEnabledThisSession = false;
   bool snoozeHandled = false;
@@ -58,144 +57,56 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
     }
   }
 
-  void reload() => setState(() => future = repo.alerts());
+  void reload() => setState(() {
+        future = (widget.loadAlerts ?? repo.alerts)();
+      });
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        title: const Text(
-          'Prayer alerts',
-          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Add prayer alert',
-            onPressed: () async {
-              await context.push('/prayer-alerts/new');
-              reload();
-            },
-            icon: Icon(PhosphorIcons.plus(), size: 20),
-          ),
-        ],
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return SectionEmptyState(
-              icon: PhosphorIcons.warningCircle(),
-              message: 'Unable to load prayer alerts',
+  Widget build(BuildContext context) => Scaffold(
+        body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: future,
+          builder: (context, snapshot) {
+            return PrayerAlertsContent(
+              onBack: () =>
+                  context.canPop() ? context.pop() : context.go('/home'),
+              loading: snapshot.connectionState != ConnectionState.done,
+              onAdd: () async {
+                await context.push('/prayer-alerts/new');
+                if (mounted) reload();
+              },
+              alerts: snapshot.data ?? const [],
+              error: snapshot.hasError ? 'Unable to load prayer alerts' : null,
+              onRefresh: () async {
+                reload();
+                try {
+                  await future;
+                } catch (_) {}
+              },
+              onTap: (alert) {
+                if (alert['scope'] != 'personal') {
+                  _start(context, alert);
+                } else {
+                  context
+                      .push('/prayer-alerts/${alert['id']}/edit', extra: alert)
+                      .then((_) {
+                    if (mounted) reload();
+                  });
+                }
+              },
+              onStart: (alert) => _start(context, alert),
+              onCalendar: calendarService.downloadAlert,
+              onToggle: _setActive,
+              updating: updatingAlerts,
+              starting: startingAlerts,
+              onEnablePush:
+                  AppConfig.vapidPublicKey.isNotEmpty && !pushEnabledThisSession
+                      ? _enablePush
+                      : null,
+              enablingPush: enablingPush,
             );
-          }
-          final rows = snapshot.data ?? const [];
-          final global = rows.where((a) => a['scope'] != 'personal').toList();
-          final personal = rows.where((a) => a['scope'] == 'personal').toList();
-          return RefreshIndicator(
-            onRefresh: () async {
-              reload();
-              await future;
-            },
-            child: ListView(
-              padding: const EdgeInsets.fromLTRB(19, 4, 19, 110),
-              children: [
-                Text(
-                  'Prayer alerts',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontSize: 27,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: -1,
-                      ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Prayer reminders and church-wide prayer alerts.',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(color: WpccColors.inkSoft),
-                ),
-                const SizedBox(height: 32),
-                Text(
-                  'Church prayer alerts',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                if (global.isEmpty)
-                  SectionEmptyState(
-                    icon: PhosphorIcons.globeHemisphereWest(),
-                    message: 'No global prayer alerts',
-                    height: 110,
-                  )
-                else
-                  ...global.map(
-                    (a) => _AlertRow(
-                      alert: a,
-                      readOnly: true,
-                      onChanged: (_) {},
-                      onTap: () => _start(context, a),
-                      onStart: () => _start(context, a),
-                      onCalendar: () => calendarService.downloadAlert(a),
-                    ),
-                  ),
-                const SizedBox(height: 24),
-                Text(
-                  'My prayer alerts',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                if (personal.isEmpty)
-                  SectionEmptyState(
-                    icon: PhosphorIcons.bellSimple(),
-                    message: 'No personal prayer alerts',
-                    height: 130,
-                  )
-                else
-                  ...personal.map(
-                    (a) => _AlertRow(
-                      alert: a,
-                      readOnly: false,
-                      onChanged: (value) => _setActive(a, value),
-                      onTap: () => context
-                          .push('/prayer-alerts/${a['id']}/edit', extra: a)
-                          .then((_) => reload()),
-                      onStart: startingAlerts.contains(a['id']?.toString())
-                          ? null
-                          : () => _start(context, a),
-                      onCalendar: () => calendarService.downloadAlert(a),
-                    ),
-                  ),
-                if (AppConfig.vapidPublicKey.isNotEmpty &&
-                    !pushEnabledThisSession) ...[
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    onPressed: enablingPush ? null : _enablePush,
-                    icon: enablingPush
-                        ? const SizedBox(
-                            width: 15,
-                            height: 15,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Icon(PhosphorIcons.bellRinging(), size: 16),
-                    label: const Text('Enable push reminders'),
-                  ),
-                ],
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
+          },
+        ),
+      );
 
   Future<void> _enablePush() async {
     if (enablingPush) return;
@@ -262,136 +173,5 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
     } finally {
       if (mounted) setState(() => updatingAlerts.remove(id));
     }
-  }
-}
-
-class _AlertRow extends StatelessWidget {
-  const _AlertRow({
-    required this.alert,
-    required this.readOnly,
-    required this.onChanged,
-    required this.onTap,
-    this.onStart,
-    this.onCalendar,
-  });
-  final Map<String, dynamic> alert;
-  final bool readOnly;
-  final ValueChanged<bool> onChanged;
-  final VoidCallback onTap;
-  final VoidCallback? onStart;
-  final VoidCallback? onCalendar;
-
-  @override
-  Widget build(BuildContext context) {
-    final raw = alert['local_time']?.toString() ?? '06:00:00';
-    final parts = raw.split(':');
-    final dt = DateTime(
-      2000,
-      1,
-      1,
-      int.tryParse(parts[0]) ?? 6,
-      int.tryParse(parts[1]) ?? 0,
-    );
-    final days = ((alert['days_of_week'] as List?) ?? const [])
-        .map((e) => e as int)
-        .toList();
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFF0F1F5)),
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(22),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: DateFormat('h:mm').format(dt),
-                            style: const TextStyle(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w400,
-                              letterSpacing: -1.6,
-                            ),
-                          ),
-                          TextSpan(
-                            text: ' ${DateFormat('a').format(dt)}',
-                            style: const TextStyle(
-                              fontSize: 14,
-                              color: WpccColors.inkSoft,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      alert['title']?.toString() ?? 'Prayer',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      '${_daysLabel(days)} · ${alert['audio_title']?.toString().trim().isNotEmpty == true ? alert['audio_title'] : 'Prayer audio'}${alert['duration_seconds'] == null ? ' · Count up' : ' · ${(alert['duration_seconds'] as num).toInt() ~/ 60} min'}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(
-                        context,
-                      ).textTheme.labelSmall?.copyWith(color: WpccColors.muted),
-                    ),
-                  ],
-                ),
-              ),
-              if (readOnly)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 11,
-                    vertical: 7,
-                  ),
-                  decoration: BoxDecoration(
-                    color: WpccColors.primarySoft,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: const Text(
-                    'Global',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: WpccColors.primaryDeep,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                )
-              else
-                Switch(value: alert['is_active'] == true, onChanged: onChanged),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  static String _daysLabel(List<int> days) {
-    if (days.length == 7) return 'Every day';
-    const labels = {
-      1: 'Mon',
-      2: 'Tue',
-      3: 'Wed',
-      4: 'Thu',
-      5: 'Fri',
-      6: 'Sat',
-      7: 'Sun',
-    };
-    return days.map((d) => labels[d]).whereType<String>().join(', ');
   }
 }

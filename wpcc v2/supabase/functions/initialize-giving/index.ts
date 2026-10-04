@@ -7,6 +7,7 @@ const cors = {
 };
 const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {status, headers:{...cors,"Content-Type":"application/json"}});
 const env = (name:string) => { const value=Deno.env.get(name)?.trim(); if(!value) throw new Error(`Missing ${name}`); return value; };
+const serviceKey = () => Deno.env.get("SUPABASE_SECRET_KEY")?.trim() || Deno.env.get("SERVICE_ROLE_KEY")?.trim() || env("SUPABASE_SERVICE_ROLE_KEY");
 
 Deno.serve(async (req) => {
   if(req.method==="OPTIONS") return new Response("ok",{headers:cors});
@@ -15,7 +16,7 @@ Deno.serve(async (req) => {
     const auth=req.headers.get("authorization")||"";
     const token=auth.toLowerCase().startsWith("bearer ")?auth.slice(7).trim():"";
     if(!token) return json({error:"Authentication required"},401);
-    const admin=createClient(env("SUPABASE_URL"),env("SUPABASE_SERVICE_ROLE_KEY"),{auth:{persistSession:false,autoRefreshToken:false}});
+    const admin=createClient(env("SUPABASE_URL"),serviceKey(),{auth:{persistSession:false,autoRefreshToken:false}});
     const {data:userData,error:userError}=await admin.auth.getUser(token);
     if(userError||!userData.user) return json({error:"Authentication required"},401);
     const payload=await req.json().catch(()=>null) as {amount_kobo?:number;giving_type?:string;project_id?:string|null;app_origin?:string;auto_give?:{rule_keys?:unknown;timezone?:unknown;local_charge_time?:unknown;event_labels?:unknown}}|null;

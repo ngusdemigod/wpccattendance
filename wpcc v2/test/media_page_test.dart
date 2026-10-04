@@ -10,11 +10,12 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildWpccTheme(),
-        home: MediaPage(loadEpisodes: () async => []),
+        home:
+            MediaPage(loadAlbums: () async => [], loadEpisodes: () async => []),
       ),
     );
 
-    expect(find.text('Media'), findsOneWidget);
+    expect(find.text('WPCC Messages'), findsOneWidget);
     await tester.pumpAndSettle();
     expect(find.text('No episodes yet'), findsOneWidget);
   });
@@ -25,6 +26,7 @@ void main() {
       MaterialApp(
         theme: buildWpccTheme(),
         home: MediaPage(
+          loadAlbums: () async => [],
           loadEpisodes: () async => [
             {
               'id': 'episode-1',
@@ -43,10 +45,11 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(find.text('Sunday message'), findsOneWidget);
-    expect(find.text('Featured message'), findsOneWidget);
-    expect(find.text('Listen'), findsOneWidget);
+    expect(find.text('Latest message'), findsOneWidget);
 
-    await tester.tap(find.text('Listen'));
+    await tester.ensureVisible(find.byTooltip('Play message'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Play message'));
     await tester.pump();
     expect(
         MediaPlayerController.instance.value.episode?.title, 'Sunday message');

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'profile_repository.dart';
 
@@ -94,8 +93,9 @@ class _ClassesPageState extends State<ClassesPage> {
           key: ValueKey('class-metric-$l'),
           height: 76,
           decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: WpccColors.lineSubtle),
+            color: Theme.of(context).colorScheme.surface,
+            border:
+                Border.all(color: Theme.of(context).colorScheme.outlineVariant),
             borderRadius: BorderRadius.circular(22),
           ),
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -105,7 +105,9 @@ class _ClassesPageState extends State<ClassesPage> {
             const SizedBox(height: 4),
             Text(l,
                 maxLines: 1,
-                style: const TextStyle(fontSize: 11, color: WpccColors.muted)),
+                style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
           ]),
         ),
       );
@@ -121,8 +123,9 @@ class _ClassesPageState extends State<ClassesPage> {
         margin: const EdgeInsets.only(bottom: 9),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: WpccColors.line),
+          color: Theme.of(context).colorScheme.surface,
+          border:
+              Border.all(color: Theme.of(context).colorScheme.outlineVariant),
           borderRadius: BorderRadius.circular(22),
         ),
         child: Row(
@@ -151,9 +154,9 @@ class _ClassesPageState extends State<ClassesPage> {
                   const SizedBox(height: 5),
                   Text(
                     '${p.round()}% complete',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: WpccColors.muted,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                   const SizedBox(height: 7),
@@ -162,7 +165,8 @@ class _ClassesPageState extends State<ClassesPage> {
                     minHeight: 4,
                     borderRadius: BorderRadius.circular(10),
                     backgroundColor: const Color(0xFFF0F1F4),
-                    valueColor: const AlwaysStoppedAnimation(WpccColors.ink),
+                    valueColor: AlwaysStoppedAnimation(
+                        Theme.of(context).colorScheme.onSurface),
                   ),
                 ],
               ),
@@ -178,66 +182,73 @@ class ProfileTabs extends StatelessWidget {
   const ProfileTabs({super.key, required this.index});
   final int index;
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 42,
-        child: Row(
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(4),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          borderRadius: BorderRadius.circular(32),
+        ),
+        child: IntrinsicHeight(
+            child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             tab(context, 0, 'Overview', '/profile'),
             tab(context, 1, 'Classes', '/profile/classes', comingSoon: true),
           ],
-        ),
+        )),
       );
   Widget tab(BuildContext context, int value, String label, String route,
           {bool comingSoon = false}) =>
       Expanded(
         child: Padding(
-          padding: const EdgeInsets.only(right: 10),
-          child: InkWell(
-            onTap:
-                comingSoon || value == index ? null : () => context.go(route),
-            borderRadius: BorderRadius.circular(20),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 160),
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: value == index ? WpccColors.navActive : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
+          padding: EdgeInsets.zero,
+          child: Semantics(
+              selected: value == index,
+              enabled: !comingSoon,
+              label: comingSoon ? '$label, coming soon' : label,
+              child: InkWell(
+                onTap: comingSoon || value == index
+                    ? null
+                    : () => context.go(route),
+                borderRadius: BorderRadius.circular(32),
+                child: AnimatedContainer(
+                  duration: MediaQuery.disableAnimationsOf(context)
+                      ? Duration.zero
+                      : const Duration(milliseconds: 160),
+                  constraints: const BoxConstraints(minHeight: 48),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
                     color: value == index
-                        ? WpccColors.navActive
-                        : WpccColors.lineSubtle),
-              ),
-              child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        ? Theme.of(context).colorScheme.surface
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(32),
+                  ),
+                  child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text(label,
                         style: TextStyle(
-                            fontSize: 12,
+                            fontSize: 14,
                             fontWeight: value == index
                                 ? FontWeight.w600
                                 : FontWeight.w500,
                             color: value == index
-                                ? Colors.white
-                                : WpccColors.inkSoft)),
+                                ? Theme.of(context).colorScheme.onSurface
+                                : Theme.of(context)
+                                    .colorScheme
+                                    .onSurfaceVariant)),
                     if (comingSoon) ...[
-                      const SizedBox(width: 5),
-                      Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                              color: WpccColors.primarySoft,
-                              borderRadius: BorderRadius.circular(8)),
-                          child: const Text('Coming soon',
-                              style: TextStyle(
-                                  fontSize: 7,
-                                  fontWeight: FontWeight.w600,
-                                  color: WpccColors.primaryDeep))),
+                      const SizedBox(height: 2),
+                      Text('Coming soon',
+                          style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurfaceVariant)),
                     ],
-                  ])),
-            ),
-          ),
+                  ]),
+                ),
+              )),
         ),
       );
 }

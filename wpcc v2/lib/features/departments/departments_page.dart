@@ -1,19 +1,22 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/widgets/member_skeleton.dart';
+import '../../core/widgets/adaptive_layout.dart';
 import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../core/theme/app_theme.dart';
-import '../../core/widgets/section_empty_state.dart';
+import '../../core/widgets/member_components.dart';
 import '../data/supabase_repository.dart';
 
 class DepartmentsPage extends StatefulWidget {
-  const DepartmentsPage({super.key});
+  const DepartmentsPage({super.key, this.loadDepartments});
+  final Future<List<Map<String, dynamic>>> Function()? loadDepartments;
   @override
   State<DepartmentsPage> createState() => _DepartmentsPageState();
 }
 
 class _DepartmentsPageState extends State<DepartmentsPage> {
-  final repo = SupabaseRepository();
-  String filter = 'all';
+  late final repo = SupabaseRepository();
   late Future<List<Map<String, dynamic>>> future;
   @override
   void initState() {
@@ -22,14 +25,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
   }
 
   void _load() {
-    future = repo.departments(filter: filter);
-  }
-
-  void choose(String v) {
-    setState(() {
-      filter = v;
-      _load();
-    });
+    future = (widget.loadDepartments ?? repo.myDepartments)();
   }
 
   @override
@@ -38,201 +34,187 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
         child: RefreshIndicator(
           onRefresh: () async {
             setState(_load);
-            await future;
+            try {
+              await future;
+            } catch (_) {}
           },
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(18, 18, 18, 110),
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: memberPagePadding(context, phone: 20, top: 20),
             children: [
-              Text(
-                'Departments',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: -.7,
-                    ),
-              ),
-              const SizedBox(height: 20),
-              Row(
-                children: [
-                  _chip('all', 'All'),
-                  _chip('mine', 'My Teams'),
-                  _chip('leading', 'Leading'),
-                ],
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      filter == 'all'
-                          ? 'My departments'
-                          : filter == 'leading'
-                              ? 'Departments I lead'
-                              : 'My teams',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w400,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    'Manage',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          fontSize: 12,
-                          color: WpccColors.muted,
-                        ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
+              MemberPageHeader(
+                  title: 'Departments',
+                  onBack: () =>
+                      context.canPop() ? context.pop() : context.go('/home'),
+                  actions: [
+                    MemberIconButton(
+                        icon: PhosphorIconsRegular.plus,
+                        label: 'Join another department',
+                        onPressed: _joinDepartment),
+                  ]),
+              Text('Find your place to serve.',
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              const SizedBox(height: 25),
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: future,
                 builder: (context, s) {
                   if (s.connectionState != ConnectionState.done) {
-                    return const SizedBox(
-                      height: 180,
-                      child: Center(child: CircularProgressIndicator()),
-                    );
+                    return const MemberSkeleton();
                   }
                   if (s.hasError) {
-                    return const SectionEmptyState(
-                      icon: Icons.error_outline,
+                    return MemberStatus(
+                      icon: PhosphorIconsRegular.warningCircle,
                       message: 'Unable to load departments',
+                      onRetry: () => setState(_load),
                     );
                   }
                   final rows = s.data ?? const [];
                   if (rows.isEmpty) {
-                    return SectionEmptyState(
-                      icon: Icons.groups_outlined,
-                      message: filter == 'leading'
-                          ? 'You are not leading a department'
-                          : 'No departments found',
+                    return const MemberStatus(
+                      icon: PhosphorIconsRegular.usersThree,
+                      message: 'No departments yet',
                     );
                   }
-                  return AnimatedSize(
-                    duration: const Duration(milliseconds: 190),
-                    curve: Curves.easeOutCubic,
-                    child: Column(
-                      children: rows
-                          .map(
-                            (d) => TweenAnimationBuilder<double>(
-                              key: ValueKey(d['department_id']),
-                              duration: const Duration(milliseconds: 190),
-                              tween: Tween(begin: 0, end: 1),
-                              builder: (context, v, child) => Opacity(
-                                opacity: v,
-                                child: Transform.translate(
-                                  offset: Offset(0, 6 * (1 - v)),
-                                  child: child,
-                                ),
-                              ),
-                              child: _card(d),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                  );
+                  final joined =
+                      rows.where((row) => row['status'] != 'pending').toList();
+                  final pending =
+                      rows.where((row) => row['status'] == 'pending').toList();
+                  return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (joined.isNotEmpty) ...[
+                          const MemberSectionHeader(title: 'Your departments'),
+                          AdaptiveCards(
+                              minimumWidth: 420,
+                              maximumColumns: 2,
+                              gap: 12,
+                              children: joined.map(_card).toList()),
+                        ],
+                        if (pending.isNotEmpty) ...[
+                          if (joined.isNotEmpty) const SizedBox(height: 28),
+                          const MemberSectionHeader(title: 'Pending requests'),
+                          for (final row in pending) ...[
+                            _card(row),
+                            Divider(
+                                height: 1,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .outlineVariant),
+                          ],
+                        ],
+                      ]);
                 },
               ),
             ],
           ),
         ),
       );
-  Widget _chip(String key, String label) => Padding(
-        padding: const EdgeInsets.only(right: 7),
-        child: ChoiceChip(
-          selected: filter == key,
-          showCheckmark: false,
-          label: Text(label),
-          onSelected: (_) => choose(key),
-          selectedColor: WpccColors.ink,
-          backgroundColor: Colors.white,
-          side: BorderSide.none,
-          labelStyle: TextStyle(
-            fontSize: 12,
-            color: filter == key ? Colors.white : WpccColors.inkSoft,
-          ),
-        ),
-      );
-  Widget _card(Map<String, dynamic> d) => InkWell(
-        borderRadius: BorderRadius.circular(26),
-        onTap: () => context.push(
-          '/departments/${d['department_id']}',
-          extra: {
-            'id': d['department_id'],
-            'name': d['name'],
-            'description': d['description'],
-            'cover_url': d['cover_url'],
-            'avatar_url': d['avatar_url'],
-          },
-        ),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 9),
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(26),
-            border: Border.all(color: WpccColors.line),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 54,
-                height: 54,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF2F3F7),
-                  borderRadius: BorderRadius.circular(17),
-                  image: (d['avatar_url']?.toString() ?? '').isNotEmpty
-                      ? DecorationImage(
-                          image: NetworkImage(d['avatar_url'].toString()),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: (d['avatar_url']?.toString() ?? '').isEmpty
-                    ? const Icon(Icons.groups_outlined, size: 22)
-                    : null,
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      d['name']?.toString() ?? 'Department',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${d['member_count'] ?? 0} members · ${d['is_primary'] == true ? 'Primary department' : d['is_member'] == true ? 'My team' : 'Community'}',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            fontSize: 12,
-                            color: WpccColors.muted,
-                          ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              if (d['is_primary'] == true)
-                Container(
-                  margin: const EdgeInsets.only(right: 8),
+  Future<void> _joinDepartment() async {
+    try {
+      final departments = await repo.departmentDirectory();
+      if (!mounted) return;
+      final selected = await showModalBottomSheet<String>(
+          sheetAnimationStyle: AppMotion.sheetStyle(context),
+          context: context,
+          showDragHandle: true,
+          useSafeArea: true,
+          builder: (context) => SafeArea(
+                  child: ListView(shrinkWrap: true, children: [
+                const ListTile(
+                    title: Text('Join a department'),
+                    subtitle: Text(
+                        'Your request goes to an administrator for approval.')),
+                for (final department
+                    in departments.where((row) => row['is_member'] != true))
+                  ListTile(
+                      title:
+                          Text(department['name']?.toString() ?? 'Department'),
+                      trailing: const Icon(PhosphorIconsRegular.plus),
+                      onTap: () => Navigator.pop(
+                          context, department['department_id'].toString())),
+              ])));
+      if (selected == null) return;
+      await repo.requestDepartment(selected);
+      if (!mounted) return;
+      setState(_load);
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request sent. Awaiting approval.')));
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Unable to submit the request. Please try again.')));
+      }
+    }
+  }
+
+  Widget _card(Map<String, dynamic> d) {
+    final pending = d['status'] == 'pending';
+    final status = pending
+        ? 'Pending'
+        : d['is_primary'] == true
+            ? 'Primary'
+            : d['is_member'] == true
+                ? 'Member'
+                : d['status']?.toString();
+    final description = d['description']?.toString().trim() ?? '';
+    final metadata = [
+      if (description.isNotEmpty) description,
+      if (d['member_count'] != null) '${d['member_count']} members',
+    ].join(' · ');
+    final avatar = d['avatar_url']?.toString() ?? '';
+    return MemberListRow(
+      key: ValueKey(d['department_id']),
+      plain: pending,
+      title: (d['name']?.toString().trim().isNotEmpty ?? false)
+          ? d['name'].toString()
+          : 'Department name unavailable',
+      subtitle: pending
+          ? 'Awaiting approval'
+          : metadata.isEmpty
+              ? null
+              : metadata,
+      subtitleWidget: pending || metadata.isEmpty
+          ? null
+          : Text(metadata,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodySmall),
+      leading: MemberArtwork(
+          imageUrl: avatar.isNotEmpty ? avatar : d['cover_url']?.toString(),
+          size: 48,
+          height: 48,
+          icon: pending
+              ? PhosphorIconsRegular.hourglass
+              : PhosphorIconsRegular.usersThree),
+      trailing: pending
+          ? null
+          : status == null || status.isEmpty
+              ? null
+              : Container(
+                  constraints: const BoxConstraints(maxWidth: 90),
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF8E4F3),
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                  child: const Text(
-                    'Primary',
-                    style: TextStyle(fontSize: 10, color: Color(0xFFD43194)),
-                  ),
-                ),
-            ],
-          ),
-        ),
-      );
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Text(status,
+                      textAlign: TextAlign.center,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant))),
+      onTap: pending
+          ? null
+          : () => context.push(
+                '/departments/${d['department_id']}',
+                extra: {
+                  'id': d['department_id'],
+                  'name': d['name'],
+                  'description': d['description'],
+                  'cover_url': d['cover_url'],
+                  'avatar_url': d['avatar_url'],
+                },
+              ),
+    );
+  }
 }

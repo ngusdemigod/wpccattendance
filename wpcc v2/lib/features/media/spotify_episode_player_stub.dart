@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/theme/app_theme.dart';
-
 class SpotifyEpisodePlayer extends StatelessWidget {
   const SpotifyEpisodePlayer({
     super.key,
@@ -18,7 +16,7 @@ class SpotifyEpisodePlayer extends StatelessWidget {
         height: 88,
         alignment: Alignment.center,
         decoration: BoxDecoration(
-          color: WpccColors.subtle,
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
           borderRadius: BorderRadius.circular(18),
         ),
         child: TextButton.icon(

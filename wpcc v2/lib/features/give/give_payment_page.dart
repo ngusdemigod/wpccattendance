@@ -4,8 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_motion.dart';
+import '../../core/theme/member_theme.dart';
+import '../../core/widgets/member_glass.dart';
+import '../../core/widgets/member_components.dart';
 import 'give_repository.dart';
+import 'giving_backdrop.dart';
 
 class GivePaymentPage extends StatefulWidget {
   const GivePaymentPage(
@@ -38,15 +42,42 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
     super.initState();
     repo = widget.repository ?? GiveRepository();
     events = widget.eventLoader?.call() ?? repo.schedulableEvents();
+    // The picker may subscribe later; retain its failure without an uncaught error.
+    events.ignore();
   }
 
   void press(String value) {
     if (value == 'back') {
-      if (digits.isNotEmpty)
+      if (digits.isNotEmpty) {
         setState(() => digits = digits.substring(0, digits.length - 1));
+      }
     } else if (digits.length < 9) {
       setState(() => digits = digits == '0' ? value : digits + value);
     }
+  }
+
+  void preset(int amount) => setState(() => digits = amount.toString());
+
+  Widget _disclosure(BuildContext context) {
+    final settings = autoGive
+        ? Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: _AutoGiveSettings(
+                weekdays: weekdays,
+                selectedCount: selectedRules.length,
+                chargeTime: chargeTime,
+                onWeekday: (day) => setState(() => weekdays.contains(day)
+                    ? weekdays.remove(day)
+                    : weekdays.add(day)),
+                onServices: chooseServices,
+                onTime: pickTime))
+        : const SizedBox(width: double.infinity);
+    if (MediaQuery.disableAnimationsOf(context)) return settings;
+    return AnimatedSize(
+        duration: AppMotion.control,
+        curve: AppMotion.curve,
+        alignment: Alignment.topCenter,
+        child: settings);
   }
 
   String get timeValue =>
@@ -69,13 +100,15 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
     final id = row['recurring_event_id'];
     final kind = row['recurrence_type']?.toString().toLowerCase();
     final day = int.tryParse(row['day_of_week']?.toString() ?? '');
-    if (kind == 'weekly' && day != null && day >= 1 && day <= 7)
+    if (kind == 'weekly' && day != null && day >= 1 && day <= 7) {
       return 'weekday:$day:$id';
+    }
     final monthDay = int.tryParse(row['day_of_month']?.toString() ?? '');
     final month = int.tryParse(row['month']?.toString() ?? '');
     if (kind == 'monthly' && monthDay != null) return 'monthly:$monthDay:$id';
-    if (kind == 'yearly' && month != null && monthDay != null)
+    if (kind == 'yearly' && month != null && monthDay != null) {
       return 'yearly:$month:$monthDay:$id';
+    }
     return 'recurring:$id';
   }
 
@@ -86,9 +119,10 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
       context: context,
       isScrollControlled: true,
       useSafeArea: true,
-      backgroundColor: WpccColors.background,
+      sheetAnimationStyle: AppMotion.sheetStyle(context),
+      backgroundColor: MemberVisuals.sheet(context),
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (sheetContext) =>
           StatefulBuilder(builder: (context, setSheetState) {
         void toggle(String rule, String label, bool checked) =>
@@ -130,15 +164,18 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                   child: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
                 future: events,
                 builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done)
+                  if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(child: CircularProgressIndicator());
-                  if (snapshot.hasError)
+                  }
+                  if (snapshot.hasError) {
                     return const Center(
                         child: Text('Unable to load service days'));
+                  }
                   final recurring = snapshot.data?['recurring'] ?? const [];
                   final upcoming = snapshot.data?['upcoming'] ?? const [];
-                  if (recurring.isEmpty && upcoming.isEmpty)
+                  if (recurring.isEmpty && upcoming.isEmpty) {
                     return const Center(child: Text('No upcoming services'));
+                  }
                   return ListView(
                       padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
                       children: [
@@ -187,6 +224,7 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
   }
 
   Future<void> submit() async {
+    if (busy) return;
     if (amountKobo < 10000) {
       setState(() => error = 'Enter an amount of at least ₦100');
       return;
@@ -218,205 +256,251 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
               }
             : null,
       );
+      if (!mounted) return;
       final url = Uri.tryParse(result['authorization_url']?.toString() ?? '');
       if (url == null) throw StateError('Payment link was not returned');
-      if (!await launchUrl(url, webOnlyWindowName: '_self'))
+      if (!await launchUrl(url, webOnlyWindowName: '_self')) {
         throw StateError('Unable to open Paystack');
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         setState(() => error = e.toString().replaceFirst('Bad state: ', ''));
+      }
     } finally {
       if (mounted) setState(() => busy = false);
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
-          leading: IconButton(
-              tooltip: 'Back to Give',
-              onPressed: () => context.go('/give'),
-              icon: Icon(PhosphorIcons.caretLeft(), size: 20)),
-          title: Text(widget.payload['title']?.toString() ?? 'Give',
-              style:
-                  const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-        ),
-        body: SafeArea(
-            child: CustomScrollView(slivers: [
-          SliverPadding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 22),
-              sliver: SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Column(children: [
-                    const Spacer(),
-                    Text('Enter amount',
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodySmall
-                            ?.copyWith(color: WpccColors.muted)),
-                    const SizedBox(height: 10),
-                    FittedBox(
-                        child: Text(amountText,
-                            style: Theme.of(context)
-                                .textTheme
-                                .displaySmall
-                                ?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -1.4))),
-                    const SizedBox(height: 18),
-                    _AutoGiveCard(
-                        enabled: autoGive,
-                        weekdays: weekdays,
-                        selectedCount: selectedRules.length,
-                        chargeTime: chargeTime,
-                        onToggle: () => setState(() => autoGive = !autoGive),
-                        onWeekday: (day) => setState(() =>
-                            weekdays.contains(day)
-                                ? weekdays.remove(day)
-                                : weekdays.add(day)),
-                        onServices: chooseServices,
-                        onTime: pickTime),
-                    if (error != null) ...[
-                      const SizedBox(height: 10),
-                      Semantics(
-                          liveRegion: true,
-                          child: Text(error!,
-                              style: const TextStyle(
-                                  fontSize: 11, color: Colors.redAccent)))
-                    ],
-                    const SizedBox(height: 24),
-                    _Keypad(onKey: press),
-                    const SizedBox(height: 16),
-                    SizedBox(
-                        width: double.infinity,
-                        height: 50,
-                        child: FilledButton(
-                          onPressed: canSubmit ? submit : null,
-                          style: FilledButton.styleFrom(
-                              backgroundColor: WpccColors.ink,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(18))),
-                          child: busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white))
-                              : const Text('Continue'),
-                        )),
-                  ])))
-        ])),
-      );
+  Widget build(BuildContext context) => MemberTheme(
+      child: Builder(
+          builder: (context) => GivingBackdrop(
+                child: Scaffold(
+                  body: SafeArea(
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 520),
+                        child: CustomScrollView(slivers: [
+                          SliverPadding(
+                            padding: EdgeInsets.fromLTRB(
+                                MediaQuery.sizeOf(context).width < 600
+                                    ? 20
+                                    : 32,
+                                20,
+                                MediaQuery.sizeOf(context).width < 600
+                                    ? 20
+                                    : 32,
+                                24),
+                            sliver: SliverToBoxAdapter(
+                              child: Column(children: [
+                                Row(children: [
+                                  Expanded(
+                                      child: Text(
+                                          widget.payload['title']?.toString() ??
+                                              'Give',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge)),
+                                  MemberIconButton(
+                                      icon: PhosphorIconsRegular.x,
+                                      label: 'Back to Give',
+                                      plain: true,
+                                      onPressed: () => context.go('/give')),
+                                ]),
+                                const SizedBox(height: 28),
+                                Text('Enter amount',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                                const SizedBox(height: 10),
+                                Semantics(
+                                    liveRegion: true,
+                                    child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        child: Text(amountText,
+                                            key:
+                                                const ValueKey('giving-amount'),
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .headlineLarge
+                                                ?.copyWith(
+                                                    fontSize: 48,
+                                                    height: 1.18,
+                                                    fontWeight: FontWeight.w600,
+                                                    letterSpacing: 0)))),
+                                const SizedBox(height: 8),
+                                Text('Minimum ₦100',
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                                const SizedBox(height: 24),
+                                Wrap(
+                                    spacing: 8,
+                                    runSpacing: 4,
+                                    alignment: WrapAlignment.center,
+                                    children: [
+                                      for (final amount in [
+                                        1000,
+                                        5000,
+                                        10000,
+                                        20000
+                                      ])
+                                        TextButton(
+                                            onPressed: busy
+                                                ? null
+                                                : () => preset(amount),
+                                            style: TextButton.styleFrom(
+                                                minimumSize: const Size(72, 48),
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                        horizontal: 10),
+                                                backgroundColor:
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .surfaceContainerLow,
+                                                textStyle: Theme.of(context)
+                                                    .textTheme
+                                                    .labelMedium),
+                                            child: Text(NumberFormat.currency(
+                                                    locale: 'en_NG',
+                                                    symbol: '₦',
+                                                    decimalDigits: 0)
+                                                .format(amount))),
+                                    ]),
+                                const SizedBox(height: 16),
+                                Row(children: [
+                                  for (final mode in [false, true])
+                                    Expanded(
+                                        child: Semantics(
+                                            selected: autoGive == mode,
+                                            child: TextButton(
+                                                onPressed: busy
+                                                    ? null
+                                                    : () => setState(
+                                                        () => autoGive = mode),
+                                                style: TextButton.styleFrom(
+                                                    backgroundColor: autoGive ==
+                                                            mode
+                                                        ? Theme.of(context)
+                                                            .colorScheme
+                                                            .surfaceContainerLow
+                                                        : Colors.transparent),
+                                                child: Text(mode
+                                                    ? 'Auto give'
+                                                    : 'One-time')))),
+                                ]),
+                                _disclosure(context),
+                                if (error != null) ...[
+                                  const SizedBox(height: 12),
+                                  Semantics(
+                                      liveRegion: true,
+                                      child: Text(error!,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .error))),
+                                ],
+                                const SizedBox(height: 20),
+                                _Keypad(onKey: busy ? null : press),
+                                const SizedBox(height: 20),
+                                SizedBox(
+                                    width: double.infinity,
+                                    child: FilledButton(
+                                        onPressed: canSubmit ? submit : null,
+                                        child: busy
+                                            ? const SizedBox.square(
+                                                dimension: 20,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                        strokeWidth: 2))
+                                            : const Text('Continue'))),
+                              ]),
+                            ),
+                          ),
+                        ]),
+                      ),
+                    ),
+                  ),
+                ),
+              )));
 }
 
-class _AutoGiveCard extends StatelessWidget {
-  const _AutoGiveCard(
-      {required this.enabled,
-      required this.weekdays,
+class _AutoGiveSettings extends StatelessWidget {
+  const _AutoGiveSettings(
+      {required this.weekdays,
       required this.selectedCount,
       required this.chargeTime,
-      required this.onToggle,
       required this.onWeekday,
       required this.onServices,
       required this.onTime});
-  final bool enabled;
   final Set<int> weekdays;
   final int selectedCount;
   final TimeOfDay chargeTime;
-  final VoidCallback onToggle, onServices, onTime;
+  final VoidCallback onServices, onTime;
   final ValueChanged<int> onWeekday;
   @override
   Widget build(BuildContext context) {
     const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        width: double.infinity,
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(22),
-            border: Border.all(
-                color: enabled ? WpccColors.primary : WpccColors.line)),
-        child: Column(children: [
-          InkWell(
-              onTap: onToggle,
-              borderRadius: BorderRadius.circular(14),
-              child: Row(children: [
-                Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                        color: WpccColors.primarySoft,
-                        borderRadius: BorderRadius.circular(13)),
-                    child: Icon(PhosphorIcons.arrowsClockwise(),
-                        size: 18, color: WpccColors.primaryDeep)),
-                const SizedBox(width: 10),
-                const Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text('Auto give this amount',
-                          style: TextStyle(
-                              fontSize: 13, fontWeight: FontWeight.w500)),
-                      Text('Schedule future gifts after this payment',
-                          style:
-                              TextStyle(fontSize: 11, color: WpccColors.muted))
-                    ])),
-                Icon(
-                    enabled
-                        ? PhosphorIcons.caretUp()
-                        : PhosphorIcons.caretDown(),
-                    size: 18),
-              ])),
-          if (enabled) ...[
-            const SizedBox(height: 16),
-            const Align(
-                alignment: Alignment.centerLeft,
-                child: Text('Repeat days',
-                    style:
-                        TextStyle(fontSize: 12, fontWeight: FontWeight.w500))),
-            const SizedBox(height: 8),
-            Row(
-                children: List.generate(
-                    7,
-                    (i) => Expanded(
-                        child: Padding(
-                            padding: EdgeInsets.only(right: i == 6 ? 0 : 4),
-                            child: InkWell(
-                                onTap: () => onWeekday(i + 1),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                    height: 38,
-                                    alignment: Alignment.center,
-                                    decoration: BoxDecoration(
-                                        color: weekdays.contains(i + 1)
-                                            ? WpccColors.ink
-                                            : WpccColors.subtle,
-                                        borderRadius: BorderRadius.circular(12),
-                                        border:
-                                            Border.all(color: WpccColors.line)),
-                                    child: Text(labels[i],
-                                        style: TextStyle(
-                                            fontSize: 10,
-                                            color: weekdays.contains(i + 1)
-                                                ? Colors.white
-                                                : WpccColors.ink)))))))),
-            const SizedBox(height: 10),
-            _ScheduleRow(
-                icon: PhosphorIcons.calendarCheck(),
-                title: 'Service days',
-                value: selectedCount == 0
-                    ? 'Choose upcoming or recurring services'
-                    : '$selectedCount selected',
-                onTap: onServices),
-            const SizedBox(height: 8),
-            _ScheduleRow(
-                icon: PhosphorIcons.clock(),
-                title: 'Charge time',
-                value: chargeTime.format(context),
-                onTap: onTime),
-          ],
-        ]));
+    return MemberGlass(
+        radius: 20,
+        child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(children: [
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Schedule future gifts after this payment',
+                      style: Theme.of(context).textTheme.bodySmall)),
+              const SizedBox(height: 16),
+              const Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Repeat days',
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w500))),
+              const SizedBox(height: 8),
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: Wrap(spacing: 4, runSpacing: 4, children: [
+                    for (var i = 0; i < 7; i++)
+                      Semantics(
+                          selected: weekdays.contains(i + 1),
+                          child: TextButton(
+                              onPressed: () => onWeekday(i + 1),
+                              style: TextButton.styleFrom(
+                                  minimumSize: const Size(48, 48),
+                                  padding:
+                                      const EdgeInsets.symmetric(horizontal: 8),
+                                  shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12)),
+                                  foregroundColor: weekdays.contains(i + 1)
+                                      ? Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerLowest
+                                      : Theme.of(context).colorScheme.onSurface,
+                                  backgroundColor: weekdays.contains(i + 1)
+                                      ? Theme.of(context).colorScheme.onSurface
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerLow,
+                                  textStyle:
+                                      Theme.of(context).textTheme.labelMedium),
+                              child: Text(labels[i]))),
+                  ])),
+              const SizedBox(height: 10),
+              _ScheduleRow(
+                  icon: PhosphorIcons.calendarCheck(),
+                  title: 'Service days',
+                  value: selectedCount == 0
+                      ? 'Choose upcoming or recurring services'
+                      : '$selectedCount selected',
+                  onTap: onServices),
+              const SizedBox(height: 8),
+              _ScheduleRow(
+                  icon: PhosphorIcons.clock(),
+                  title: 'Charge time',
+                  value: chargeTime.format(context),
+                  onTap: onTime),
+            ])));
   }
 }
 
@@ -434,9 +518,10 @@ class _ScheduleRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(14),
       child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
           padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
           decoration: BoxDecoration(
-              color: WpccColors.subtle,
+              color: Theme.of(context).colorScheme.surfaceContainerLow,
               borderRadius: BorderRadius.circular(14)),
           child: Row(children: [
             Icon(icon, size: 18),
@@ -449,10 +534,10 @@ class _ScheduleRow extends StatelessWidget {
                       style: const TextStyle(
                           fontSize: 12, fontWeight: FontWeight.w500)),
                   Text(value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                          fontSize: 10, color: WpccColors.muted))
+                      style: TextStyle(
+                          fontSize: 10,
+                          color:
+                              Theme.of(context).colorScheme.onSurfaceVariant))
                 ])),
             Icon(PhosphorIcons.caretRight(), size: 16)
           ])));
@@ -470,7 +555,7 @@ class _GroupLabel extends StatelessWidget {
 
 class _Keypad extends StatelessWidget {
   const _Keypad({required this.onKey});
-  final ValueChanged<String> onKey;
+  final ValueChanged<String>? onKey;
   @override
   Widget build(BuildContext context) {
     final keys = [
@@ -498,26 +583,41 @@ class _Keypad extends StatelessWidget {
                     return Expanded(
                       child: Padding(
                         padding: EdgeInsets.only(right: column == 2 ? 0 : 8),
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(16),
-                          onTap: () => onKey(keyValue),
-                          child: Container(
-                            height: 82,
-                            decoration: BoxDecoration(
-                              color: Colors.white,
+                        child: Semantics(
+                            button: true,
+                            enabled: onKey != null,
+                            label: keyValue == 'back'
+                                ? 'Delete last digit'
+                                : keyValue,
+                            excludeSemantics: true,
+                            child: InkWell(
                               borderRadius: BorderRadius.circular(16),
-                              border: Border.all(color: WpccColors.line),
-                            ),
-                            child: Center(
-                              child: keyValue == 'back'
-                                  ? Icon(PhosphorIcons.backspace(), size: 20)
-                                  : Text(keyValue,
-                                      style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.w500)),
-                            ),
-                          ),
-                        ),
+                              onTap:
+                                  onKey == null ? null : () => onKey!(keyValue),
+                              child: Container(
+                                height:
+                                    MediaQuery.textScalerOf(context).scale(26) +
+                                                24 <
+                                            58
+                                        ? 58
+                                        : MediaQuery.textScalerOf(context)
+                                                .scale(26) +
+                                            24,
+                                decoration: BoxDecoration(
+                                  color: Colors.transparent,
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Center(
+                                  child: keyValue == 'back'
+                                      ? Icon(PhosphorIcons.backspace(),
+                                          size: 22)
+                                      : Text(keyValue,
+                                          style: const TextStyle(
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w500)),
+                                ),
+                              ),
+                            )),
                       ),
                     );
                   }),

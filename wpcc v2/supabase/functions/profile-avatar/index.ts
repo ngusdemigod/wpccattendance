@@ -1,14 +1,18 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { fileTypeFromBuffer } from "https://esm.sh/file-type@18";
+import { fileTypeFromBuffer } from "https://esm.sh/file-type@18.7.0";
 import { getAuthenticatedUser } from "../_shared/auth.ts";
-import { corsHeaders, jsonResponse } from "../_shared/cors.ts";
+import { corsHeaders, jsonResponse as sharedJsonResponse } from "../_shared/cors.ts";
 import {
   deletePrivateObject,
   getPrivateR2Config,
   presignR2,
   putPrivateObject,
 } from "../_shared/private-r2.ts";
-import { getRequiredEnv } from "../_shared/mail.ts";
+import { getSupabaseRuntimeUrl, getSupabaseServiceKey } from "../_shared/mail.ts";
+
+function jsonResponse(body: unknown, init: ResponseInit = {}) {
+  return sharedJsonResponse(body, { ...init, headers: { ...init.headers, "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff" } });
+}
 
 const avatarKey = /^profile-avatars\/[0-9a-f-]{36}\/[0-9a-f-]{36}\.(jpg|png|webp)$/;
 const contentTypes: Record<string, string> = {
@@ -34,10 +38,31 @@ Deno.serve(async (request) => {
     return jsonResponse({ error: "Authentication required" }, { status: 401 });
   }
 
+  try {
   const config = getPrivateR2Config();
+  // Bound the stream before parsing multipart data, including chunked requests.
+  const reader = request.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  if (reader) {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      size += value.length;
+      if (size > 6 * 1024 * 1024) {
+        await reader.cancel();
+        return jsonResponse({ error: "Avatar must be no larger than 5 MB" }, { status: 413 });
+      }
+      chunks.push(value);
+    }
+  }
+  const boundedBody = new Blob(chunks.map(chunk => new Uint8Array(chunk).buffer));
+  const parsedRequest = new Request(request.url, { method: "POST", headers: request.headers, body: boundedBody });
+  const admin = createClient(getSupabaseRuntimeUrl(), getSupabaseServiceKey(),
+    { auth: { persistSession: false, autoRefreshToken: false } });
   const contentType = request.headers.get("content-type") || "";
   if (contentType.includes("application/json")) {
-    const payload = await request.json().catch(() => null) as {
+    const payload = await parsedRequest.json().catch(() => null) as {
       avatar_url?: string;
       include_data?: boolean;
     } | null;
@@ -47,11 +72,25 @@ Deno.serve(async (request) => {
       ? storedUrl.slice(prefix.length)
       : "";
     if (
-      !avatarKey.test(objectKey) ||
-      !objectKey.startsWith(`profile-avatars/${user.id}/`)
+      !avatarKey.test(objectKey)
     ) {
       return jsonResponse({ error: "Avatar not found" }, { status: 404 });
     }
+    const owner = objectKey.split("/")[1];
+    let allowed = false;
+    if (owner === user.id) {
+      const { data } = await admin.from("profiles").select("avatar").eq("id", user.id).maybeSingle();
+      allowed = data?.avatar === storedUrl;
+    } else {
+      // Existing member-visibility RPC enforces department membership with the caller's JWT.
+      const caller = createClient(getSupabaseRuntimeUrl(), getSupabaseServiceKey(), {
+        global: { headers: { Authorization: authorization } },
+        auth: { persistSession: false, autoRefreshToken: false },
+      });
+      const { data, error } = await caller.rpc("community_public_member_profile", { p_profile_id: owner });
+      allowed = !error && Array.isArray(data) && data[0]?.avatar === storedUrl;
+    }
+    if (!allowed) return jsonResponse({ error: "Avatar not found" }, { status: 404 });
     const signedUrl = await presignR2(config, "GET", objectKey, undefined, 300);
     if (payload?.include_data) {
       const object = await fetch(signedUrl);
@@ -59,6 +98,7 @@ Deno.serve(async (request) => {
         return jsonResponse({ error: "Avatar not found" }, { status: 404 });
       }
       const bytes = new Uint8Array(await object.arrayBuffer());
+      if (bytes.length > 5 * 1024 * 1024) return jsonResponse({ error: "Avatar unavailable" }, { status: 413 });
       let binary = "";
       const chunkSize = 0x8000;
       for (let offset = 0; offset < bytes.length; offset += chunkSize) {
@@ -73,7 +113,7 @@ Deno.serve(async (request) => {
     return jsonResponse({ url: signedUrl, expires_in: 300 });
   }
 
-  const candidate = (await request.formData()).get("file");
+  const candidate = (await parsedRequest.formData()).get("file");
   if (!(candidate instanceof File)) {
     return jsonResponse({ error: "Select an image to upload" }, { status: 400 });
   }
@@ -95,18 +135,13 @@ Deno.serve(async (request) => {
 
   const objectKey = `profile-avatars/${user.id}/${crypto.randomUUID()}.${extension}`;
   const storedUrl = `r2://${config.bucket}/${objectKey}`;
-  const admin = createClient(
-    getRequiredEnv("SUPABASE_URL"),
-    getRequiredEnv("SUPABASE_SERVICE_ROLE_KEY"),
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
   const previous = await admin.from("profiles").select("avatar").eq("id", user.id)
     .maybeSingle();
 
   try {
     await putPrivateObject(config, objectKey, contentTypes[extension], bytes);
-    const { error } = await admin.from("profiles").update({ avatar: storedUrl })
-      .eq("id", user.id);
+    const { error } = await admin.from("profiles").update({ avatar: storedUrl, avatar_storage_path: objectKey, avatar_is_encrypted: false, avatar_nonce: null })
+      .eq("id", user.id).select("id").single();
     if (error) throw error;
 
     const previousStored = typeof previous.data?.avatar === "string"
@@ -133,7 +168,10 @@ Deno.serve(async (request) => {
     } catch {
       // Best effort rollback.
     }
-    console.error("profile_avatar_upload_failed", { userId: user.id, error });
+    console.error("profile_avatar_upload_failed", { userId: user.id });
     return jsonResponse({ error: "Avatar upload failed" }, { status: 500 });
+  }
+  } catch {
+    return jsonResponse({ error: "Photo service is unavailable. Please try again." }, { status: 503 });
   }
 });

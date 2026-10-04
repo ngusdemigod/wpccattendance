@@ -1,112 +1,293 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../../core/widgets/member_skeleton.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/theme/app_theme.dart';
+import '../../core/widgets/member_components.dart';
+import 'media_page.dart';
 import 'media_player_controller.dart';
 import 'media_repository.dart';
 
-class MediaEpisodeDetailPage extends StatelessWidget {
-  const MediaEpisodeDetailPage({super.key, required this.episodeId, this.seed});
+class MediaEpisodeDetailPage extends StatefulWidget {
+  const MediaEpisodeDetailPage(
+      {super.key,
+      required this.episodeId,
+      this.seed,
+      this.loadAlbums,
+      this.loadAlbumTracks});
   final String episodeId;
   final Map<String, dynamic>? seed;
-
+  final EpisodeLoader? loadAlbums;
+  final AlbumTracksLoader? loadAlbumTracks;
   @override
-  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
-        future: seed == null
-            ? MediaRepository().episode(episodeId)
-            : Future.value(seed),
-        builder: (context, snapshot) {
-          final episode = snapshot.data;
-          return Scaffold(
-            appBar: AppBar(title: const Text('Message'), centerTitle: true),
-            body: episode == null
-                ? Center(
-                    child: snapshot.connectionState == ConnectionState.done
-                        ? const Text('Message unavailable')
-                        : const CircularProgressIndicator())
-                : _EpisodeBody(episode: episode),
-          );
-        },
-      );
+  State<MediaEpisodeDetailPage> createState() => _MediaEpisodeDetailPageState();
 }
 
-class _EpisodeBody extends StatelessWidget {
-  const _EpisodeBody({required this.episode});
-  final Map<String, dynamic> episode;
+class _MediaEpisodeDetailPageState extends State<MediaEpisodeDetailPage> {
+  late Future<Map<String, dynamic>?> episode;
+  @override
+  void initState() {
+    super.initState();
+    episode = _load();
+  }
+
+  Future<Map<String, dynamic>?> _load() => widget.seed == null
+      ? MediaRepository().episode(widget.episodeId)
+      : Future.value(widget.seed);
+  @override
+  void didUpdateWidget(covariant MediaEpisodeDetailPage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.episodeId != widget.episodeId ||
+        oldWidget.seed != widget.seed) {
+      episode = _load();
+    }
+  }
 
   @override
+  Widget build(BuildContext context) => Scaffold(
+      backgroundColor: Colors.transparent,
+      body: SafeArea(
+          bottom: false,
+          child: FutureBuilder<Map<String, dynamic>?>(
+              future: episode,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return const SingleChildScrollView(
+                      padding: EdgeInsets.all(24),
+                      child: MemberSkeleton(hero: true));
+                }
+                if (snapshot.hasError || snapshot.data == null) {
+                  return Column(children: [
+                    _DetailHeader(provider: ''),
+                    Expanded(
+                        child: Center(
+                            child: MemberStatus(
+                                message: 'Message unavailable',
+                                icon: PhosphorIconsRegular.warningCircle,
+                                onRetry: () => setState(() {
+                                      episode = _load();
+                                    })))),
+                  ]);
+                }
+                return Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: MediaQuery.sizeOf(context).width >= 900
+                                ? 820
+                                : 1180),
+                        child: _EpisodeBody(
+                            key: ValueKey(widget.episodeId),
+                            episode: snapshot.data!,
+                            loadAlbums: widget.loadAlbums,
+                            loadTracks: widget.loadAlbumTracks)));
+              })));
+}
+
+typedef _Collection = ({
+  Map<String, dynamic> album,
+  List<Map<String, dynamic>> tracks
+});
+
+class _EpisodeBody extends StatefulWidget {
+  const _EpisodeBody(
+      {super.key, required this.episode, this.loadAlbums, this.loadTracks});
+  final Map<String, dynamic> episode;
+  final EpisodeLoader? loadAlbums;
+  final AlbumTracksLoader? loadTracks;
+  @override
+  State<_EpisodeBody> createState() => _EpisodeBodyState();
+}
+
+class _EpisodeBodyState extends State<_EpisodeBody> {
+  late Future<_Collection?> collection;
+  @override
+  void initState() {
+    super.initState();
+    collection = _findCollection();
+  }
+
+  Future<_Collection?> _findCollection() async {
+    final hint = widget.episode['_collection'];
+    final hintTracks = widget.episode['_collection_tracks'];
+    if (hint is Map && hintTracks is List) {
+      return (
+        album: Map<String, dynamic>.from(hint),
+        tracks: hintTracks
+            .map((row) => Map<String, dynamic>.from(row as Map))
+            .toList(),
+      );
+    }
+    final albums = await (widget.loadAlbums ?? MediaRepository().albums)();
+    for (final album in albums) {
+      final tracks = await (widget.loadTracks ??
+          MediaRepository().albumTracks)(album['id'].toString());
+      if (tracks.any((row) =>
+          (row['episode'] as Map?)?['id']?.toString() ==
+          widget.episode['id']?.toString())) {
+        return (album: album, tracks: tracks);
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<_Collection?>(
+      future: collection,
+      builder: (context, snapshot) {
+        final episode = widget.episode;
+        final colors = Theme.of(context).colorScheme;
+        final provider = episode['provider_url']?.toString() ?? '';
+        final description = episode['description']?.toString().trim() ?? '';
+        final album = snapshot.data?.album;
+        return ListView(
+            padding: memberPagePadding(context,
+                phone: 20,
+                top: 20,
+                bottom: MediaQuery.paddingOf(context).bottom + 112),
+            children: [
+              _DetailHeader(provider: provider),
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width >= 600
+                              ? 680
+                              : double.infinity),
+                      child: LayoutBuilder(
+                          builder: (context, box) => SizedBox(
+                              width: box.maxWidth,
+                              height: (box.maxWidth * .75).clamp(0.0, 430.0),
+                              child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: _Artwork(
+                                      url: album?['featured_image']
+                                              ?.toString() ??
+                                          episode['artwork_url']?.toString() ??
+                                          '')))))),
+              const SizedBox(height: 22),
+              Text(album?['title']?.toString() ?? 'WPCC Messages',
+                  style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 9),
+              MediaDisplayTitle(episode['title']?.toString() ?? 'Message'),
+              if (provider.isNotEmpty)
+                MediaProviderLink(
+                    url: provider,
+                    label: 'Open in Spotify',
+                    showChevron: false),
+              if (description.isNotEmpty)
+                Padding(
+                    padding: const EdgeInsets.only(top: 17),
+                    child: Text(description,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            height: 1.5, color: colors.onSurfaceVariant))),
+              const SizedBox(height: 22),
+              ValueListenableBuilder<MediaPlayerState>(
+                  valueListenable: MediaPlayerController.instance,
+                  builder: (context, state, _) {
+                    final active =
+                        state.episode?.id == episode['id']?.toString() &&
+                            state.isPlaying;
+                    return Align(
+                      alignment: Alignment.centerLeft,
+                      child: IconButton.filled(
+                          tooltip: active ? 'Pause message' : 'Play message',
+                          style: IconButton.styleFrom(
+                              backgroundColor: colors.onSurface,
+                              foregroundColor: colors.surfaceContainerLowest,
+                              fixedSize: const Size(56, 56),
+                              shape: const CircleBorder()),
+                          onPressed: () {
+                            if (state.episode?.id ==
+                                episode['id']?.toString()) {
+                              MediaPlayerController.instance.togglePlayback();
+                            } else {
+                              MediaPlayerController.instance.play(episode);
+                            }
+                          },
+                          icon: Icon(
+                              active
+                                  ? PhosphorIconsFill.pause
+                                  : PhosphorIconsFill.play,
+                              size: 24)),
+                    );
+                  }),
+              if (snapshot.connectionState != ConnectionState.done)
+                const Padding(
+                    padding: EdgeInsets.all(28),
+                    child: Center(child: CircularProgressIndicator()))
+              else if (snapshot.hasError)
+                MemberStatus(
+                    message: 'Collection unavailable',
+                    onRetry: () => setState(() {
+                          collection = _findCollection();
+                        }))
+              else if (snapshot.data != null) ...[
+                const SizedBox(height: 22),
+                Semantics(
+                    header: true,
+                    child: Text('In this collection',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleSmall
+                            ?.copyWith(fontSize: 17, height: 24 / 17))),
+                const SizedBox(height: 13),
+                MediaCollectionTracks(
+                    album: snapshot.data!.album, tracks: snapshot.data!.tracks),
+              ],
+            ]);
+      });
+}
+
+class _DetailHeader extends StatelessWidget {
+  const _DetailHeader({required this.provider});
+  final String provider;
+  @override
+  Widget build(BuildContext context) => Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Row(children: [
+        MemberIconButton(
+            icon: PhosphorIconsRegular.caretLeft,
+            label: 'Back',
+            onPressed: () =>
+                context.canPop() ? context.pop() : context.go('/media')),
+        const SizedBox(width: 10),
+        Expanded(
+            child: Text('Message',
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineSmall
+                    ?.copyWith(fontSize: 28, height: 35 / 28))),
+        MemberIconButton(
+            icon: PhosphorIconsRegular.export,
+            label: 'Share message',
+            onPressed: provider.isEmpty
+                ? null
+                : () async {
+                    await Clipboard.setData(ClipboardData(text: provider));
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(content: Text('Message link copied')));
+                    }
+                  }),
+      ]));
+}
+
+class _Artwork extends StatelessWidget {
+  const _Artwork({required this.url});
+  final String url;
+  @override
   Widget build(BuildContext context) {
-    final artwork = episode['artwork_url']?.toString() ?? '';
-    final providerUrl = episode['provider_url']?.toString() ?? '';
-    final published =
-        DateTime.tryParse(episode['source_published_at']?.toString() ?? '');
-    final durationMs =
-        int.tryParse(episode['duration_ms']?.toString() ?? '') ?? 0;
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 18, 24, 128),
-      children: [
-        AspectRatio(
-          aspectRatio: 1,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(28),
-            child: artwork.isEmpty
-                ? Container(
-                    color: WpccColors.primarySoft,
-                    child: Icon(PhosphorIcons.microphoneStage(),
-                        size: 64, color: WpccColors.primaryDeep))
-                : Image.network(artwork, fit: BoxFit.cover),
-          ),
-        ),
-        const SizedBox(height: 24),
-        const Text('WPCC MESSAGES',
-            style: TextStyle(
-                fontSize: 10,
-                letterSpacing: 1.3,
-                fontWeight: FontWeight.w600,
-                color: WpccColors.primaryDeep)),
-        const SizedBox(height: 9),
-        Text(episode['title']?.toString() ?? 'Podcast episode',
-            style: const TextStyle(
-                fontSize: 26,
-                height: 1.08,
-                fontWeight: FontWeight.w600,
-                letterSpacing: -.6)),
-        const SizedBox(height: 10),
-        Text(
-            [
-              if (published != null)
-                DateFormat('d MMMM yyyy').format(published.toLocal()),
-              if (durationMs > 0)
-                '${Duration(milliseconds: durationMs).inMinutes} min'
-            ].join(' · '),
-            style: const TextStyle(fontSize: 12, color: WpccColors.muted)),
-        const SizedBox(height: 20),
-        FilledButton.icon(
-          onPressed: () => MediaPlayerController.instance.play(episode),
-          style: FilledButton.styleFrom(
-              backgroundColor: WpccColors.ink,
-              foregroundColor: Colors.white,
-              minimumSize: const Size.fromHeight(52)),
-          icon: Icon(PhosphorIcons.play(), size: 18),
-          label: const Text('Play message'),
-        ),
-        const SizedBox(height: 24),
-        Text(episode['description']?.toString() ?? '',
-            style: const TextStyle(
-                fontSize: 14, height: 1.65, color: WpccColors.inkSoft)),
-        if (providerUrl.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          TextButton.icon(
-            onPressed: () => launchUrl(Uri.parse(providerUrl),
-                mode: LaunchMode.externalApplication,
-                webOnlyWindowName: '_blank'),
-            icon: Icon(PhosphorIcons.spotifyLogo(), size: 18),
-            label: const Text('Open in Spotify'),
-          ),
-        ],
-      ],
-    );
+    final fallback = ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Center(
+            child: Icon(PhosphorIconsRegular.disc,
+                size: 48,
+                color: Theme.of(context).colorScheme.onSurfaceVariant)));
+    return url.isEmpty
+        ? fallback
+        : Image.network(url,
+            fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback);
   }
 }

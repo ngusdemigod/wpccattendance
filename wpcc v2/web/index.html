@@ -12,29 +12,225 @@
   <meta name="apple-mobile-web-app-title" content="WPCC Community">
   <link rel="manifest" href="manifest.json">
   <title>WPCC Community</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script>
+    (() => {
+      let preference = 'system';
+      try {
+        const saved = localStorage.getItem('flutter.wpcc.theme') ?? localStorage.getItem('wpcc.theme');
+        if (saved) {
+          try { preference = JSON.parse(saved); } catch (_) { preference = saved; }
+        }
+      } catch (_) { /* Use the system theme when storage is unavailable. */ }
+      const dark = preference === 'dark' ||
+        (preference !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.startupTheme = dark ? 'dark' : 'light';
+      document.querySelector('meta[name="theme-color"]').content = dark ? '#17131f' : '#f6f7fa';
+    })();
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --startup-background: #f6f7fa;
+      --startup-ink: #1c1e24;
+      --startup-muted: #8b8c93;
+      --startup-accent: #7c4ea6;
+      --startup-track: #e9dfef;
+      --startup-glow: #f1e6fa;
+      --startup-surface: #ffffff;
+      --startup-backdrop: linear-gradient(135deg, #f4f6fc 0%, #fbfcff 42%, #f2f4fa 100%);
+      color-scheme: light;
+    }
+    :root[data-startup-theme="dark"] {
+      --startup-background: #17131f;
+      --startup-ink: #f3edf7;
+      --startup-muted: #b9afc6;
+      --startup-accent: #7c4ea6;
+      --startup-track: #382c45;
+      --startup-glow: #21172c;
+      --startup-surface: #22202b;
+      --startup-backdrop: linear-gradient(135deg, #17131f 0%, #191720 42%, #21172c 100%);
+      color-scheme: dark;
+    }
+    html, body { margin: 0; background: var(--startup-background); }
+    #wpcc-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 10000;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      box-sizing: border-box;
+      padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
+      background: var(--startup-backdrop);
+      color: var(--startup-ink);
+      font-family: 'Instrument Sans', sans-serif;
+      text-align: center;
+      transition: opacity 180ms cubic-bezier(.23, 1, .32, 1);
+    }
+    :root[data-installed-launch] #wpcc-splash { background: #fff; }
+    :root[data-installed-launch] .startup-content > :not(.startup-logo):not(#wpcc-startup-retry) { display: none; }
+    :root[data-installed-launch] .startup-logo { width: 45px; height: 45px; padding: 0; margin: 0 auto; box-shadow: none; }
+    :root[data-installed-launch] #wpcc-splash[data-error] #wpcc-startup-status { display: block; color: #1c1e24; }
+    #wpcc-splash.is-ready { opacity: 0; pointer-events: none; }
+    .startup-watermark {
+      position: absolute;
+      width: 280px;
+      right: -40px;
+      bottom: 80px;
+      opacity: .035;
+      pointer-events: none;
+    }
+    .startup-content { position: relative; width: min(100%, 360px); }
+    .startup-logo {
+      display: grid;
+      place-items: center;
+      width: 54px;
+      height: 54px;
+      margin: 0 auto 28px;
+      padding: 5.4px;
+      box-sizing: border-box;
+      border-radius: 15.12px;
+      background: #fff;
+      box-shadow: 0 5px 16px #35394a0a;
+    }
+    .startup-logo img { width: 100%; height: 100%; object-fit: contain; }
+    .startup-content h1 {
+      margin: 0;
+      font-family: 'Instrument Sans', sans-serif;
+      font-size: 28px;
+      font-weight: 600;
+      letter-spacing: -1.1px;
+      line-height: 1.286;
+    }
+    #wpcc-startup-status { margin: 15px 0 0; color: var(--startup-muted); font-size: 14px; line-height: 1.6; }
+    .startup-progress {
+      width: 100px;
+      height: 3px;
+      margin: 30px auto 0;
+      border-radius: 8px;
+      overflow: hidden;
+      background: var(--startup-track);
+    }
+    .startup-progress::after {
+      content: '';
+      display: block;
+      width: 45%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--startup-accent);
+      animation: startup-progress 1.2s ease-in-out infinite;
+    }
+    @keyframes startup-progress {
+      from { transform: translateX(-110%); }
+      to { transform: translateX(330%); }
+    }
+    #wpcc-startup-retry {
+      margin-top: 22px;
+      padding: 12px 22px;
+      border: 1px solid var(--startup-ink);
+      border-radius: 18px;
+      background: var(--startup-ink);
+      color: var(--startup-surface);
+      font: 500 14px 'Instrument Sans', sans-serif;
+      cursor: pointer;
+    }
+    #wpcc-startup-retry:focus-visible { outline: 3px solid var(--startup-accent); outline-offset: 4px; }
+    #wpcc-splash[data-error] .startup-progress { display: none; }
+    @media (prefers-reduced-motion: reduce) {
+      #wpcc-splash { transition: none; }
+      .startup-progress::after { animation: none; width: 100%; }
+    }
+    @media (max-height: 360px) {
+      .startup-logo { width: 68px; height: 68px; margin-bottom: 12px; border-radius: 20px; }
+      .startup-progress { margin-top: 15px; }
+    }
+  </style>
+
+  <link rel="stylesheet" href="wpcc-install.css">
 </head>
 <body>
-  <div id="wpcc-spotify-player" aria-hidden="true" style="position:fixed;left:-10000px;top:0;width:1px;height:1px;overflow:hidden;opacity:0;pointer-events:none"></div>
+  <main id="wpcc-splash" aria-busy="true" aria-label="WPCC Community startup">
+    <div class="startup-content">
+      <div class="startup-logo"><img src="assets/assets/images/wpcc_logo.png" alt="WPCC church logo" fetchpriority="high"></div>
+      <h1>WPCC Community</h1>
+      <p id="wpcc-startup-status" role="status" aria-live="polite">Loading your community…</p>
+      <div class="startup-progress" aria-hidden="true"></div>
+      <button id="wpcc-startup-retry" type="button" hidden>Try again</button>
+      <noscript><p>Please enable JavaScript to open WPCC Community.</p><style>.startup-progress { display: none; }</style></noscript>
+    </div>
+  </main>
+  <script>
+    (() => {
+      const splash = document.getElementById('wpcc-splash');
+      const status = document.getElementById('wpcc-startup-status');
+      const retry = document.getElementById('wpcc-startup-retry');
+      let ready = false;
+      let timeout;
+      retry.addEventListener('click', () => window.location.reload());
+      window.wpccShowStartupError = () => {
+        if (ready) return;
+        clearTimeout(timeout);
+        splash.dataset.error = 'true';
+        splash.setAttribute('aria-busy', 'false');
+        status.textContent = 'Taking longer than expected. Check your connection and try again.';
+        retry.hidden = false;
+      };
+      window.addEventListener('flutter-first-frame', () => {
+        ready = true;
+        clearTimeout(timeout);
+        splash.setAttribute('aria-busy', 'false');
+        splash.setAttribute('aria-hidden', 'true');
+        splash.inert = true;
+        splash.classList.add('is-ready');
+        const delay = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 180;
+        setTimeout(() => splash.remove(), delay);
+      }, { once: true });
+      window.addEventListener('wpcc-startup', () => { timeout = setTimeout(window.wpccShowStartupError, 30000); }, { once: true });
+    })();
+  </script>
+
+  <div id="wpcc-spotify-player" aria-hidden="true" style="position:fixed;left:-10000px;top:0;width:300px;height:80px;overflow:hidden;pointer-events:none"></div>
   <script>
     (() => {
       let controller = null;
+      let controllerReady = false;
       let pendingEntity = null;
+      let wantsPlayback = false;
       let playback = { isPaused: true, position: 0, duration: 0 };
       const playLoadedEntity = (entity) => {
-        controller.loadEntity(entity);
-        window.setTimeout(() => controller && controller.play(), 160);
+        if (!controller) return;
+        pendingEntity = null;
+        controller.loadEntity(entity, false, 0);
+        // The SDK queues this single command until the new embed is ready.
+        controller.play();
       };
 
       window.wpccSpotifyLoadAndPlay = (entity) => {
         if (!entity) return;
         pendingEntity = entity;
+        wantsPlayback = true;
         if (!controller) return;
         playLoadedEntity(entity);
       };
-      window.wpccSpotifyTogglePlay = () => controller && controller.togglePlay();
-      window.wpccSpotifyPause = () => controller && controller.pause();
+      window.wpccSpotifyTogglePlay = () => {
+        wantsPlayback = controller ? playback.isPaused : !wantsPlayback;
+        if (!controller) return;
+        if (wantsPlayback) {
+          if (pendingEntity) playLoadedEntity(pendingEntity);
+          else controller.resume();
+        } else controller.pause();
+      };
+      window.wpccSpotifyPause = () => {
+        wantsPlayback = false;
+        pendingEntity = null;
+        if (controller) controller.pause();
+      };
       window.wpccSpotifySeek = (seconds) => controller && controller.seek(Math.max(0, Math.floor(seconds)));
-      window.wpccSpotifyIsReady = () => controller !== null;
+      window.wpccSpotifyIsReady = () => controller !== null && controllerReady;
       window.wpccSpotifyIsPaused = () => playback.isPaused;
       window.wpccSpotifyPosition = () => playback.position;
       window.wpccSpotifyDuration = () => playback.duration;
@@ -42,23 +238,30 @@
       window.onSpotifyIframeApiReady = (IFrameAPI) => {
         const element = document.getElementById('wpcc-spotify-player');
         IFrameAPI.createController(element, {
-          width: 1,
-          height: 1,
-          uri: 'spotify:show:4gxjPQQEFNKjWqkgqT5Ilm'
+          width: 300,
+          height: 80,
+          uri: 'spotify:episode:7A2cF7XaQ72nQ4StEbtZKK'
         }, (embedController) => {
           controller = embedController;
+          controller.addListener('ready', () => {
+            controllerReady = true;
+          });
           controller.addListener('playback_update', (event) => {
             playback = event.data || playback;
+            // Ignore the initial paused update while a requested episode loads.
+            if (!playback.isPaused || playback.position > 0) {
+              wantsPlayback = !playback.isPaused;
+            }
           });
-          if (pendingEntity) {
-            playLoadedEntity(pendingEntity);
-          }
+          if (pendingEntity && wantsPlayback) playLoadedEntity(pendingEntity);
         });
       };
     })();
   </script>
   <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
   <script src="wpcc-push.js"></script>
-  <script src="flutter_bootstrap.js" async></script>
+  <script src="wpcc-device.js"></script>
+  <script src="wpcc-install.js"></script>
+  <script src="flutter_bootstrap.js" async onerror="window.wpccShowStartupError?.()"></script>
 </body>
 </html>

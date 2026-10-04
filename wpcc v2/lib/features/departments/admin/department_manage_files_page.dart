@@ -1,5 +1,6 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import '../../../core/theme/app_motion.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -104,9 +105,10 @@ class _DepartmentManageFilesPageState extends State<DepartmentManageFilesPage> {
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: rows.length,
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
+                    gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
+                      maxCrossAxisExtent: MediaQuery.sizeOf(context).width < 600
+                          ? (MediaQuery.sizeOf(context).width - 36) / 2
+                          : 260,
                       mainAxisSpacing: 10,
                       crossAxisSpacing: 10,
                       childAspectRatio: .76,
@@ -245,7 +247,8 @@ class _FileManageCardState extends State<_FileManageCard> {
 
   Future<void> _remove() async {
     final name = widget.row['file_name']?.toString() ?? 'this file';
-    final confirmed = await showDialog<bool>(
+    final confirmed = await showMotionDialog<bool>(
+      animationStyle: AppMotion.dialogStyle(context),
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Remove file?'),

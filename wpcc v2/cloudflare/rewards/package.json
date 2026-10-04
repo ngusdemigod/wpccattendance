@@ -1,0 +1,21 @@
+{
+  "name": "wpcc-rewards",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "types": "wrangler types",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11",
+    "wrangler": "4.134.0",
+    "@types/node": "26.6.2"
+  },
+  "overrides": {
+    "sharp": "0.35.4"
+  }
+}

@@ -1,0 +1,142 @@
+{
+  "meta": {
+    "name": "Music Events Reference Reconstruction",
+    "version": 1,
+    "format": "custom-json",
+    "units": "logical-px-unless-marked",
+    "status": "inferred-baseline-not-verified-pixel-perfect",
+    "sources": [
+      "99ff0dbe1fd8f58d051d9647066afb2f.webp",
+      "original-9f86dd34355239766d0d9f0cb1480596.webp"
+    ],
+    "evidence": {
+      "canvasDimensions": "measured",
+      "compositeSamples": "measured-region-medians",
+      "referenceBoxes": "visually-measured-approximately-plus-or-minus-2-reference-px",
+      "logicalViewport": "assumed-from-aspect-ratio",
+      "fontFamilies": "unverified-candidates",
+      "typography": "specified-reconstruction-values",
+      "radius": "inferred-starting-values",
+      "materials": "specified-not-recovered-source-layers",
+      "motion": "proposed-not-observable-in-stills"
+    }
+  },
+  "reference": {
+    "canvasPx": { "width": 1200, "height": 900 },
+    "phoneCropPx": { "width": 335.5, "height": 727 },
+    "logicalViewport": { "width": 393, "height": 852 },
+    "presentationScale": 0.8536895674,
+    "originsPx": {
+      "artistEvents": { "x": 227, "y": 87 },
+      "artistDiscography": { "x": 637, "y": 87 },
+      "discovery": { "x": 226, "y": 87 },
+      "filteredEvents": { "x": 637, "y": 87 }
+    }
+  },
+  "dials": { "DESIGN_VARIANCE": 4, "MOTION_INTENSITY": 3, "VISUAL_DENSITY": 5 },
+  "spacing": { "xxs": 4, "dense": 6, "xs": 8, "sm": 12, "md": 16, "gutter": 20, "lg": 24, "sectionTight": 28, "section": 32 },
+  "layout": { "phoneGutter": 20, "referenceContentWidth": 353, "inlineGap": 6, "thumbnailGap": 12, "cardPadding": 12, "sheetPadding": 20, "headingGap": 16, "sectionGap": 32, "dockBottomGap": 12, "contentBelowDockClearance": 16 },
+  "color": {
+    "background": "#151517",
+    "artistBackground": "#0C0C08",
+    "text": { "primary": "#FAFAFA", "secondary": "#B5B3B5", "tertiary": "#929093", "overArtwork": "#FFFFFF" },
+    "fallback": { "card": "#242224", "track": "#292726", "sheet": "#373639", "dock": "#404040" },
+    "context": { "discovery": "#3E1F23", "artist": "#182411" },
+    "highlightGradient": { "from": "#9E74F5", "to": "#DB9860", "direction": "left-to-right", "evidence": "estimated" },
+    "categoryAnchors": { "concerts": "#F15B16", "festivals": "#743FE8", "comedy": "#249CF0", "culture": "#08B86A", "arts": "#E45A92" },
+    "focus": "#FFFFFF"
+  },
+  "compositeSamples": {
+    "discoveryBase": "#151517",
+    "discoveryTop": "#3E1F23",
+    "discoverySearch": "#3E2A31",
+    "discoveryEventCard": "#231E1F",
+    "locationSheet": "#373639",
+    "dockEdge": "#404040",
+    "artistTop": "#182411",
+    "artistEventCard": "#1E1C1A",
+    "artistDateTile": "#383934",
+    "album": "#25231D",
+    "track": "#292726"
+  },
+  "font": {
+    "headingCandidate": "SF Pro Rounded",
+    "headingAlternativeCandidate": "SF Pro Display",
+    "bodyCandidate": "SF Pro Text",
+    "wpccAdaptationFallback": "DM Sans",
+    "identityVerified": false,
+    "fallbackIsPixelIdentical": false,
+    "letterSpacing": 0
+  },
+  "typography": {
+    "artistTitle": { "size": 38, "lineHeight": 46, "weight": 600, "familyRole": "heading" },
+    "largeSection": { "size": 28, "lineHeight": 34, "weight": 600, "familyRole": "heading" },
+    "section": { "size": 20, "lineHeight": 24, "weight": 600, "familyRole": "body" },
+    "posterTitle": { "size": 17, "lineHeight": 23, "weight": 500, "familyRole": "body", "maxLines": 3 },
+    "rowTitle": { "size": 16, "lineHeight": 21, "weight": 500, "familyRole": "body", "maxLines": 2 },
+    "albumTitle": { "size": 17, "lineHeight": 22, "weight": 600, "familyRole": "body" },
+    "body": { "size": 15, "lineHeight": 21, "weight": 400, "familyRole": "body", "previewMaxLines": 3 },
+    "metadata": { "size": 14, "lineHeight": 18, "weight": 400, "familyRole": "body", "maxLines": 1 },
+    "control": { "size": 14, "lineHeight": 18, "weight": 500, "familyRole": "body", "maxLines": 1 },
+    "trackTitle": { "size": 14, "lineHeight": 18, "weight": 500, "familyRole": "body", "maxLines": 1 },
+    "categoryLabel": { "size": 13, "lineHeight": 17, "weight": 500, "familyRole": "body" },
+    "micro": { "size": 12, "lineHeight": 15, "weight": 400, "familyRole": "body" },
+    "badge": { "size": 12, "lineHeight": 15, "weight": 600, "familyRole": "body" },
+    "dateNumber": { "size": 16, "lineHeight": 20, "weight": 500, "familyRole": "body" },
+    "systemTime": { "size": 17, "lineHeight": 22, "weight": 600, "familyRole": "system", "appOwned": false }
+  },
+  "radius": { "thumbnail": 12, "dateTile": 12, "track": 12, "card": 20, "album": 26, "sheetTop": 32, "dock": 32, "pill": "height / 2", "circle": "diameter / 2", "presentationPhoneOnly": 42 },
+  "icon": {
+    "referenceFamilyCandidate": "SF Symbols",
+    "wpccFamily": "existing Phosphor",
+    "identityVerified": false,
+    "sizes": { "utility": 16, "search": 18, "chip": 14, "metadata": 13, "segment": 16, "dock": 22, "favorite": 18 },
+    "strokeIfSvg": 1.5,
+    "defaultWeight": "regular",
+    "selectedNavigationWeight": "fill"
+  },
+  "material": {
+    "search": { "fill": "#FFFFFF", "alpha": 0.06, "blurSigma": 12, "borderAlpha": 0.04 },
+    "inactiveChip": { "fill": "#FFFFFF", "alpha": 0.05, "blurSigma": 12, "borderAlpha": 0 },
+    "selectedSegment": { "fill": "#FFFFFF", "alpha": 0.10, "blurSigma": 12, "borderAlpha": 0 },
+    "utility": { "fill": "#FFFFFF", "alpha": 0.08, "blurSigma": 12, "borderAlpha": 0 },
+    "card": { "fill": "#FFFFFF", "alpha": 0.06, "blurSigma": 16, "borderAlpha": 0.06 },
+    "dock": { "fill": "#3A3A3C", "alpha": 0.72, "blurSigma": 24, "borderAlpha": 0.08 },
+    "sheet": { "fill": "#3B3B3D", "alpha": 0.82, "blurSigma": 28, "topEdgeAlpha": 0.08 },
+    "borderWidth": 1,
+    "structuralShadow": { "color": "#000000", "alpha": 0.22, "offsetX": 0, "offsetY": 8, "blur": 24, "spread": 0 }
+  },
+  "overlay": {
+    "artist": [{ "position": 0, "blackAlpha": 0 }, { "position": 0.35, "blackAlpha": 0.05 }, { "position": 0.65, "blackAlpha": 0.55 }, { "position": 0.9, "blackAlpha": 0.92 }, { "position": 1, "blackAlpha": 1 }],
+    "poster": [{ "position": 0.35, "blackAlpha": 0 }, { "position": 0.65, "blackAlpha": 0.25 }, { "position": 1, "blackAlpha": 0.60 }]
+  },
+  "component": {
+    "utilityButton": { "visualDiameter": 44 },
+    "search": { "height": 44, "trailingCircle": 32 },
+    "filterChip": { "visualHeight": 36, "horizontalPadding": 12, "gap": 6 },
+    "streamingLink": { "visualHeight": 32, "horizontalPadding": 10, "markSize": 16, "betweenLinks": 8 },
+    "segments": { "referenceWidth": 353, "visualHeight": 38, "items": 2 },
+    "featuredPoster": { "width": 202, "height": 252, "gap": 8, "textInset": 12, "favoriteDiameter": 32, "favoriteInset": 10 },
+    "category": { "artDiameter": 68, "columnWidth": 72, "itemGap": 8, "labelGap": 8 },
+    "cityCard": { "width": 148, "minHeight": 148, "gap": 12 },
+    "venueRow": { "referenceWidth": 353, "minHeight": 74, "dateTileSize": 48, "padding": 12 },
+    "resultRow": { "referenceWidth": 353, "minHeight": 90, "thumbnailSize": 64, "padding": 12, "textGap": 12 },
+    "album": { "referenceWidth": 353, "minHeight": 272, "artSize": 88, "padding": 12 },
+    "newBadge": { "visualHeight": 20, "horizontalPadding": 8 },
+    "track": { "minHeight": 42, "horizontalPadding": 12, "numberColumn": 26 },
+    "releaseArt": { "size": 172, "gap": 12 },
+    "dock": { "width": 178, "height": 58, "padding": 6, "selectedDiameter": 46, "referenceDestinations": 3 },
+    "sheet": { "horizontalMargin": 8, "referenceVisibleHeight": 310, "gripWidth": 32, "gripHeight": 4, "contentInset": 20 }
+  },
+  "accessibility": { "minTargetIos": 44, "minTargetAndroid": 48, "focusWidth": 2, "focusOffset": 2, "allowTextScaling": true, "solidMaterialFallback": true, "referenceContrastVerified": false },
+  "motion": {
+    "observed": false,
+    "press": { "scaleOptional": 0.98, "onset": "immediate-pointer-down", "releaseMs": 120 },
+    "segment": { "responseSeconds": 0.28, "dampingRatio": 1.0, "interruptible": true },
+    "sheet": { "responseSeconds": 0.30, "dampingRatio": 1.0, "directDragTracking": true, "releaseVelocityHandoff": true },
+    "reducedMotion": "instant-color-feedback-and-short-crossfade-no-slide-scale-or-overshoot",
+    "rails": "native-momentum-no-autoplay"
+  },
+  "projectAdaptationBreakpoints": { "phoneBelow": 600, "wideFrom": 600, "twoColumnsFromLocalWidth": 900 },
+  "unverified": ["original-framework", "original-fonts-and-weights", "source-artwork", "exact-icon-assets", "layer-alpha", "blur-kernel", "continuous-corner-algorithm", "sheet-behavior", "hero-collapse-behavior", "light-mode"]
+}
