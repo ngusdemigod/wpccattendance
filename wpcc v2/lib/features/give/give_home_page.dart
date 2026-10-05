@@ -6,6 +6,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/widgets/member_skeleton.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/widgets/member_components.dart';
+import '../../core/widgets/member_glass.dart';
 import 'give_repository.dart';
 import 'giving_history_page.dart';
 import 'giving_backdrop.dart';
@@ -37,21 +38,14 @@ class _GiveHomePageState extends State<GiveHomePage>
   late Future<List<Map<String, dynamic>>> accounts;
   late Future<List<Map<String, dynamic>>> mandates;
   late Future<List<Map<String, dynamic>>> projects;
-  final projectSection = GlobalKey();
-  String selectedType = 'offering';
-  late bool history;
+  late int selectedTab;
   late bool historyVisited;
-  static const types = {
-    'offering': 'Offering',
-    'tithe': 'Tithe',
-    'prophet_offering': 'Prophet offering',
-    'project': 'Projects'
-  };
 
   @override
   void initState() {
     super.initState();
-    history = historyVisited = widget.initialHistory;
+    selectedTab = widget.initialHistory ? 2 : 0;
+    historyVisited = widget.initialHistory;
     _load();
   }
 
@@ -59,8 +53,8 @@ class _GiveHomePageState extends State<GiveHomePage>
   void didUpdateWidget(covariant GiveHomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.initialHistory != widget.initialHistory) {
-      history = widget.initialHistory;
-      historyVisited = historyVisited || history;
+      selectedTab = widget.initialHistory ? 2 : 0;
+      historyVisited = historyVisited || widget.initialHistory;
     }
   }
 
@@ -82,21 +76,11 @@ class _GiveHomePageState extends State<GiveHomePage>
     } catch (_) {}
   }
 
-  void _showProjects() {
-    final target = projectSection.currentContext;
-    if (target != null) {
-      Scrollable.ensureVisible(target,
-          duration: AppMotion.duration(context, AppMotion.page),
-          curve: AppMotion.curve,
-          alignment: .1);
-    }
-  }
-
-  void _selectTab(bool value) {
-    if (history == value) return;
+  void _selectTab(int value) {
+    if (selectedTab == value) return;
     setState(() {
-      history = value;
-      historyVisited = historyVisited || value;
+      selectedTab = value;
+      historyVisited = historyVisited || value == 2;
     });
     if (MediaQuery.disableAnimationsOf(context)) {
       tabAnimation.value = 1;
@@ -127,32 +111,43 @@ class _GiveHomePageState extends State<GiveHomePage>
                   constraints: const BoxConstraints(maxWidth: 820),
                   child: Column(children: [
                     Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                        child: const MemberPageHeader(title: 'Giving')),
+                    Padding(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                         child: Row(children: [
                           Expanded(
                               child: _GivingType(
                                   title: 'Give',
-                                  selected: !history,
-                                  onTap: () => _selectTab(false))),
+                                  selected: selectedTab == 0,
+                                  onTap: () => _selectTab(0))),
+                          const SizedBox(width: 8),
+                          Expanded(
+                              child: _GivingType(
+                                  title: 'Scheduled',
+                                  selected: selectedTab == 1,
+                                  onTap: () => _selectTab(1))),
                           const SizedBox(width: 8),
                           Expanded(
                               child: _GivingType(
                                   title: 'History',
-                                  selected: history,
-                                  onTap: () => _selectTab(true))),
+                                  selected: selectedTab == 2,
+                                  onTap: () => _selectTab(2))),
                         ])),
                     Expanded(
                         child: FadeTransition(
                             opacity: tabAnimation
                                 .drive(CurveTween(curve: AppMotion.curve)),
-                            child:
-                                IndexedStack(index: history ? 1 : 0, children: [
+                            child: IndexedStack(index: selectedTab, children: [
                               TickerMode(
-                                  enabled: !history,
+                                  enabled: selectedTab == 0,
                                   child: _giveContent(context)),
+                              TickerMode(
+                                  enabled: selectedTab == 1,
+                                  child: _scheduledContent(context)),
                               if (historyVisited)
                                 TickerMode(
-                                    enabled: history,
+                                    enabled: selectedTab == 2,
                                     child: GivingHistoryPage(
                                         embedded: true,
                                         loadHistory: widget.loadHistory))
@@ -171,32 +166,13 @@ class _GiveHomePageState extends State<GiveHomePage>
           padding: memberPagePadding(context, bottom: 124),
           children: [
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(children: [
-                    for (final entry in types.entries)
-                      Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: _GivingType(
-                              title: entry.value,
-                              selected: selectedType == entry.key,
-                              onTap: () {
-                                setState(() => selectedType = entry.key);
-                                if (entry.key == 'project') _showProjects();
-                              })),
-                  ])),
-              const SizedBox(height: 16),
               FilledButton.icon(
-                  onPressed: selectedType == 'project'
-                      ? _showProjects
-                      : () => _pay(selectedType, types[selectedType]!),
+                  onPressed: () => _pay('offering', 'Offering'),
                   icon: Icon(PhosphorIcons.arrowUpRight(), size: 20),
                   iconAlignment: IconAlignment.end,
                   style: FilledButton.styleFrom(
                       minimumSize: const Size.fromHeight(56)),
-                  label: Text(selectedType == 'project'
-                      ? 'Choose a project'
-                      : 'Give now')),
+                  label: const Text('Give now')),
               const SizedBox(height: 28),
               const MemberSectionHeader(title: 'Church accounts'),
               _section(
@@ -220,8 +196,7 @@ class _GiveHomePageState extends State<GiveHomePage>
                                 ]
                               ])))),
               const SizedBox(height: 28),
-              MemberSectionHeader(
-                  key: projectSection, title: 'Church projects'),
+              const MemberSectionHeader(title: 'Church projects'),
               _section(
                   projects,
                   'Unable to load church projects',
@@ -241,16 +216,30 @@ class _GiveHomePageState extends State<GiveHomePage>
                                 child: _project(context, project)),
                         ]);
                       })),
-              const SizedBox(height: 24),
-              _PlainGivingAction(onTap: () => context.push('/give/auto')),
-              _section(
-                  mandates,
-                  'Unable to load scheduled givings',
-                  'No scheduled gifts',
-                  (rows) => Column(children: [
-                        for (final row in rows) _ScheduledGivingRow(row: row),
-                      ])),
             ])
+          ]));
+
+  Widget _scheduledContent(BuildContext context) => RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+          key: const PageStorageKey('giving-scheduled-scroll'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: memberPagePadding(context, bottom: 124),
+          children: [
+            _PlainGivingAction(onTap: () async {
+              await context.push('/give/auto');
+              if (mounted) {
+                setState(() =>
+                    mandates = widget.loadMandates?.call() ?? repo!.mandates());
+              }
+            }),
+            _section(
+                mandates,
+                'Unable to load scheduled givings',
+                'No scheduled gifts',
+                (rows) => Column(children: [
+                      for (final row in rows) _ScheduledGivingRow(row: row),
+                    ])),
           ]));
 
   Widget _section(Future<List<Map<String, dynamic>>> future, String error,
@@ -415,16 +404,12 @@ class _ChurchAccountRow extends StatelessWidget {
         row['wallet_name']?.toString() ??
         'Church account';
     final theme = Theme.of(context);
-    return Container(
+    return MemberGlass(
+      key: ValueKey('church-account-glass:$number'),
+      radius: 28,
+      outlined: false,
+      child: Padding(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: theme.brightness == Brightness.light
-            ? Colors.white
-            : const Color(0xFF262629),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-            color: theme.colorScheme.onSurface.withValues(alpha: .06)),
-      ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           _BankLogo(url: row['bank_logo_url']?.toString() ?? ''),
@@ -471,7 +456,7 @@ class _ChurchAccountRow extends StatelessWidget {
         Text(name,
             style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
-      ]),
+      ])),
     );
   }
 }
@@ -500,14 +485,20 @@ class _PlainGivingAction extends StatelessWidget {
   const _PlainGivingAction({required this.onTap});
   final VoidCallback onTap;
   @override
-  Widget build(BuildContext context) => Tooltip(
-        message: 'Manage scheduled givings',
-        child: MemberListRow(
-            plain: true,
-            title: 'Scheduled giving',
-            subtitle: 'Recurring gifts',
-            onTap: onTap),
-      );
+  Widget build(BuildContext context) => Row(children: [
+        Expanded(
+            child: Text('Recurring gifts',
+                style: Theme.of(context).textTheme.titleMedium)),
+        Tooltip(
+          message: 'Manage scheduled givings',
+          child: TextButton.icon(
+            onPressed: onTap,
+            icon: Icon(PhosphorIcons.slidersHorizontal(), size: 18),
+            label: const Text('Manage'),
+            style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+          ),
+        ),
+      ]);
 }
 
 class _ScheduledGivingRow extends StatelessWidget {
@@ -541,29 +532,80 @@ class _ScheduledGivingRow extends StatelessWidget {
     final type = rawType.isEmpty
         ? rawType
         : '${rawType[0].toUpperCase()}${rawType.substring(1)}';
-    final status = row['status']?.toString() == 'active' ? 'Active' : 'Paused';
+    final theme = Theme.of(context);
+    final active = row['status'] == 'active';
+    final rawStatus = row['status']?.toString() ?? 'Unknown';
+    final statusLabel = rawStatus.isEmpty
+        ? 'Unknown'
+        : '${rawStatus[0].toUpperCase()}${rawStatus.substring(1)}';
+    final statusColor = active
+        ? (theme.brightness == Brightness.dark
+            ? const Color(0xFF91DDB5)
+            : const Color(0xFF246747))
+        : theme.colorScheme.onSurfaceVariant;
     return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        child: Row(children: [
-          Icon(PhosphorIcons.calendarCheck(), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                Text(
-                    '$type · ${NumberFormat.currency(locale: 'en_NG', symbol: 'NGN ', decimalDigits: 0).format(amount)}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontSize: 15,
-                        height: 21 / 15,
-                        fontWeight: FontWeight.w500)),
-                const SizedBox(height: 4),
-                Text([status, if (rules.isNotEmpty) rules].join(' · '),
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodySmall
-                        ?.copyWith(height: 1.5)),
-              ])),
-        ]));
+      padding: const EdgeInsets.only(top: 12),
+      child: MemberGlass(
+        radius: 20,
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Icon(PhosphorIcons.repeat(),
+                  size: 18, color: theme.colorScheme.onSurfaceVariant),
+              const SizedBox(width: 8),
+              Expanded(
+                  child: Text('Auto give', style: theme.textTheme.bodySmall)),
+              const SizedBox(width: 12),
+              Flexible(
+                  child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: .10),
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Text(statusLabel,
+                          style: theme.textTheme.labelMedium
+                              ?.copyWith(color: statusColor)))),
+            ]),
+            const SizedBox(height: 24),
+            Text(
+                NumberFormat.currency(
+                        locale: 'en_NG', symbol: '₦', decimalDigits: 0)
+                    .format(amount),
+                style: theme.textTheme.headlineMedium?.copyWith(
+                    fontSize: 36, height: 1.15, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 5),
+            Text(type,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            const SizedBox(height: 24),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                  color: theme.colorScheme.onSurface.withValues(alpha: .04),
+                  borderRadius: BorderRadius.circular(12)),
+              child:
+                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Icon(PhosphorIcons.calendarCheck(),
+                    size: 20, color: theme.colorScheme.onSurfaceVariant),
+                const SizedBox(width: 12),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                      Text('Repeats', style: theme.textTheme.bodySmall),
+                      const SizedBox(height: 4),
+                      Text(rules.isEmpty ? 'Schedule not available' : rules,
+                          style: theme.textTheme.bodyMedium),
+                    ])),
+              ]),
+            ),
+          ]),
+        ),
+      ),
+    );
   }
 }

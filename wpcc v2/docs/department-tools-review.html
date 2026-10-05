@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>WPCC Department Tools Review</title>
+  <link rel="stylesheet" href="department-tools-review.css">
+  <link rel="stylesheet" href="department-tools-cards.css">
+  <style>header h1{font-size:20px;line-height:26px}</style>
+</head>
+<body>
+  <aside class="preview-controls" aria-label="Prototype controls">
+    <strong>Review prototype · Sample data</strong>
+    <label>Role <select id="role"><option>Assigned worker</option><option>HOD</option><option>PRO</option><option>Branch admin</option><option>Global admin</option><option>Pending member</option></select></label>
+    <label><input id="offline" type="checkbox"> Offline</label>
+    <label><input id="light" type="checkbox"> Light</label>
+    <label><input id="large" type="checkbox"> Large text</label>
+    <label><input id="solid" type="checkbox"> Reduce transparency</label>
+    <label>Next sync <select id="outcome"><option>Success</option><option>Conflict</option><option>Access revoked</option><option>Temporary failure</option></select></label>
+    <p>Simulation only. No real submissions or persistent storage. Reloading clears sample work.</p>
+  </aside>
+  <main id="app" tabindex="-1"></main>
+  <dialog id="dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="notice" role="status" aria-live="polite"></div>
+  <script src="department-tools-review.js"></script>
+</body>
+</html>

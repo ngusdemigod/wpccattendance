@@ -339,6 +339,33 @@ void main() {
     }
   });
 
+  testWidgets('long album descriptions expand without hiding the track list',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(390, 844);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final description =
+        List.filled(12, 'Teachings for everyday life.').join(' ');
+    await tester.pumpWidget(app(MediaAlbumDetailPage(
+      albumId: 'actual',
+      seed: {'id': 'actual', 'title': 'Faith', 'description': description},
+      loadAlbumTracks: (_) async => [],
+    )));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(description)).maxLines, 3);
+    await tester.ensureVisible(find.text('Read more'));
+    await tester.tap(find.text('Read more'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(description)).maxLines, isNull);
+    await tester.ensureVisible(find.text('Show less'));
+    await tester.tap(find.text('Show less'));
+    await tester.pumpAndSettle();
+    expect(tester.widget<Text>(find.text(description)).maxLines, 3);
+    expect(find.text('Messages'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('collection rows keep the approved message-detail interaction',
       (tester) async {
     MediaPlayerController.instance.close();
@@ -391,9 +418,7 @@ void main() {
             }),
             brightness: brightness));
         await tester.pumpAndSettle();
-        final clip = find.descendant(
-            of: find.byType(MediaEpisodeDetailPage),
-            matching: find.byType(ClipRRect));
+        final clip = find.byKey(const ValueKey('message-artwork'));
         final contentWidth =
             (width >= 900 ? 820.0 : width) - (width < 600 ? 40.0 : 64.0);
         final artWidth =
@@ -441,7 +466,7 @@ void main() {
     expect(tester.getSize(target).height, 48);
     expect(find.descendant(of: provider, matching: find.byType(Icon)),
         findsOneWidget);
-    expect(tester.getSize(find.byType(MediaCollectionTracks)).height, 156);
+    expect(tester.getSize(find.byType(MediaCollectionTracks)).height, 210);
     final title = tester.widget<Text>(find.text('Track 1'));
     expect(title.style!.fontSize, 13);
     expect(title.style!.height, 18 / 13);
@@ -559,7 +584,8 @@ void main() {
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull,
               reason: '$brightness/$width/$scale Messages');
-          final artwork = find.byType(MemberArtwork);
+          final artwork =
+              find.byWidgetPredicate((w) => w is MemberArtwork && w.size == 64);
           expect(artwork, findsNWidgets(2));
           for (final item in tester.widgetList<MemberArtwork>(artwork)) {
             expect(item.size, 64);

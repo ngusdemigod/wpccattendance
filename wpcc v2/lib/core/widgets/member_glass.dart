@@ -1,29 +1,47 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import '../theme/member_material.dart';
 
 /// A clipped member control surface; content and artwork remain unblurred.
 class MemberGlass extends StatelessWidget {
-  const MemberGlass({super.key, required this.child, this.radius = 24});
+  const MemberGlass(
+      {super.key,
+      required this.child,
+      this.frosted = true,
+      this.outlined = true,
+      this.radius = 24,
+      this.weight = MemberMaterialWeight.control});
+  final MemberMaterialWeight weight;
   final Widget child;
   final double radius;
+  final bool frosted;
+  final bool outlined;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final dark = theme.brightness == Brightness.dark;
-    final solid = MediaQuery.highContrastOf(context) ||
-        MediaQuery.accessibleNavigationOf(context);
+    final solid = MemberMaterials.solid(context);
     final surface = DecoratedBox(
       decoration: BoxDecoration(
-        color: solid
-            ? (dark ? const Color(0xFF29292D) : const Color(0xFFF0F0F3))
-            : Colors.white.withValues(alpha: dark ? .075 : .62),
+        color: MemberMaterials.fill(context, weight),
+        gradient: solid
+            ? null
+            : LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: frosted ? [
+                    Colors.white.withValues(alpha: dark ? .13 : .72),
+                    Colors.white.withValues(alpha: dark ? .10 : .62),
+                  ] : [
+                    Colors.white.withValues(alpha: dark ? .055 : .32),
+                    Colors.white.withValues(alpha: 0)
+                  ]),
         borderRadius: BorderRadius.circular(radius),
-        border: Border.all(
-          color: (dark ? Colors.white : Colors.black)
-              .withValues(alpha: solid ? .22 : .10),
-        ),
+        border: outlined || MediaQuery.highContrastOf(context) ? Border.all(
+          color: MemberMaterials.edge(context),
+        ) : null,
       ),
       child: child,
     );
@@ -32,7 +50,9 @@ class MemberGlass extends StatelessWidget {
       child: solid
           ? surface
           : BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              filter: ImageFilter.blur(
+                  sigmaX: MemberMaterials.blur(weight),
+                  sigmaY: MemberMaterials.blur(weight)),
               child: surface,
             ),
     );

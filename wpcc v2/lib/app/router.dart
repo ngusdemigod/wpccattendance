@@ -11,7 +11,9 @@ import '../features/departments/admin/department_manage_files_page.dart';
 import '../features/departments/admin/department_profile_edit_page.dart';
 import '../features/departments/admin/department_wallet_page.dart';
 import '../features/departments/department_detail_page.dart';
+import '../features/departments/admin/department_requests_page.dart';
 import '../features/departments/departments_page.dart';
+import '../features/departments/tools/department_tools_page.dart';
 import '../features/devotional/devotional_page.dart';
 import '../features/devotional/devotional_post_page.dart';
 import '../features/events/event_detail_page.dart';
@@ -21,6 +23,7 @@ import '../features/give/give_home_page.dart';
 import '../features/give/give_payment_page.dart';
 import '../features/give/give_result_page.dart';
 import '../features/home/home_page.dart';
+import '../features/reports/anonymous_reports_page.dart';
 import '../features/media/media_page.dart';
 import '../features/media/media_album_detail_page.dart';
 import '../features/media/media_episode_detail_page.dart';
@@ -98,6 +101,8 @@ GoRouter buildRouter() {
               )),
       ShellRoute(
         builder: (_, state, child) => MemberTheme(
+            backdrop: false,
+            route: state.uri.path,
             media: state.uri.path.startsWith('/media'),
             child: MemberSearchScope(child: AppShell(child: child))),
         routes: [
@@ -182,8 +187,35 @@ GoRouter buildRouter() {
               context,
               state,
               DepartmentDetailPage(
+                  initialTab: state.uri.queryParameters['tab'] == 'files'
+                      ? 3
+                      : state.uri.queryParameters['tab'] == 'attendance'
+                          ? 2
+                          : 0,
                   departmentId: state.pathParameters['id']!,
                   seed: state.extra as Map<String, dynamic>?))),
+      GoRoute(
+          path: '/resources/department-tools',
+          pageBuilder: (context, state) => _slide(
+              context,
+              state,
+              DepartmentToolsPage(
+                  departmentId: state.uri.queryParameters['department']))),
+      GoRoute(
+          path: '/resources/anonymous-reports',
+          pageBuilder: (context, state) =>
+              _slide(context, state, const AnonymousReportsPage())),
+      GoRoute(
+          path: '/resources/department-files',
+          pageBuilder: (context, state) =>
+              _slide(context, state, const DepartmentsPage(filesOnly: true))),
+      GoRoute(
+          path: '/departments/:id/requests',
+          pageBuilder: (context, state) => _slide(
+              context,
+              state,
+              DepartmentRequestsPage(
+                  departmentId: state.pathParameters['id']!))),
       GoRoute(
           path: '/departments/:id/wallet/new',
           pageBuilder: (context, state) => _slide(context, state,
@@ -260,9 +292,11 @@ GoRouter buildRouter() {
               transitionDuration: AppMotion.duration(context, AppMotion.page),
               reverseTransitionDuration:
                   AppMotion.duration(context, AppMotion.exit),
-              child: PrayerSessionPage(
-                  payload: Map<String, dynamic>.from(
-                      (state.extra as Map?) ?? const {})),
+              child: MemberTheme(
+                  route: state.uri.path,
+                  child: PrayerSessionPage(
+                      payload: Map<String, dynamic>.from(
+                          (state.extra as Map?) ?? const {}))),
               transitionsBuilder: (context, animation, __, child) =>
                   AppRouteMotion(
                       animation: animation,
@@ -295,11 +329,17 @@ CustomTransitionPage<void> _memberPage(
         ? _slide(context, state, child)
         : CustomTransitionPage<void>(
             key: state.pageKey,
-            child: child,
-            transitionDuration: AppMotion.duration(context, AppMotion.tab),
-            reverseTransitionDuration: Duration.zero,
+            child: MemberBackdrop(
+                route: state.uri.path,
+                media: state.uri.path.startsWith('/media'),
+                child: child),
+            transitionDuration:
+                AppMotion.duration(context, const Duration(milliseconds: 320)),
+            reverseTransitionDuration:
+                AppMotion.duration(context, const Duration(milliseconds: 240)),
             transitionsBuilder: (context, animation, secondary, child) =>
-                AppRouteMotion(animation: animation, child: child));
+                AppRouteMotion(
+                    animation: animation, offset: Offset.zero, child: child));
 
 CustomTransitionPage<void> _fade(
         BuildContext context, GoRouterState state, Widget child) =>
@@ -307,28 +347,42 @@ CustomTransitionPage<void> _fade(
       key: state.pageKey,
       transitionDuration: AppMotion.duration(context, AppMotion.page),
       reverseTransitionDuration: AppMotion.duration(context, AppMotion.exit),
-      child: child,
-      transitionsBuilder: (context, animation, __, child) {
+      child: MemberTheme(route: state.uri.path, child: child),
+      transitionsBuilder: (context, animation, secondary, child) {
         if (MediaQuery.disableAnimationsOf(context)) return child;
         return AppRouteMotion(
-            animation: animation, offset: const Offset(0, 16), child: child);
+            animation: animation,
+            secondaryAnimation: secondary,
+            offset: const Offset(0, 28),
+            beginScale: .975,
+            child: child);
       },
     );
 
 CustomTransitionPage<void> _slide(
-        BuildContext context, GoRouterState state, Widget child) =>
-    CustomTransitionPage(
-      key: state.pageKey,
-      transitionDuration: AppMotion.duration(context, AppMotion.page),
-      reverseTransitionDuration: AppMotion.duration(context, AppMotion.exit),
-      child: child,
-      transitionsBuilder: (context, animation, __, child) {
-        if (MediaQuery.disableAnimationsOf(context)) return child;
-        return AppRouteMotion(
-            animation: animation,
-            offset: state.uri.path == '/give/payment'
-                ? const Offset(0, 16)
-                : const Offset(16, 0),
-            child: child);
-      },
-    );
+    BuildContext context, GoRouterState state, Widget child) {
+  final origin = ComponentOrigin.take();
+  return CustomTransitionPage(
+    key: state.pageKey,
+    transitionDuration:
+        AppMotion.duration(context, const Duration(milliseconds: 280)),
+    reverseTransitionDuration:
+        AppMotion.duration(context, const Duration(milliseconds: 200)),
+    child: MemberTheme(route: state.uri.path, child: child),
+    transitionsBuilder: (context, animation, secondary, child) {
+      if (MediaQuery.disableAnimationsOf(context)) return child;
+      if (origin != null) {
+        return ComponentRouteMotion(
+            animation: animation, origin: origin, child: child);
+      }
+      return AppRouteMotion(
+          animation: animation,
+          secondaryAnimation: secondary,
+          beginScale: .98,
+          offset: state.uri.path == '/give/payment'
+              ? const Offset(0, 32)
+              : const Offset(36, 0),
+          child: child);
+    },
+  );
+}

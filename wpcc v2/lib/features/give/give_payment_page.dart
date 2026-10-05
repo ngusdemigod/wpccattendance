@@ -5,9 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_motion.dart';
+import '../../core/theme/member_material.dart';
 import '../../core/theme/member_theme.dart';
 import '../../core/widgets/member_glass.dart';
 import '../../core/widgets/member_components.dart';
+import '../../core/widgets/member_sheet.dart';
 import 'give_repository.dart';
 import 'giving_backdrop.dart';
 
@@ -25,6 +27,8 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
   late final GiveRepository repo;
   late final Future<Map<String, List<Map<String, dynamic>>>> events;
   String digits = '';
+  late String givingType;
+  Map<String, dynamic>? selectedProject;
   bool busy = false, autoGive = false;
   String? error;
   TimeOfDay chargeTime = const TimeOfDay(hour: 8, minute: 0);
@@ -32,7 +36,10 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
   final Set<String> selectedRules = {};
   final Map<String, String> selectedLabels = {};
   int get amountKobo => (int.tryParse(digits) ?? 0) * 100;
-  bool get canSubmit => !busy && amountKobo >= 10000;
+  bool get canSubmit =>
+      !busy &&
+      amountKobo >= 10000 &&
+      (givingType != 'project' || selectedProject?['id'] != null);
   String get amountText =>
       NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 2)
           .format(amountKobo / 100);
@@ -41,6 +48,13 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
   void initState() {
     super.initState();
     repo = widget.repository ?? GiveRepository();
+    givingType = widget.payload['giving_type']?.toString() ?? 'offering';
+    if (widget.payload['project_id'] != null) {
+      selectedProject = {
+        'id': widget.payload['project_id'],
+        'title': widget.payload['title'] ?? 'Church project'
+      };
+    }
     events = widget.eventLoader?.call() ?? repo.schedulableEvents();
     // The picker may subscribe later; retain its failure without an uncaught error.
     events.ignore();
@@ -57,6 +71,61 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
   }
 
   void preset(int amount) => setState(() => digits = amount.toString());
+
+  Future<void> chooseProject(BuildContext context) async {
+    var projects = repo.projects();
+    final selected = await showMemberSheet<Map<String, dynamic>>(
+      context: context,
+      title: 'Choose a project',
+      builder: (sheetContext) => StatefulBuilder(
+          builder: (context, update) =>
+              FutureBuilder<List<Map<String, dynamic>>>(
+                future: projects,
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState != ConnectionState.done) {
+                    return const Padding(
+                        padding: EdgeInsets.all(32),
+                        child: Center(child: CircularProgressIndicator()));
+                  }
+                  if (snapshot.hasError) {
+                    return MemberStatus(
+                        message: 'Unable to load church projects',
+                        onRetry: () =>
+                            update(() => projects = repo.projects()));
+                  }
+                  final rows = (snapshot.data ?? [])
+                      .where((row) => row['id'] != null)
+                      .toList();
+                  if (rows.isEmpty) {
+                    return const MemberStatus(
+                        message: 'No active church projects');
+                  }
+                  return Column(mainAxisSize: MainAxisSize.min, children: [
+                    for (final project in rows)
+                      MemberListRow(
+                        title: project['title']?.toString() ?? 'Church project',
+                        leading: Icon(PhosphorIcons.gift()),
+                        trailing: Icon(
+                            selectedProject?['id'] == project['id']
+                                ? PhosphorIcons.check()
+                                : PhosphorIcons.caretRight(),
+                            size: 18),
+                        onTap: () => Navigator.pop(sheetContext, project),
+                      ),
+                  ]);
+                },
+              )),
+    );
+    if (selected != null && mounted) setState(() => selectedProject = selected);
+  }
+
+  void selectType(BuildContext context, String type) {
+    setState(() {
+      givingType = type;
+      error = null;
+    });
+    if (type == 'project' && selectedProject == null) chooseProject(context);
+  }
 
   Widget _disclosure(BuildContext context) {
     final settings = autoGive
@@ -120,7 +189,7 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
       isScrollControlled: true,
       useSafeArea: true,
       sheetAnimationStyle: AppMotion.sheetStyle(context),
-      backgroundColor: MemberVisuals.sheet(context),
+      backgroundColor: Colors.transparent,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(32))),
       builder: (sheetContext) =>
@@ -137,94 +206,115 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
             });
         return FractionallySizedBox(
             heightFactor: .88,
-            child: Column(children: [
-              Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 10, 8),
-                  child: Row(children: [
-                    const Expanded(
-                        child: Text('Service days',
-                            style: TextStyle(
-                                fontSize: 20, fontWeight: FontWeight.w600))),
-                    TextButton(
-                        onPressed: () {
-                          setState(() {
-                            selectedRules
-                              ..clear()
-                              ..addAll(rules);
-                            selectedLabels
-                              ..clear()
-                              ..addAll(labels);
-                          });
-                          Navigator.pop(sheetContext);
+            child: MemberGlass(
+                radius: 32,
+                weight: MemberMaterialWeight.sheet,
+                child: Material(
+                    type: MaterialType.transparency,
+                    child: Column(children: [
+                      Padding(
+                          padding: const EdgeInsets.fromLTRB(20, 12, 10, 8),
+                          child: Row(children: [
+                            const Expanded(
+                                child: Text('Service days',
+                                    style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w600))),
+                            TextButton(
+                                onPressed: () {
+                                  setState(() {
+                                    selectedRules
+                                      ..clear()
+                                      ..addAll(rules);
+                                    selectedLabels
+                                      ..clear()
+                                      ..addAll(labels);
+                                  });
+                                  Navigator.pop(sheetContext);
+                                },
+                                child: const Text('Done')),
+                          ])),
+                      const Divider(height: 1),
+                      Expanded(
+                          child: FutureBuilder<
+                              Map<String, List<Map<String, dynamic>>>>(
+                        future: events,
+                        builder: (context, snapshot) {
+                          if (snapshot.connectionState !=
+                              ConnectionState.done) {
+                            return const Center(
+                                child: CircularProgressIndicator());
+                          }
+                          if (snapshot.hasError) {
+                            return const Center(
+                                child: Text('Unable to load service days'));
+                          }
+                          final recurring =
+                              snapshot.data?['recurring'] ?? const [];
+                          final upcoming =
+                              snapshot.data?['upcoming'] ?? const [];
+                          if (recurring.isEmpty && upcoming.isEmpty) {
+                            return const Center(
+                                child: Text('No upcoming services'));
+                          }
+                          return ListView(
+                              padding:
+                                  const EdgeInsets.fromLTRB(12, 10, 12, 24),
+                              children: [
+                                if (recurring.isNotEmpty)
+                                  const _GroupLabel('Recurring services'),
+                                ...recurring.map((row) {
+                                  final rule = recurringRule(row);
+                                  final title = row['title']?.toString() ??
+                                      'Recurring service';
+                                  return CheckboxListTile(
+                                      value: rules.contains(rule),
+                                      onChanged: (v) =>
+                                          toggle(rule, title, v ?? false),
+                                      title: Text(title),
+                                      subtitle: Text(
+                                          '${row['recurrence_type'] ?? 'Recurring'} · ${row['start_time'] ?? ''}'),
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading);
+                                }),
+                                if (upcoming.isNotEmpty)
+                                  const _GroupLabel('Upcoming events'),
+                                ...upcoming.map((row) {
+                                  final rule = upcomingRule(row);
+                                  final title = row['title']?.toString() ??
+                                      'Upcoming event';
+                                  final start = DateTime.tryParse(
+                                      row['event_start_at']?.toString() ??
+                                          row['starts_at']?.toString() ??
+                                          '');
+                                  return CheckboxListTile(
+                                      value: rules.contains(rule),
+                                      onChanged: rule.contains('event::')
+                                          ? null
+                                          : (v) =>
+                                              toggle(rule, title, v ?? false),
+                                      title: Text(title),
+                                      subtitle: Text(start == null
+                                          ? 'Upcoming'
+                                          : DateFormat('EEE, d MMM · h:mm a')
+                                              .format(start.toLocal())),
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading);
+                                }),
+                              ]);
                         },
-                        child: const Text('Done')),
-                  ])),
-              const Divider(height: 1),
-              Expanded(
-                  child: FutureBuilder<Map<String, List<Map<String, dynamic>>>>(
-                future: events,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  if (snapshot.hasError) {
-                    return const Center(
-                        child: Text('Unable to load service days'));
-                  }
-                  final recurring = snapshot.data?['recurring'] ?? const [];
-                  final upcoming = snapshot.data?['upcoming'] ?? const [];
-                  if (recurring.isEmpty && upcoming.isEmpty) {
-                    return const Center(child: Text('No upcoming services'));
-                  }
-                  return ListView(
-                      padding: const EdgeInsets.fromLTRB(12, 10, 12, 24),
-                      children: [
-                        if (recurring.isNotEmpty)
-                          const _GroupLabel('Recurring services'),
-                        ...recurring.map((row) {
-                          final rule = recurringRule(row);
-                          final title =
-                              row['title']?.toString() ?? 'Recurring service';
-                          return CheckboxListTile(
-                              value: rules.contains(rule),
-                              onChanged: (v) => toggle(rule, title, v ?? false),
-                              title: Text(title),
-                              subtitle: Text(
-                                  '${row['recurrence_type'] ?? 'Recurring'} · ${row['start_time'] ?? ''}'),
-                              controlAffinity: ListTileControlAffinity.leading);
-                        }),
-                        if (upcoming.isNotEmpty)
-                          const _GroupLabel('Upcoming events'),
-                        ...upcoming.map((row) {
-                          final rule = upcomingRule(row);
-                          final title =
-                              row['title']?.toString() ?? 'Upcoming event';
-                          final start = DateTime.tryParse(
-                              row['event_start_at']?.toString() ??
-                                  row['starts_at']?.toString() ??
-                                  '');
-                          return CheckboxListTile(
-                              value: rules.contains(rule),
-                              onChanged: rule.contains('event::')
-                                  ? null
-                                  : (v) => toggle(rule, title, v ?? false),
-                              title: Text(title),
-                              subtitle: Text(start == null
-                                  ? 'Upcoming'
-                                  : DateFormat('EEE, d MMM · h:mm a')
-                                      .format(start.toLocal())),
-                              controlAffinity: ListTileControlAffinity.leading);
-                        }),
-                      ]);
-                },
-              )),
-            ]));
+                      )),
+                    ]))));
       }),
     );
   }
 
   Future<void> submit() async {
     if (busy) return;
+    if (givingType == 'project' && selectedProject?['id'] == null) {
+      setState(() => error = 'Choose a church project');
+      return;
+    }
     if (amountKobo < 10000) {
       setState(() => error = 'Enter an amount of at least ₦100');
       return;
@@ -244,8 +334,10 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
       ];
       final result = await repo.initialize(
         amountKobo: amountKobo,
-        givingType: widget.payload['giving_type']?.toString() ?? 'offering',
-        projectId: widget.payload['project_id']?.toString(),
+        givingType: givingType,
+        projectId: givingType == 'project'
+            ? (selectedProject?['id'])?.toString()
+            : null,
         appOrigin: kIsWeb ? Uri.base.origin : null,
         autoGive: autoGive
             ? {
@@ -276,154 +368,284 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
       child: Builder(
           builder: (context) => GivingBackdrop(
                 child: Scaffold(
+                  bottomNavigationBar: _dockKeypad(context)
+                      ? SafeArea(
+                          top: false,
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+                            child: Align(
+                              heightFactor: 1,
+                              child: ConstrainedBox(
+                                constraints:
+                                    const BoxConstraints(maxWidth: 456),
+                                child: _paymentControls(),
+                              ),
+                            ),
+                          ),
+                        )
+                      : null,
                   body: SafeArea(
                     child: Center(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: 520),
-                        child: CustomScrollView(slivers: [
-                          SliverPadding(
-                            padding: EdgeInsets.fromLTRB(
-                                MediaQuery.sizeOf(context).width < 600
-                                    ? 20
-                                    : 32,
-                                20,
-                                MediaQuery.sizeOf(context).width < 600
-                                    ? 20
-                                    : 32,
-                                24),
-                            sliver: SliverToBoxAdapter(
-                              child: Column(children: [
-                                Row(children: [
-                                  Expanded(
-                                      child: Text(
-                                          widget.payload['title']?.toString() ??
-                                              'Give',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleLarge)),
-                                  MemberIconButton(
-                                      icon: PhosphorIconsRegular.x,
-                                      label: 'Back to Give',
-                                      plain: true,
-                                      onPressed: () => context.go('/give')),
-                                ]),
-                                const SizedBox(height: 28),
-                                Text('Enter amount',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall),
-                                const SizedBox(height: 10),
-                                Semantics(
-                                    liveRegion: true,
-                                    child: FittedBox(
-                                        fit: BoxFit.scaleDown,
-                                        child: Text(amountText,
-                                            key:
-                                                const ValueKey('giving-amount'),
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .headlineLarge
-                                                ?.copyWith(
-                                                    fontSize: 48,
-                                                    height: 1.18,
-                                                    fontWeight: FontWeight.w600,
-                                                    letterSpacing: 0)))),
-                                const SizedBox(height: 8),
-                                Text('Minimum ₦100',
-                                    style:
-                                        Theme.of(context).textTheme.bodySmall),
-                                const SizedBox(height: 24),
-                                Wrap(
-                                    spacing: 8,
-                                    runSpacing: 4,
-                                    alignment: WrapAlignment.center,
-                                    children: [
-                                      for (final amount in [
-                                        1000,
-                                        5000,
-                                        10000,
-                                        20000
-                                      ])
-                                        TextButton(
-                                            onPressed: busy
-                                                ? null
-                                                : () => preset(amount),
-                                            style: TextButton.styleFrom(
-                                                minimumSize: const Size(72, 48),
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                        horizontal: 10),
-                                                backgroundColor:
-                                                    Theme.of(context)
-                                                        .colorScheme
-                                                        .surfaceContainerLow,
-                                                textStyle: Theme.of(context)
-                                                    .textTheme
-                                                    .labelMedium),
-                                            child: Text(NumberFormat.currency(
-                                                    locale: 'en_NG',
-                                                    symbol: '₦',
-                                                    decimalDigits: 0)
-                                                .format(amount))),
-                                    ]),
-                                const SizedBox(height: 16),
-                                Row(children: [
-                                  for (final mode in [false, true])
-                                    Expanded(
-                                        child: Semantics(
-                                            selected: autoGive == mode,
-                                            child: TextButton(
-                                                onPressed: busy
-                                                    ? null
-                                                    : () => setState(
-                                                        () => autoGive = mode),
-                                                style: TextButton.styleFrom(
-                                                    backgroundColor: autoGive ==
-                                                            mode
-                                                        ? Theme.of(context)
-                                                            .colorScheme
-                                                            .surfaceContainerLow
-                                                        : Colors.transparent),
-                                                child: Text(mode
-                                                    ? 'Auto give'
-                                                    : 'One-time')))),
-                                ]),
-                                _disclosure(context),
-                                if (error != null) ...[
-                                  const SizedBox(height: 12),
-                                  Semantics(
-                                      liveRegion: true,
-                                      child: Text(error!,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .error))),
-                                ],
-                                const SizedBox(height: 20),
-                                _Keypad(onKey: busy ? null : press),
-                                const SizedBox(height: 20),
-                                SizedBox(
-                                    width: double.infinity,
-                                    child: FilledButton(
-                                        onPressed: canSubmit ? submit : null,
-                                        child: busy
-                                            ? const SizedBox.square(
-                                                dimension: 20,
-                                                child:
-                                                    CircularProgressIndicator(
-                                                        strokeWidth: 2))
-                                            : const Text('Continue'))),
-                              ]),
-                            ),
-                          ),
-                        ]),
+                        child: LayoutBuilder(
+                            builder: (context, viewport) =>
+                                CustomScrollView(slivers: [
+                                  SliverPadding(
+                                    padding: EdgeInsets.fromLTRB(
+                                        MediaQuery.sizeOf(context).width < 600
+                                            ? 20
+                                            : 32,
+                                        20,
+                                        MediaQuery.sizeOf(context).width < 600
+                                            ? 20
+                                            : 32,
+                                        24),
+                                    sliver: SliverToBoxAdapter(
+                                      child: ConstrainedBox(
+                                          constraints: BoxConstraints(
+                                              minHeight: (viewport.maxHeight -
+                                                      44)
+                                                  .clamp(0, double.infinity)),
+                                          child: Column(
+                                              mainAxisSize: MainAxisSize.min,
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment
+                                                      .spaceBetween,
+                                              children: [
+                                                Column(children: [
+                                                  Row(children: [
+                                                    Expanded(
+                                                        child: Text('Give',
+                                                            style: Theme.of(
+                                                                    context)
+                                                                .textTheme
+                                                                .titleSmall?.copyWith(fontSize: 20, height: 1.3))),
+                                                    MemberIconButton(
+                                                        icon:
+                                                            PhosphorIconsRegular
+                                                                .caretLeft,
+                                                        label: 'Back to Give',
+                                                        plain: true,
+                                                        onPressed: () => context
+                                                            .go('/give')),
+                                                  ]),
+                                                  const SizedBox(height: 12),
+                                                  SingleChildScrollView(
+                                                    scrollDirection:
+                                                        Axis.horizontal,
+                                                    child: Row(children: [
+                                                      for (final type in {
+                                                        'offering': 'Offerings',
+                                                        'tithe': 'Tithe',
+                                                        'prophet_offering':
+                                                            'Prophet offering',
+                                                      }.entries)
+                                                        Padding(
+                                                          padding:
+                                                              const EdgeInsets
+                                                                  .only(
+                                                                  right: 8),
+                                                          child: ChoiceChip(
+                                                            label: Text(
+                                                                type.value),
+                                                            selected:
+                                                                givingType ==
+                                                                    type.key,
+                                                            showCheckmark:
+                                                                false,
+                                                            selectedColor:
+                                                                Theme.of(
+                                                                        context)
+                                                                    .colorScheme
+                                                                    .onSurface,
+                                                            labelStyle:
+                                                                Theme.of(
+                                                                        context)
+                                                                    .textTheme
+                                                                    .labelMedium
+                                                                    ?.copyWith(
+                                                                      color: givingType ==
+                                                                              type
+                                                                                  .key
+                                                                          ? Theme.of(context)
+                                                                              .colorScheme
+                                                                              .surfaceContainerLowest
+                                                                          : Theme.of(context)
+                                                                              .colorScheme
+                                                                              .onSurface,
+                                                                    ),
+                                                            onSelected: busy
+                                                                ? null
+                                                                : (_) =>
+                                                                    selectType(
+                                                                        context,
+                                                                        type.key),
+                                                          ),
+                                                        ),
+                                                    ]),
+                                                  ),
+                                                  if (givingType == 'project')
+                                                    Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: 8),
+                                                      child: TextButton.icon(
+                                                        onPressed: busy
+                                                            ? null
+                                                            : () =>
+                                                                chooseProject(
+                                                                    context),
+                                                        icon: Icon(
+                                                            PhosphorIcons
+                                                                .caretDown(),
+                                                            size: 16),
+                                                        label: Text(selectedProject?[
+                                                                    'title']
+                                                                ?.toString() ??
+                                                            'Choose a project'),
+                                                      ),
+                                                    ),
+                                                  const SizedBox(height: 24),
+                                                  Text('Enter amount',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall),
+                                                  const SizedBox(height: 10),
+                                                  Semantics(
+                                                      liveRegion: true,
+                                                      child: FittedBox(
+                                                          fit: BoxFit.scaleDown,
+                                                          child: Text(
+                                                              amountText,
+                                                              key: const ValueKey(
+                                                                  'giving-amount'),
+                                                              style: Theme
+                                                                      .of(
+                                                                          context)
+                                                                  .textTheme
+                                                                  .headlineLarge
+                                                                  ?.copyWith(
+                                                                      fontSize:
+                                                                          48,
+                                                                      height:
+                                                                          1.18,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w600,
+                                                                      letterSpacing:
+                                                                          0)))),
+                                                  const SizedBox(height: 8),
+                                                  Text('Minimum ₦100',
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall),
+                                                  const SizedBox(height: 24),
+                                                  Wrap(
+                                                      spacing: 8,
+                                                      runSpacing: 4,
+                                                      alignment:
+                                                          WrapAlignment.center,
+                                                      children: [
+                                                        for (final amount in [
+                                                          1000,
+                                                          5000,
+                                                          10000,
+                                                          20000
+                                                        ])
+                                                          TextButton(
+                                                              onPressed: busy
+                                                                  ? null
+                                                                  : () => preset(
+                                                                      amount),
+                                                              style: TextButton.styleFrom(
+                                                                  minimumSize:
+                                                                      const Size(
+                                                                          72, 48),
+                                                                  padding: const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10),
+                                                                  backgroundColor: Theme.of(context)
+                                                                      .colorScheme
+                                                                      .surfaceContainerLow,
+                                                                  textStyle: Theme.of(context)
+                                                                      .textTheme
+                                                                      .labelMedium),
+                                                              child: Text(NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 0)
+                                                                  .format(amount))),
+                                                      ]),
+                                                  const SizedBox(height: 16),
+                                                  SwitchListTile.adaptive(
+                                                    contentPadding:
+                                                        EdgeInsets.zero,
+                                                    title:
+                                                        const Text('Auto give'),
+                                                    subtitle: Text(
+                                                        autoGive
+                                                            ? 'Repeat after this payment'
+                                                            : 'Off · One-time payment',
+                                                        style: Theme.of(context)
+                                                            .textTheme
+                                                            .bodySmall),
+                                                    value: autoGive,
+                                                    onChanged: busy
+                                                        ? null
+                                                        : (value) =>
+                                                            setState(() {
+                                                              autoGive = value;
+                                                              error = null;
+                                                            }),
+                                                  ),
+                                                  _disclosure(context),
+                                                  if (error != null) ...[
+                                                    const SizedBox(height: 12),
+                                                    Semantics(
+                                                        liveRegion: true,
+                                                        child: Text(error!,
+                                                            style: Theme.of(
+                                                                    context)
+                                                                .textTheme
+                                                                .bodySmall
+                                                                ?.copyWith(
+                                                                    color: Theme.of(
+                                                                            context)
+                                                                        .colorScheme
+                                                                        .error))),
+                                                  ],
+                                                ]),
+                                                if (!_dockKeypad(context))
+                                                  _paymentControls(),
+                                              ])),
+                                    ),
+                                  ),
+                                ])),
                       ),
                     ),
                   ),
                 ),
               )));
+
+  bool _dockKeypad(BuildContext context) =>
+      MediaQuery.sizeOf(context).height >= 720 &&
+      MediaQuery.textScalerOf(context).scale(14) <= 18.2;
+
+  Widget _paymentControls() =>
+      Column(mainAxisSize: MainAxisSize.min, children: [
+        const SizedBox(height: 16),
+        _Keypad(onKey: busy ? null : press),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton(
+            onPressed: canSubmit ? submit : null,
+            child: busy
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Continue'),
+          ),
+        ),
+      ]);
 }
 
 class _AutoGiveSettings extends StatelessWidget {

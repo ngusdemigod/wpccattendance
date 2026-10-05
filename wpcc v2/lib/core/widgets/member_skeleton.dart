@@ -6,10 +6,27 @@ class MemberSkeleton extends StatefulWidget {
       {super.key,
       this.rows = 3,
       this.hero = false,
-      this.label = 'Loading content'});
+      this.label = 'Loading content'})
+      : size = null,
+        imageHeight = null,
+        circular = false,
+        radius = 12;
+  const MemberSkeleton.image(
+      {super.key,
+      this.size = 64,
+      this.imageHeight,
+      this.circular = false,
+      this.radius = 12,
+      this.label = 'Loading image'})
+      : rows = 0,
+        hero = false;
   final int rows;
   final bool hero;
   final String label;
+  final double? size;
+  final double? imageHeight;
+  final bool circular;
+  final double radius;
 
   @override
   State<MemberSkeleton> createState() => _MemberSkeletonState();
@@ -83,30 +100,47 @@ class _MemberSkeletonState extends State<MemberSkeleton>
             ).createShader(bounds),
             child: child,
           ),
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            if (widget.hero) ...[
-              AspectRatio(
-                  aspectRatio: 1.6, child: _block(height: 180, radius: 20)),
-              const SizedBox(height: 20),
-            ],
-            for (var index = 0; index < widget.rows; index++)
-              Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: Row(children: [
-                    _block(width: 48, height: 48, radius: 12),
-                    const SizedBox(width: 14),
-                    Expanded(
-                        child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                          FractionallySizedBox(
-                              widthFactor: .78, child: _block(height: 14)),
-                          const SizedBox(height: 10),
-                          FractionallySizedBox(
-                              widthFactor: .5, child: _block(height: 10)),
+          child: widget.size != null
+              ? Container(
+                  width: widget.size,
+                  height: widget.circular
+                      ? widget.size
+                      : widget.imageHeight ?? widget.size,
+                  decoration: BoxDecoration(
+                      color:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      shape: widget.circular
+                          ? BoxShape.circle
+                          : BoxShape.rectangle,
+                      borderRadius: widget.circular
+                          ? null
+                          : BorderRadius.circular(widget.radius)))
+              : Column(mainAxisSize: MainAxisSize.min, children: [
+                  if (widget.hero) ...[
+                    AspectRatio(
+                        aspectRatio: 1.6,
+                        child: _block(height: 180, radius: 20)),
+                    const SizedBox(height: 20),
+                  ],
+                  for (var index = 0; index < widget.rows; index++)
+                    Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        child: Row(children: [
+                          _block(width: 48, height: 48, radius: 12),
+                          const SizedBox(width: 14),
+                          Expanded(
+                              child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                FractionallySizedBox(
+                                    widthFactor: .78,
+                                    child: _block(height: 14)),
+                                const SizedBox(height: 10),
+                                FractionallySizedBox(
+                                    widthFactor: .5, child: _block(height: 10)),
+                              ])),
                         ])),
-                  ])),
-          ]),
+                ]),
         ))),
       );
 }

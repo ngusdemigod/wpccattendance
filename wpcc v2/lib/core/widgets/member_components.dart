@@ -1,10 +1,11 @@
-import 'dart:ui';
+import 'member_skeleton.dart';
 
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../theme/member_theme.dart';
 import '../theme/app_motion.dart';
 import 'member_glass.dart';
+import '../theme/member_material.dart';
 
 EdgeInsets memberPagePadding(BuildContext context,
     {double phone = 20, double top = 20, double bottom = 124}) {
@@ -23,7 +24,9 @@ class MemberPageHeader extends StatelessWidget {
       this.actions = const [],
       this.subtitle,
       this.leading,
+      this.close = false,
       this.onBack});
+  final bool close;
   final String title;
   final List<Widget> actions;
   final String? subtitle;
@@ -37,14 +40,18 @@ class MemberPageHeader extends StatelessWidget {
             if (leading != null || onBack != null) ...[
               leading ??
                   MemberIconButton(
-                      icon: PhosphorIconsRegular.caretLeft,
-                      label: 'Back',
+                      icon: close
+                          ? PhosphorIconsRegular.x
+                          : PhosphorIconsRegular.caretLeft,
+                      label: close ? 'Close' : 'Back',
                       onPressed: onBack),
               const SizedBox(width: 10),
             ],
             Expanded(
-                child: Text(title,
-                    style: Theme.of(context).textTheme.headlineSmall)),
+                child:
+                    Text(title, style: Theme.of(context).textTheme.titleSmall
+                        ?.copyWith(fontSize: 20, height: 26 / 20,
+                            fontWeight: FontWeight.w600, letterSpacing: 0))),
             if (actions.isNotEmpty) const SizedBox(width: 8),
             ...actions,
           ]),
@@ -92,7 +99,10 @@ class MemberIconButton extends StatelessWidget {
       child: SizedBox.square(
           dimension: 48,
           child: Stack(alignment: Alignment.center, children: [
-            if (!plain && surface)
+            if (!plain &&
+                surface &&
+                label != 'Back' &&
+                !label.startsWith('Back to '))
               SizedBox(
                   width: 40,
                   height: 40,
@@ -107,7 +117,11 @@ class MemberIconButton extends StatelessWidget {
                 minimumSize: const Size(48, 48),
                 shape: const CircleBorder(),
               ),
-              icon: Icon(icon, size: iconSize),
+              icon: Icon(
+                  label == 'Back' || label.startsWith('Back to ')
+                      ? PhosphorIconsRegular.caretLeft
+                      : icon,
+                  size: iconSize),
             )
           ])));
 }
@@ -157,8 +171,14 @@ class _Image extends StatelessWidget {
             fit: BoxFit.cover,
             excludeFromSemantics: true,
             errorBuilder: (_, __, ___) => fallback,
-            loadingBuilder: (_, child, progress) =>
-                progress == null ? child : fallback,
+            frameBuilder: (context, child, frame, synchronous) =>
+                synchronous || frame != null
+                    ? child
+                    : LayoutBuilder(
+                        builder: (context, bounds) => MemberSkeleton.image(
+                            size: bounds.maxWidth,
+                            imageHeight: bounds.maxHeight,
+                            radius: 0)),
           );
   }
 }
@@ -198,6 +218,7 @@ class MemberPosterCard extends StatelessWidget {
             label: '$title, $metadata',
             excludeSemantics: true,
             child: InkWell(
+              onTapDown: (_) => ComponentOrigin.capture(context),
               onTap: onTap,
               child: Stack(fit: StackFit.expand, children: [
                 art,
@@ -303,6 +324,7 @@ class MemberListRow extends StatelessWidget {
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
+            onTapDown: (_) => ComponentOrigin.capture(context),
             onTap: onTap,
             child: ConstrainedBox(
               constraints: BoxConstraints(minHeight: plain ? 64 : 76),
@@ -348,7 +370,7 @@ class MemberListRow extends StatelessWidget {
 class MemberSearchBar extends StatelessWidget {
   const MemberSearchBar(
       {super.key,
-      this.hint = 'Search events, departments, and more',
+      this.hint = 'Search',
       this.onTap,
       this.controller,
       this.onChanged,
@@ -363,77 +385,71 @@ class MemberSearchBar extends StatelessWidget {
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
   @override
-  Widget build(BuildContext context) => ClipRRect(
-      borderRadius: BorderRadius.circular(26),
-      child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: MediaQuery.highContrastOf(context) ||
-                    MediaQuery.accessibleNavigationOf(context)
-                ? 0
-                : 12,
-            sigmaY: MediaQuery.highContrastOf(context) ||
-                    MediaQuery.accessibleNavigationOf(context)
-                ? 0
-                : 12,
-          ),
-          child: Material(
-            color: Theme.of(context).colorScheme.surface,
-            borderRadius: BorderRadius.circular(26),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(26),
-              onTap: controller == null ? onTap : null,
-              child: SizedBox(
-                  height: 48,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    child: Row(children: [
-                      Icon(PhosphorIconsRegular.magnifyingGlass,
-                          size: 21, color: MemberVisuals.subtle(context)),
-                      const SizedBox(width: 9),
-                      Expanded(
-                          child: controller == null
-                              ? Text(hint,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .bodyMedium
-                                      ?.copyWith(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant))
-                              : TextField(
-                                  controller: controller,
-                                  onChanged: onChanged,
-                                  onTap: onTap,
-                                  autofocus: autofocus,
-                                  onSubmitted: onSubmitted,
-                                  style: Theme.of(context).textTheme.bodyMedium,
-                                  decoration: InputDecoration(
-                                      hintText: hint,
-                                      border: InputBorder.none,
-                                      enabledBorder: InputBorder.none,
-                                      focusedBorder: InputBorder.none,
-                                      filled: false,
-                                      contentPadding: EdgeInsets.zero))),
-                      if (onClear != null)
-                        MemberIconButton(
-                            icon: PhosphorIconsRegular.x,
-                            iconSize: 21,
-                            label: 'Clear search',
-                            onPressed: onClear,
-                            plain: true),
-                      if (onFilter != null)
-                        MemberIconButton(
-                            icon: PhosphorIconsRegular.slidersHorizontal,
-                            iconSize: 21,
-                            label: 'Search filters',
-                            onPressed: onFilter,
-                            plain: true),
-                    ]),
-                  )),
-            ),
-          )));
+  Widget build(BuildContext context) => MemberGlass(
+        outlined: false,
+      frosted: true,
+      radius: 26,
+      weight: MemberMaterialWeight.navigation,
+      child: Material(
+        color: MemberMaterials.solid(context)
+            ? MemberMaterials.fill(context, MemberMaterialWeight.navigation)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(26),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(26),
+          onTap: controller == null ? onTap : null,
+          child: SizedBox(
+              height: 48,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                child: Row(children: [
+                  Icon(PhosphorIconsRegular.magnifyingGlass,
+                      size: 21, color: MemberVisuals.subtle(context)),
+                  const SizedBox(width: 9),
+                  Expanded(
+                      child: controller == null
+                          ? Text(hint,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant))
+                          : TextField(
+                              controller: controller,
+                              onChanged: onChanged,
+                              onTap: onTap,
+                              autofocus: autofocus,
+                              onSubmitted: onSubmitted,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                              decoration: InputDecoration(
+                                  hintText: hint,
+                                  border: InputBorder.none,
+                                  enabledBorder: InputBorder.none,
+                                  focusedBorder: InputBorder.none,
+                                  filled: false,
+                                  contentPadding: EdgeInsets.zero))),
+                  if (onClear != null)
+                    MemberIconButton(
+                        icon: PhosphorIconsRegular.x,
+                        iconSize: 21,
+                        label: 'Clear search',
+                        onPressed: onClear,
+                        plain: true),
+                  if (onFilter != null)
+                    MemberIconButton(
+                        icon: PhosphorIconsRegular.slidersHorizontal,
+                        iconSize: 21,
+                        label: 'Search filters',
+                        onPressed: onFilter,
+                        plain: true),
+                ]),
+              )),
+        ),
+      ));
 }
 
 class MemberFilterChip extends StatelessWidget {
@@ -467,44 +483,31 @@ class MemberFilterChip extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 13),
                     decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(22),
-                        gradient: selected && featured
-                            ? MemberVisuals.highlight
-                            : null,
-                        color: selected && featured
-                            ? null
-                            : selected
-                                ? Theme.of(context)
-                                    .colorScheme
-                                    .surfaceContainerLow
-                                : Theme.of(context).colorScheme.surface),
+                        color: selected
+                            ? Theme.of(context).colorScheme.onSurface
+                            : Theme.of(context).colorScheme.surface),
                     child: Row(mainAxisSize: MainAxisSize.min, children: [
                       Icon(icon,
                           size: 16,
-                          color: selected && featured
-                              ? const Color(0xFF211923)
-                              : selected
-                                  ? Theme.of(context).colorScheme.onSurface
-                                  : Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant),
+                          color: selected
+                              ? (Theme.of(context).brightness == Brightness.dark
+                                  ? const Color(0xFF151517) : Colors.white)
+                              : Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(width: 6),
                       Text(label,
                           style: Theme.of(context)
                               .textTheme
                               .labelMedium
                               ?.copyWith(
-                                  fontWeight: selected && featured
+                                  fontWeight: selected
                                       ? FontWeight.w600
                                       : FontWeight.w400,
-                                  color: selected && featured
-                                      ? const Color(0xFF211923)
-                                      : selected
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .onSurface
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant)),
+                                  color: selected
+                                      ? (Theme.of(context).brightness == Brightness.dark
+                                          ? const Color(0xFF151517) : Colors.white)
+                                      : Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant)),
                     ]),
                   ))),
             )),

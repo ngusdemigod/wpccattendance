@@ -1,5 +1,77 @@
 import 'package:flutter/material.dart';
 
+abstract final class ComponentOrigin {
+  static Rect? _rect;
+  static DateTime? _at;
+  static void capture(BuildContext context) {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    _rect = box.localToGlobal(Offset.zero) & box.size;
+    _at = DateTime.now();
+  }
+
+  static Rect? take() {
+    final result =
+        _at != null && DateTime.now().difference(_at!).inMilliseconds < 700
+            ? _rect
+            : null;
+    _rect = null;
+    return result;
+  }
+}
+
+class ComponentRouteMotion extends StatefulWidget {
+  const ComponentRouteMotion(
+      {super.key,
+      required this.animation,
+      required this.origin,
+      required this.child});
+  final Animation<double> animation;
+  final Rect? origin;
+  final Widget child;
+  @override
+  State<ComponentRouteMotion> createState() => _ComponentRouteMotionState();
+}
+
+class _ComponentRouteMotionState extends State<ComponentRouteMotion> {
+  late final Rect? origin = widget.origin;
+  @override
+  Widget build(BuildContext context) {
+    if (origin == null || MediaQuery.disableAnimationsOf(context)) {
+      return AppRouteMotion(
+          animation: widget.animation,
+          offset: const Offset(24, 0),
+          child: widget.child);
+    }
+    return LayoutBuilder(
+        builder: (context, bounds) => AnimatedBuilder(
+              animation: widget.animation,
+              child: widget.child,
+              builder: (context, child) {
+                final t = widget.animation.value;
+                final p = const Cubic(.2, .85, .2, 1).transform(t);
+                final box = Navigator.of(context).context.findRenderObject();
+                final offset = box is RenderBox && box.hasSize
+                    ? box.localToGlobal(Offset.zero)
+                    : Offset.zero;
+                final target = offset & bounds.biggest;
+                final startScale =
+                    (origin!.width / target.width).clamp(.12, 1.0);
+                return Opacity(
+                    opacity: (p * 5).clamp(0.0, 1.0),
+                    child: Transform.translate(
+                      offset: (origin!.center - target.center) * (1 - p),
+                      child: Transform.scale(
+                          scale: startScale + (1 - startScale) * p,
+                          child: ClipRRect(
+                              borderRadius: BorderRadius.circular(24 * (1 - p)),
+                              child: child)),
+                    ));
+              },
+            ));
+  }
+}
+
 abstract final class AppMotion {
   static const curve = Cubic(.23, 1, .32, 1);
   static const drawer = Cubic(.32, .72, 0, 1);
@@ -57,11 +129,13 @@ class AppRouteMotion extends StatefulWidget {
       {super.key,
       required this.animation,
       required this.child,
+      this.secondaryAnimation,
       this.offset = Offset.zero,
       this.beginScale = 1,
       this.curve = AppMotion.curve});
   final Animation<double> animation;
   final Widget child;
+  final Animation<double>? secondaryAnimation;
   final Offset offset;
   final double beginScale;
   final Curve curve;
@@ -102,22 +176,29 @@ class _AppRouteMotionState extends State<AppRouteMotion> {
   Widget build(BuildContext context) {
     if (MediaQuery.disableAnimationsOf(context)) return widget.child;
     return AnimatedBuilder(
-        animation: progress,
+        animation: Listenable.merge([
+          progress,
+          if (widget.secondaryAnimation != null) widget.secondaryAnimation!
+        ]),
         child: widget.child,
         builder: (context, child) {
           final reverse = widget.animation.status == AnimationStatus.reverse;
           final value = progress.value;
+          final covered =
+              AppMotion.curve.transform(widget.secondaryAnimation?.value ?? 0);
           return ExcludeSemantics(
               excluding: reverse,
               child: IgnorePointer(
                   ignoring: reverse,
                   child: Opacity(
-                      opacity: value.clamp(0, 1),
+                      opacity: (value * (1 - covered * .18)).clamp(0, 1),
                       child: Transform.translate(
-                          offset: widget.offset * (1 - value),
+                          offset: widget.offset * (1 - value) +
+                              Offset(-12 * covered, 0),
                           child: Transform.scale(
                               scale: widget.beginScale +
-                                  (1 - widget.beginScale) * value,
+                                  (1 - widget.beginScale) * value -
+                                  .025 * covered,
                               child: child)))));
         });
   }

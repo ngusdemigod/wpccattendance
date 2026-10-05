@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/widgets/member_skeleton.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -83,11 +83,10 @@ class _MediaPageState extends State<MediaPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               _Utility(providerUrl: provider),
-                              const MediaDisplayTitle('WPCC Messages'),
                               if (provider.isNotEmpty)
                                 MediaProviderLink(url: provider),
                               _Bio(
-                                  'The Word for everyday life. Teachings from Word Power Christian Centre.'),
+                                  'The Word for everyday life. Teachings from Wisdom Power Christian Centre.'),
                               FutureBuilder<List<Map<String, dynamic>>>(
                                   future: albums,
                                   builder: (context, albumSnapshot) {
@@ -189,10 +188,9 @@ class _Utility extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
       padding: const EdgeInsets.only(bottom: 26),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        MemberIconButton(
-            icon: PhosphorIconsRegular.caretLeft,
-            label: 'Back',
-            onPressed: () => context.go('/home')),
+        Expanded(
+            child: Text('WPCC Messages',
+                style: Theme.of(context).textTheme.titleSmall)),
         MemberIconButton(
             icon: providerUrl.isEmpty
                 ? PhosphorIconsRegular.magnifyingGlass
@@ -299,6 +297,7 @@ class _FeaturedCollection extends StatelessWidget {
           padding: const EdgeInsets.all(12),
           child: Column(children: [
             InkWell(
+                onTapDown: (_) => ComponentOrigin.capture(context),
                 onTap: onOpen,
                 borderRadius: BorderRadius.circular(15),
                 child: Row(children: [
@@ -411,7 +410,7 @@ class _Track extends StatelessWidget {
           return Material(
               color: state.episode?.id == episode['id']?.toString()
                   ? Theme.of(context).colorScheme.surfaceContainerLow
-                  : Theme.of(context).colorScheme.surface,
+                  : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
               child: InkWell(
                   borderRadius: BorderRadius.circular(12),
@@ -431,24 +430,20 @@ class _Track extends StatelessWidget {
                           }
                         },
                   child: ConstrainedBox(
-                      constraints: const BoxConstraints(minHeight: 48),
+                      constraints: const BoxConstraints(minHeight: 66),
                       child: Padding(
                           padding: const EdgeInsets.only(left: 11),
                           child: Row(children: [
-                            SizedBox(
-                                width: 18,
-                                child: Text(
-                                    row['track_number']
-                                            ?.toString()
-                                            .padLeft(2, '0') ??
-                                        '',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(fontSize: 12))),
+                            MemberArtwork(
+                                imageUrl: (episode['artwork_url'] ??
+                                        album['featured_image'])
+                                    ?.toString(),
+                                size: 44,
+                                radius: 8,
+                                icon: PhosphorIconsRegular.microphoneStage),
                             const SizedBox(width: 10),
                             Expanded(
-                                child: Text(
+                                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [Text(
                                     episode['title']?.toString() ??
                                         'Message unavailable',
                                     maxLines: MediaQuery.textScalerOf(context)
@@ -461,13 +456,18 @@ class _Track extends StatelessWidget {
                                             16
                                         ? null
                                         : TextOverflow.ellipsis,
-                                    style: GoogleFonts.dmSans(
-                                        textStyle: Theme.of(context)
+                                    style: Theme.of(context)
                                             .textTheme
-                                            .bodyMedium,
+                                            .bodyMedium?.copyWith(
+                                        fontFamily: 'DM Sans',
                                         fontSize: 13,
                                         height: 18 / 13,
-                                        fontWeight: FontWeight.w500))),
+                                        fontWeight: FontWeight.w500)),
+                                  if (row['track_number'] != null) ...[
+                                    const SizedBox(height: 4),
+                                    Text('Message ${row['track_number']}', style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 11)),
+                                  ],
+                                ])),
                             IconButton(
                                 tooltip:
                                     active ? 'Pause message' : 'Play message',
@@ -518,11 +518,13 @@ class _CollectionsRail extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 itemCount: albums.length,
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (_, index) {
+                itemBuilder: (itemContext, index) {
                   final album = albums[index];
                   return SizedBox(
                       width: 172,
                       child: InkWell(
+                          onTapDown: (_) =>
+                              ComponentOrigin.capture(itemContext),
                           onTap: () => onOpen(album),
                           borderRadius: BorderRadius.circular(20),
                           child: Column(

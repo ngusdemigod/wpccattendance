@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../theme/app_theme.dart';
+import 'member_skeleton.dart';
 
 class InitialsAvatar extends StatelessWidget {
   const InitialsAvatar(
@@ -12,24 +13,28 @@ class InitialsAvatar extends StatelessWidget {
       required this.initials,
       this.size = 40,
       this.imageUrl,
+      this.backdrop = false,
       this.memberStyle = false});
 
   final String initials;
   final double size;
   final String? imageUrl;
   final bool memberStyle;
+  final bool backdrop;
 
   @override
   Widget build(BuildContext context) {
     final hasImage = imageUrl != null && imageUrl!.trim().isNotEmpty;
-    final fallback = _fallback(context);
+    final fallback = backdrop ? const SizedBox.expand() : _fallback(context);
     final child = hasImage
-        ? ClipOval(
+        ? ClipRect(
             child: imageUrl!.startsWith('r2://')
                 ? _PrivateR2Avatar(
                     storedUrl: imageUrl!,
                     size: size,
                     fallback: fallback,
+                    memberStyle: memberStyle,
+                    backdrop: backdrop,
                   )
                 : Image.network(
                     imageUrl!,
@@ -37,6 +42,12 @@ class InitialsAvatar extends StatelessWidget {
                     height: size,
                     fit: BoxFit.cover,
                     errorBuilder: (_, __, ___) => fallback,
+                    frameBuilder: (_, child, frame, synchronous) => backdrop
+                        ? BackdropImageFade(
+                            ready: synchronous || frame != null, child: child)
+                        : !memberStyle || synchronous || frame != null
+                            ? child
+                            : MemberSkeleton.image(size: size, circular: true),
                   ),
           )
         : fallback;
@@ -45,12 +56,14 @@ class InitialsAvatar extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(
-            color: memberStyle
-                ? Theme.of(context).colorScheme.outlineVariant
-                : const Color(0xFFE8EAF0),
-            width: 1),
+        shape: backdrop ? BoxShape.rectangle : BoxShape.circle,
+        border: backdrop
+            ? null
+            : Border.all(
+                color: memberStyle
+                    ? Theme.of(context).colorScheme.outlineVariant
+                    : const Color(0xFFE8EAF0),
+                width: 1),
         boxShadow: memberStyle
             ? const []
             : const [
@@ -123,15 +136,36 @@ class InitialsAvatar extends StatelessWidget {
         );
 }
 
+class BackdropImageFade extends StatelessWidget {
+  const BackdropImageFade(
+      {super.key, required this.ready, required this.child});
+  final bool ready;
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+        tween: Tween(begin: 0, end: ready ? 1 : 0),
+        duration: MediaQuery.disableAnimationsOf(context)
+            ? Duration.zero
+            : const Duration(seconds: 2),
+        curve: Curves.easeInOut,
+        child: child,
+        builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+      );
+}
+
 class _PrivateR2Avatar extends StatefulWidget {
   const _PrivateR2Avatar({
     required this.storedUrl,
     required this.size,
     required this.fallback,
+    this.memberStyle = false,
+    this.backdrop = false,
   });
   final String storedUrl;
   final double size;
   final Widget fallback;
+  final bool memberStyle;
+  final bool backdrop;
 
   @override
   State<_PrivateR2Avatar> createState() => _PrivateR2AvatarState();
@@ -185,13 +219,25 @@ class _PrivateR2AvatarState extends State<_PrivateR2Avatar> {
         future: resolvedBytes,
         builder: (context, snapshot) {
           final bytes = snapshot.data;
-          if (bytes == null) return widget.fallback;
+          if (bytes == null) {
+            return !widget.backdrop &&
+                    widget.memberStyle &&
+                    snapshot.connectionState != ConnectionState.done
+                ? MemberSkeleton.image(size: widget.size, circular: true)
+                : widget.fallback;
+          }
           return Image.memory(
             bytes,
             width: widget.size,
             height: widget.size,
             fit: BoxFit.cover,
             errorBuilder: (_, __, ___) => widget.fallback,
+            frameBuilder: (_, child, frame, synchronous) => widget.backdrop
+                ? BackdropImageFade(
+                    ready: synchronous || frame != null, child: child)
+                : !widget.memberStyle || synchronous || frame != null
+                    ? child
+                    : MemberSkeleton.image(size: widget.size, circular: true),
           );
         },
       );

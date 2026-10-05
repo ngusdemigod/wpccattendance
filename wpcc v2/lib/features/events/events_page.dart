@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_motion.dart';
 import '../../core/widgets/member_skeleton.dart';
 import '../../core/widgets/adaptive_layout.dart';
 import 'package:go_router/go_router.dart';
@@ -15,8 +16,10 @@ typedef EventsLoader = Future<List<Map<String, dynamic>>> Function({
 });
 
 class EventsPage extends StatefulWidget {
-  const EventsPage({super.key, this.loadEvents, this.loadRecurring});
+  const EventsPage(
+      {super.key, this.loadEvents, this.loadRecurring, this.loadOngoing});
   final EventsLoader? loadEvents;
+  final Future<List<Map<String, dynamic>>> Function()? loadOngoing;
   final Future<List<Map<String, dynamic>>> Function()? loadRecurring;
 
   @override
@@ -35,8 +38,8 @@ class _EventsPageState extends State<EventsPage> {
   bool hasMore = true;
   int loadedEventCount = 0;
   Object? error;
-  String filter = 'Upcoming';
-  String _searchFilter = 'All';
+  String filter = 'All';
+  List<Map<String, dynamic>> ongoingRows = [];
   DateTimeRange? dateRange;
 
   @override
@@ -60,6 +63,11 @@ class _EventsPageState extends State<EventsPage> {
     try {
       final results = await Future.wait([
         if (reset)
+          widget.loadOngoing?.call() ??
+              (widget.loadEvents != null
+                  ? Future.value(<Map<String, dynamic>>[])
+                  : repo.events(mode: 'ongoing', limit: pageSize)),
+        if (reset)
           widget.loadRecurring?.call() ?? repo.recurringEvents(limit: pageSize),
         widget.loadEvents
                 ?.call(limit: pageSize, offset: reset ? 0 : loadedEventCount) ??
@@ -74,7 +82,8 @@ class _EventsPageState extends State<EventsPage> {
       setState(() {
         if (reset) {
           loadedEventCount = results.last.length;
-          recurringRows = results.first;
+          ongoingRows = results.first;
+          recurringRows = results[1];
           departmentalRows = results.last
               .where((event) => event['department_id'] != null)
               .toList();
@@ -109,18 +118,7 @@ class _EventsPageState extends State<EventsPage> {
 
   Future<void> _refresh() => _load(reset: true);
 
-  Future<void> _searchFilters() async {
-    final selected =
-        await showSearchFilterSheet(context, selected: _currentSearchFilter);
-    if (!mounted || selected == null) return;
-    _openSearch(selected);
-  }
-
-  String get _currentSearchFilter =>
-      MemberSearchScope.maybeOf(context)?.value ?? _searchFilter;
-
   void _openSearch(String section) {
-    _searchFilter = section;
     MemberSearchScope.maybeOf(context)?.value = section;
     context.push(
         Uri(path: '/search', queryParameters: {'filter': section}).toString());
@@ -140,6 +138,7 @@ class _EventsPageState extends State<EventsPage> {
       'Church' => upcomingRows,
       'Departments' => departmentalRows,
       'Recurring' => recurringRows,
+      'Ongoing' => ongoingRows,
       _ => [...upcomingRows, ...departmentalRows],
     };
     if (dateRange == null || filter == 'Recurring') return rows;
@@ -161,22 +160,13 @@ class _EventsPageState extends State<EventsPage> {
           physics: const AlwaysScrollableScrollPhysics(),
           padding: memberPagePadding(context, top: 20, bottom: 124),
           children: [
-            Row(children: [
-              MemberIconButton(
-                  label: 'Back',
-                  icon: PhosphorIcons.caretLeft(),
-                  onPressed: () => context.go('/home')),
-              const SizedBox(width: 10),
-              Expanded(
-                  child: Text('Events',
-                      style: Theme.of(context).textTheme.headlineSmall)),
+            MemberPageHeader(title: 'Events', actions: [
               MemberIconButton(
                   label: 'Date filter',
                   icon: PhosphorIcons.calendarBlank(),
                   plain: true,
                   onPressed: _dateFilter),
             ]),
-            const SizedBox(height: 20),
             Align(
               alignment: Alignment.centerLeft,
               child: ConstrainedBox(
@@ -185,9 +175,7 @@ class _EventsPageState extends State<EventsPage> {
                         ? 720
                         : double.infinity),
                 child: MemberSearchBar(
-                    hint: 'Search events, departments, and more',
-                    onTap: () => _openSearch(_currentSearchFilter),
-                    onFilter: _searchFilters),
+                    hint: 'Search events', onTap: () => _openSearch('Events')),
               ),
             ),
             const SizedBox(height: 12),
@@ -195,6 +183,8 @@ class _EventsPageState extends State<EventsPage> {
                 height: 48,
                 child: ListView(scrollDirection: Axis.horizontal, children: [
                   for (final group in [
+                    ('All', PhosphorIcons.squaresFour()),
+                    ('Ongoing', PhosphorIcons.broadcast()),
                     ('Upcoming', PhosphorIcons.flame()),
                     ('Church', PhosphorIcons.mapPin()),
                     ('Departments', PhosphorIcons.users()),
@@ -221,11 +211,12 @@ class _EventsPageState extends State<EventsPage> {
                         '${WpccTime.eventDate(dateRange!.end.toIso8601String())}'),
                   )),
             const SizedBox(height: 22),
-            Text(filter == 'Upcoming' ? 'Coming up' : filter,
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontSize: 27, height: 34 / 27)),
+            if (filter != 'All')
+              Text(filter == 'Upcoming' ? 'Upcoming events' : filter,
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineSmall
+                      ?.copyWith(fontSize: 27, height: 34 / 27)),
             const SizedBox(height: 14),
             if (loading)
               const SizedBox(height: 220, child: MemberSkeleton())
@@ -234,7 +225,40 @@ class _EventsPageState extends State<EventsPage> {
                   icon: PhosphorIcons.warningCircle(),
                   message: 'Unable to load events',
                   onRetry: _refresh)
-            else if (visibleRows.isEmpty)
+            else if (filter == 'All') ...[
+              const MemberSectionHeader(title: 'Ongoing services'),
+              if (ongoingRows.isEmpty)
+                Container(
+                    height: 150,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                        color:
+                            Theme.of(context).colorScheme.surfaceContainerLow,
+                        borderRadius: BorderRadius.circular(20)),
+                    child: const Text('No ongoing services'))
+              else
+                _posterGrid(ongoingRows, false),
+              const SizedBox(height: 28),
+              MemberSectionHeader(
+                  title: 'Upcoming events',
+                  action: TextButton(
+                      onPressed: () => setState(() => filter = 'Upcoming'),
+                      child: const Text('View all'))),
+              if (visibleRows.isEmpty)
+                const MemberStatus(message: 'No upcoming events')
+              else
+                _posterGrid(visibleRows, false),
+              const SizedBox(height: 28),
+              MemberSectionHeader(
+                  title: 'Recurring events',
+                  action: TextButton(
+                      onPressed: () => setState(() => filter = 'Recurring'),
+                      child: const Text('View all'))),
+              if (recurringRows.isEmpty)
+                const MemberStatus(message: 'No recurring events')
+              else
+                _posterGrid(recurringRows, true),
+            ] else if (visibleRows.isEmpty)
               MemberStatus(
                   icon: PhosphorIcons.calendarBlank(),
                   message: 'No upcoming events')
@@ -264,6 +288,55 @@ class _EventsPageState extends State<EventsPage> {
           ],
         ),
       ));
+
+  Widget _posterGrid(List<Map<String, dynamic>> rows, bool recurring) =>
+      LayoutBuilder(builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 700 ? 3 : 2;
+        final width = (constraints.maxWidth - 16 * (columns - 1)) / columns;
+        return Wrap(spacing: 16, runSpacing: 22, children: [
+          for (final event in rows)
+            SizedBox(
+                width: width,
+                child: Builder(
+                    builder: (itemContext) => InkWell(
+                          onTapDown: (_) =>
+                              ComponentOrigin.capture(itemContext),
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            final id = event['event_id'] ??
+                                event['recurring_event_id'];
+                            if (id != null) {
+                              context.push('/events/$id', extra: event);
+                            }
+                          },
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                MemberArtwork(
+                                    imageUrl:
+                                        event['featured_image']?.toString(),
+                                    size: width,
+                                    height: width,
+                                    icon: PhosphorIcons.calendarBlank()),
+                                const SizedBox(height: 10),
+                                Text(event['title']?.toString() ?? 'Event',
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
+                                const SizedBox(height: 4),
+                                Text(
+                                    recurring
+                                        ? _EventTile.recurrenceLabel(event)
+                                        : WpccTime.compact(
+                                            event['event_start_at']),
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall),
+                              ]),
+                        ))),
+        ]);
+      });
 }
 
 class _EventResultRow extends StatelessWidget {
@@ -287,6 +360,7 @@ class _EventResultRow extends StatelessWidget {
           side: BorderSide(color: colors.outlineVariant)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
+        onTapDown: (_) => ComponentOrigin.capture(context),
         onTap:
             id.isEmpty ? null : () => context.push('/events/$id', extra: event),
         child: Padding(

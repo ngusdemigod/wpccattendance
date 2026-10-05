@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anonymous Reports · Design Review</title>
+<link rel="stylesheet" href="department-tools-review.css">
+<style>
+@font-face{font-family:ReportIcons;src:url('department-tools-icons.ttf');font-display:block}
+.symbol{font-family:ReportIcons;font-size:22px;font-weight:400;line-height:1;flex:none}
+main{max-width:720px;background:linear-gradient(#39264d,transparent 360px);padding-bottom:48px}
+.light main{background:linear-gradient(#ede3f6,transparent 360px)}
+header{margin-bottom:24px}header h1{font-size:20px;line-height:26px}header button{display:grid;place-items:center}
+.tabs{display:flex;gap:4px;background:var(--fill);padding:4px;border-radius:28px;margin-bottom:32px}
+.tabs button{flex:1;background:transparent;font-size:.875em;min-width:0}
+.tabs button[aria-selected=true]{background:var(--ink);color:var(--bg);font-weight:600}
+h2{font-size:22px;line-height:1.3;margin:0 0 8px}h3{font-size:15px;line-height:1.4}
+.intro{font-size:.875em;color:var(--muted);margin:0 0 26px}
+.privacy{display:flex;align-items:flex-start;gap:12px;padding:0 0 24px;margin-bottom:24px;border-bottom:1px solid var(--line)}
+.privacy .symbol{margin-top:2px;color:var(--ink)}
+.privacy p{font-size:.8125em;line-height:1.55;margin:6px 0 0;color:var(--muted)}
+.privacy strong{font-size:.875em;font-weight:600}
+.report-fields{display:grid;gap:24px}label{color:var(--ink);font-size:.875em;font-weight:600}
+.frost{background:var(--fill);backdrop-filter:blur(24px);border:1px solid transparent}
+select{height:56px;border-radius:16px;padding:12px 16px;font-weight:400;cursor:pointer}
+textarea{padding:16px;min-height:192px;border-radius:20px;line-height:1.55;font-size:16px;font-weight:400}
+textarea::placeholder{color:var(--muted);opacity:.8}
+.field-note{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:.75em;margin-top:8px;line-height:1.5}
+.consent{display:flex;align-items:flex-start;gap:12px;margin-top:20px;min-height:48px;padding:10px 0;line-height:1.5;font-size:.8125em;font-weight:400}
+.consent input{margin:1px 0 0}.submit{width:100%;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:16px;min-height:52px;font-size:.875em}
+.connection{display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;color:var(--muted);margin-top:14px}
+.connection .symbol{font-size:16px}.empty{padding:48px 8px;text-align:center}.empty .symbol{display:block;font-size:32px;margin-bottom:16px}.empty p{font-size:.875em;max-width:280px;margin:10px auto}.empty strong{color:var(--ink);font-size:1em}.empty button{margin-top:16px}
+.report-row{padding:20px 0;border-bottom:1px solid var(--line)}.report-row header{margin:0 0 10px;justify-content:space-between}.report-row p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:.875em}.report-row small{font-size:.75em}.tag{color:var(--good);font-size:.75em}#error{font-size:.875em;color:var(--bad);line-height:1.5;margin-top:16px}#error:empty{display:none}
+.solid .frost{background:var(--sheet);backdrop-filter:none}
+@media(prefers-reduced-transparency:reduce){.frost{background:var(--sheet);backdrop-filter:none}}
+@media(forced-colors:active){.tabs,.frost{border:1px solid CanvasText}.tabs button[aria-selected=true]{outline:2px solid Highlight}}
+</style>
+</head>
+<body>
+<aside class="preview-controls" aria-label="Review controls">
+<strong>Design review · No real submissions</strong>
+<label><input id="light" type="checkbox">Light</label>
+<label><input id="large" type="checkbox">Large text</label>
+<label><input id="solid" type="checkbox">Reduce transparency</label>
+<label><input id="offline" type="checkbox">Offline</label>
+<label><input id="unavailable" type="checkbox">No reviewers</label>
+</aside>
+<main>
+<header><a href="wpcc-member-prototype.html#home" aria-label="Back to Home" style="width:48px;justify-content:center;text-decoration:none"><span class="symbol" aria-hidden="true">&#xe138;</span></a><h1>Anonymous reports</h1></header>
+<div class="tabs" role="tablist" aria-label="Reports">
+<button id="new-tab" role="tab" aria-selected="true" aria-controls="new-panel">New report</button>
+<button id="history-tab" role="tab" aria-selected="false" aria-controls="history-panel" tabindex="-1">My submissions</button>
+</div>
+<section id="new-panel" role="tabpanel" aria-labelledby="new-tab">
+<h2>Share a concern</h2>
+<p class="intro">Send your report to the reviewers you choose.</p>
+<div class="privacy"><span class="symbol" aria-hidden="true">&#xe40c;</span><div><strong>Before you submit</strong><p>Your identity is hidden from reviewers but retained in restricted system records. Do not include names or details that identify you in your report.</p></div></div>
+<form id="report-form">
+<div class="report-fields">
+<label for="destination">Send to<select id="destination" class="frost" required aria-describedby="destination-note"><option value="">Choose reviewers</option><option value="branch">Branch reviewers</option><option value="central">Central reviewers</option></select></label>
+<small id="destination-note" class="muted" style="margin-top:-16px;font-size:12px">Your report is sent only to the selected destination.</small>
+<div><label for="report-body">Your report<textarea id="report-body" class="frost" placeholder="Describe what happened and the concern you want reviewed." maxlength="5000" minlength="20" required aria-describedby="body-help count"></textarea></label><div class="field-note"><span id="body-help">At least 20 characters</span><span id="count">0 / 5,000</span></div></div>
+</div>
+<label class="consent"><input id="consent" type="checkbox" required><span>I understand how my identity is protected.</span></label>
+<p id="error" role="status"></p>
+<button id="submit" type="submit" class="primary submit" disabled><span>Submit report</span><span class="symbol" aria-hidden="true">&#xe06c;</span></button>
+<p class="connection"><span class="symbol" aria-hidden="true">&#xe450;</span><span>Connection required · Not saved on this device</span></p>
+</form>
+</section>
+<section id="history-panel" role="tabpanel" aria-labelledby="history-tab" hidden>
+<h2>My submissions</h2><p class="intro">Your references and review status.</p>
+<div id="history"><div class="empty"><span class="symbol" aria-hidden="true">&#xe198;</span><strong>No reports yet</strong><p>Your submitted reports and their status will appear here.</p><button id="start-report">New report</button></div></div>
+</section>
+</main>
+<dialog id="confirmation" aria-labelledby="confirmation-title"><h2 id="confirmation-title">Preview complete</h2><p>No report was sent. The live app will provide a reference only after the server confirms your submission.</p><div class="actions"><button id="close-dialog" class="primary">Done</button></div></dialog>
+<script src="anonymous-reports-review.js"></script>
+</body>
+</html>

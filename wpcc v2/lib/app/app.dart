@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
+import '../core/theme/member_material.dart';
 import 'router.dart';
 import '../features/onboarding/pwa_launch_gate.dart';
 import '../features/onboarding/profile_confirmation_gate.dart';
@@ -18,6 +19,7 @@ class _WpccAppState extends State<WpccApp> {
   void initState() {
     super.initState();
     ThemePreference.instance.load();
+    TransparencyPreference.instance.load();
   }
 
   @override
@@ -36,12 +38,14 @@ class _WpccAppState extends State<WpccApp> {
           darkTheme: buildWpccTheme(brightness: Brightness.dark),
           themeMode: mode,
           routerConfig: router,
-          builder: (context, child) => WpccBackdrop(
+          builder: (context, child) => MemberMaterialScope(
+              child: WpccBackdrop(
             child: PwaLaunchGate(
               signedIn: AuthRepository().session != null,
-              child: ProfileConfirmationGate(child: child ?? const SizedBox.shrink()),
+              child: ProfileConfirmationGate(
+                  child: child ?? const SizedBox.shrink()),
             ),
-          ),
+          )),
         ),
       );
 }

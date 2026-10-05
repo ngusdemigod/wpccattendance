@@ -59,6 +59,20 @@ class _PwaOnboardingState extends State<PwaOnboarding>
     reduced = MediaQuery.disableAnimationsOf(context);
     if (initialized) return;
     initialized = true;
+    if (widget.splashOnly) {
+      // Continue the browser splash at its exit, without replaying the logo
+      // entrance or waiting for photos that restored members never see.
+      entrance.value = 1550 / 3100;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (reduced) {
+          entrance.value = 1;
+        } else {
+          entrance.forward();
+        }
+      });
+      return;
+    }
     // Decode the first visible photos before beginning the reveal.
     Future.wait([
       for (final path in [
@@ -81,6 +95,7 @@ class _PwaOnboardingState extends State<PwaOnboarding>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (widget.splashOnly) return;
     if (state == AppLifecycleState.resumed && !reduced && !ticker.isActive) {
       previous = Duration.zero;
       ticker.start();
@@ -142,197 +157,246 @@ class _PwaOnboardingState extends State<PwaOnboarding>
   }
 
   @override
-  Widget build(BuildContext context) => Material(
-      color: Colors.black,
-      child: LayoutBuilder(builder: (context, constraints) {
-        final width = math.min(430.0, constraints.maxWidth);
-        final height = constraints.maxHeight;
-        viewportWidth = width;
-        cardWidth = height <= 780
-            ? 164
-            : width <= 390
-                ? 160
-                : 176;
-        // Preserve prototype coordinates; scale down only on very short displays.
-        final canvasHeight = math.max(700.0, math.min(932.0, height));
-        final copyTop = (canvasHeight <= 720
-                ? 386.0
+  Widget build(BuildContext context) => widget.splashOnly
+      ? AnimatedBuilder(
+          animation: entrance,
+          child: widget.revealChild ?? const SizedBox.expand(),
+          builder: (context, child) => Stack(fit: StackFit.expand, children: [
+                child!,
+                if (progress(1550, 1220, splashEase) < 1)
+                  Positioned.fill(
+                      child: ClipPath(
+                          clipper:
+                              _SplashClip(1 - progress(1550, 1220, splashEase)),
+                          child: ColoredBox(
+                              color: Colors.white,
+                              child: Center(child: _logo())))),
+              ]))
+      : Material(
+          color: Colors.black,
+          child: LayoutBuilder(builder: (context, constraints) {
+            final width = math.min(430.0, constraints.maxWidth);
+            final height = constraints.maxHeight;
+            viewportWidth = width;
+            cardWidth = height <= 780
+                ? 164
+                : width <= 390
+                    ? 160
+                    : 176;
+            // Preserve prototype coordinates; scale down only on very short displays.
+            final canvasHeight = math.max(700.0, math.min(932.0, height));
+            final copyTop = (canvasHeight <= 720
+                    ? 386.0
+                    : canvasHeight <= 780
+                        ? 396.0
+                        : width <= 390
+                            ? 410.0
+                            : 420.0) +
+                75;
+            final fontSize = canvasHeight <= 720
+                ? 35.0
                 : canvasHeight <= 780
-                    ? 396.0
-                    : width <= 390
-                        ? 410.0
-                        : 420.0) +
-            75;
-        final fontSize = canvasHeight <= 720
-            ? 35.0
-            : canvasHeight <= 780
-                ? 38.0
-                : 40.0;
-        final small = canvasHeight <= 780;
-        return Center(
-            child: SizedBox(
-                width: width,
-                height: math.min(height, 932),
-                child: FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.topCenter,
-                    child: SizedBox(
-                        width: width,
-                        height: canvasHeight,
-                        child: AnimatedBuilder(
-                            animation: entrance,
-                            builder: (context, _) => ClipRect(
-                                    child:
-                                        Stack(fit: StackFit.expand, children: [
-                                  ColoredBox(color: const Color(0xff100c0c)),
-                                  RepaintBoundary(
-                                      child: Transform.scale(
-                                          scale: 1.55,
-                                          child: ImageFiltered(
-                                              imageFilter: ui.ImageFilter.blur(
-                                                  sigmaX: 56, sigmaY: 56),
-                                              child: Image.asset(photo(centre),
-                                                  fit: BoxFit.cover,
-                                                  excludeFromSemantics:
-                                                      true)))),
-                                  const DecoratedBox(
-                                      decoration: BoxDecoration(
-                                          gradient: LinearGradient(
-                                              begin: Alignment.topCenter,
-                                              end: Alignment.bottomCenter,
-                                              colors: [
-                                        Color(0x99120e0e),
-                                        Color(0xb8120e0e),
-                                        Color(0xf00c0a0a)
-                                      ],
-                                              stops: [
-                                        0,
-                                        .5,
-                                        1
-                                      ]))),
-                                  const DecoratedBox(
-                                      decoration: BoxDecoration(
-                                          gradient: RadialGradient(
-                                              center: Alignment.bottomRight,
-                                              radius: 1.1,
-                                              colors: [
-                                        Color(0x38843fff),
-                                        Color(0x00843fff)
-                                      ]))),
-                                  Positioned(
-                                      top: 18,
-                                      left: 0,
-                                      right: 0,
-                                      height: canvasHeight <= 720
-                                          ? 338
-                                          : canvasHeight <= 780
-                                              ? 344
-                                              : width <= 390
-                                                  ? 346
-                                                  : 356,
-                                      child: appear(_photos(), 1790, 860,
-                                          rise: 28, blur: 8, scale: .965)),
-                                  Positioned(
-                                      top: copyTop,
-                                      left: width <= 390 ? 24 : 28,
-                                      right: width <= 390 ? 24 : 28,
-                                      child: Column(children: [
-                                        appear(
-                                            Column(children: [
-                                              Text('Welcome to',
-                                                  style: GoogleFonts.dmSans(
-                                                      fontSize: 13,
-                                                      height: 1,
-                                                      fontWeight:
-                                                          FontWeight.w600,
-                                                      letterSpacing: -.195,
-                                                      color: Colors.white60)),
-                                              const SizedBox(height: 8),
-                                              Text('WPCC\nCommunity',
-                                                  textAlign: TextAlign.center,
-                                                  style: GoogleFonts.manrope(
-                                                      fontSize: fontSize,
-                                                      height: .94,
-                                                      fontWeight:
-                                                          FontWeight.w800,
-                                                      letterSpacing:
-                                                          -fontSize * .055,
-                                                      color: Colors.white)),
-                                              SizedBox(
-                                                  height: canvasHeight <= 720
-                                                      ? 13
-                                                      : small
-                                                          ? 16
-                                                          : 20),
-                                              ConstrainedBox(
-                                                  constraints:
-                                                      const BoxConstraints(
-                                                          maxWidth: 340),
-                                                  child: Text(
-                                                      'Connect, grow and stay engaged with everything happening at Wisdom Power Christian Centre.',
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      style: GoogleFonts.dmSans(
-                                                          fontSize:
-                                                              small ? 13 : 14,
+                    ? 38.0
+                    : 40.0;
+            final small = canvasHeight <= 780;
+            return Center(
+                child: SizedBox(
+                    width: width,
+                    height: math.min(height, 932),
+                    child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.topCenter,
+                        child: SizedBox(
+                            width: width,
+                            height: canvasHeight,
+                            child: AnimatedBuilder(
+                                animation: entrance,
+                                builder: (context, _) => ClipRect(
+                                        child: Stack(
+                                            fit: StackFit.expand,
+                                            children: [
+                                          ColoredBox(
+                                              color: const Color(0xff100c0c)),
+                                          RepaintBoundary(
+                                              child: Transform.scale(
+                                                  scale: 1.55,
+                                                  child: ImageFiltered(
+                                                      imageFilter:
+                                                          ui.ImageFilter.blur(
+                                                              sigmaX: 56,
+                                                              sigmaY: 56),
+                                                      child: Image.asset(
+                                                          photo(centre),
+                                                          fit: BoxFit.cover,
+                                                          excludeFromSemantics:
+                                                              true)))),
+                                          const DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                  gradient: LinearGradient(
+                                                      begin:
+                                                          Alignment.topCenter,
+                                                      end: Alignment
+                                                          .bottomCenter,
+                                                      colors: [
+                                                Color(0x99120e0e),
+                                                Color(0xb8120e0e),
+                                                Color(0xf00c0a0a)
+                                              ],
+                                                      stops: [
+                                                0,
+                                                .5,
+                                                1
+                                              ]))),
+                                          const DecoratedBox(
+                                              decoration: BoxDecoration(
+                                                  gradient: RadialGradient(
+                                                      center:
+                                                          Alignment.bottomRight,
+                                                      radius: 1.1,
+                                                      colors: [
+                                                Color(0x38843fff),
+                                                Color(0x00843fff)
+                                              ]))),
+                                          Positioned(
+                                              top: 18,
+                                              left: 0,
+                                              right: 0,
+                                              height: canvasHeight <= 720
+                                                  ? 338
+                                                  : canvasHeight <= 780
+                                                      ? 344
+                                                      : width <= 390
+                                                          ? 346
+                                                          : 356,
+                                              child: appear(
+                                                  _photos(), 1790, 860,
+                                                  rise: 28,
+                                                  blur: 8,
+                                                  scale: .965)),
+                                          Positioned(
+                                              top: copyTop,
+                                              left: width <= 390 ? 24 : 28,
+                                              right: width <= 390 ? 24 : 28,
+                                              child: Column(children: [
+                                                appear(
+                                                    Column(children: [
+                                                      Text('Welcome to',
+                                                          style: GoogleFonts
+                                                              .dmSans(
+                                                                  fontSize: 13,
+                                                                  height: 1,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w600,
+                                                                  letterSpacing:
+                                                                      -.195,
+                                                                  color: Colors
+                                                                      .white60)),
+                                                      const SizedBox(height: 8),
+                                                      Text('WPCC\nCommunity',
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          style: GoogleFonts
+                                                              .manrope(
+                                                                  fontSize:
+                                                                      fontSize,
+                                                                  height: .94,
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .w800,
+                                                                  letterSpacing:
+                                                                      -fontSize *
+                                                                          .055,
+                                                                  color: Colors
+                                                                      .white)),
+                                                      SizedBox(
                                                           height:
                                                               canvasHeight <=
                                                                       720
-                                                                  ? 1.32
-                                                                  : 1.38,
-                                                          letterSpacing: -.25,
-                                                          color: const Color(
-                                                              0xd1ffffff)))),
-                                            ]),
-                                            1950,
-                                            740),
-                                        SizedBox(
-                                            height: canvasHeight <= 720
-                                                ? 16
-                                                : small
-                                                    ? 19
-                                                    : 24),
-                                        appear(
-                                            Column(children: [
-                                              _StartButton(
-                                                  onPressed: () =>
-                                                      widget.onContinue(centre),
-                                                  height: canvasHeight <= 720
-                                                      ? 46
-                                                      : 50),
-                                              if (canvasHeight > 820)
-                                                Padding(
-                                                    padding:
-                                                        const EdgeInsets.only(
-                                                            top: 21),
-                                                    child: Text(
-                                                        'Community moments scrolling live',
-                                                        style:
-                                                            GoogleFonts.dmSans(
-                                                                fontSize: 11,
-                                                                color: Colors
-                                                                    .white38,
-                                                                letterSpacing:
-                                                                    -.11))),
-                                            ]),
-                                            2130,
-                                            720),
-                                      ])),
-                                  if (widget.splashOnly &&
-                                      widget.revealChild != null)
-                                    Positioned.fill(child: widget.revealChild!),
-                                  if (progress(1550, 1220, splashEase) < 1)
-                                    Positioned.fill(
-                                        child: ClipPath(
-                                            clipper: _SplashClip(1 -
-                                                progress(
-                                                    1550, 1220, splashEase)),
-                                            child: ColoredBox(
-                                                color: Colors.white,
-                                                child:
-                                                    Center(child: _logo())))),
-                                ])))))));
-      }));
+                                                                  ? 13
+                                                                  : small
+                                                                      ? 16
+                                                                      : 20),
+                                                      ConstrainedBox(
+                                                          constraints:
+                                                              const BoxConstraints(
+                                                                  maxWidth:
+                                                                      340),
+                                                          child: Text('Connect, grow and stay engaged with everything happening at Wisdom Power Christian Centre.',
+                                                              textAlign:
+                                                                  TextAlign
+                                                                      .center,
+                                                              style: GoogleFonts.dmSans(
+                                                                  fontSize:
+                                                                      small
+                                                                          ? 13
+                                                                          : 14,
+                                                                  height:
+                                                                      canvasHeight <=
+                                                                              720
+                                                                          ? 1.32
+                                                                          : 1.38,
+                                                                  letterSpacing:
+                                                                      -.25,
+                                                                  color: const Color(
+                                                                      0xd1ffffff)))),
+                                                    ]),
+                                                    1950,
+                                                    740),
+                                                SizedBox(
+                                                    height: canvasHeight <= 720
+                                                        ? 16
+                                                        : small
+                                                            ? 19
+                                                            : 24),
+                                                appear(
+                                                    Column(children: [
+                                                      _StartButton(
+                                                          onPressed: () =>
+                                                              widget.onContinue(
+                                                                  centre),
+                                                          height:
+                                                              canvasHeight <=
+                                                                      720
+                                                                  ? 46
+                                                                  : 50),
+                                                      if (canvasHeight >
+                                                          820)
+                                                        Padding(
+                                                            padding:
+                                                                const EdgeInsets
+                                                                    .only(
+                                                                    top: 21),
+                                                            child: Text(
+                                                                'Community moments scrolling live',
+                                                                style: GoogleFonts.dmSans(
+                                                                    fontSize:
+                                                                        11,
+                                                                    color: Colors
+                                                                        .white38,
+                                                                    letterSpacing:
+                                                                        -.11))),
+                                                    ]),
+                                                    2130,
+                                                    720),
+                                              ])),
+                                          if (widget.splashOnly &&
+                                              widget.revealChild != null)
+                                            Positioned.fill(
+                                                child: widget.revealChild!),
+                                          if (progress(1550, 1220, splashEase) <
+                                              1)
+                                            Positioned.fill(
+                                                child: ClipPath(
+                                                    clipper: _SplashClip(1 -
+                                                        progress(1550, 1220,
+                                                            splashEase)),
+                                                    child: ColoredBox(
+                                                        color: Colors.white,
+                                                        child: Center(
+                                                            child: _logo())))),
+                                        ])))))));
+          }));
 
   Widget _logo() {
     final inside = progress(160, 1050, const Cubic(.22, .7, .18, 1));

@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/services/receipt_export_service.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'give_repository.dart';
 import '../../core/widgets/member_skeleton.dart';
@@ -181,7 +180,25 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                         ),
                       );
                     }
-                    return _row(context, rows[index]);
+                    final month = _month(rows[index]);
+                    final startsMonth =
+                        index == 0 || _month(rows[index - 1]) != month;
+                    return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (startsMonth)
+                            Padding(
+                              padding: EdgeInsets.only(
+                                  top: index == 0 ? 4 : 24, bottom: 12),
+                              child: Semantics(
+                                  header: true,
+                                  child: Text(month,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium)),
+                            ),
+                          _row(context, rows[index]),
+                        ]);
                   },
                 ),
               );
@@ -192,29 +209,36 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
 
   Widget _row(BuildContext context, Map<String, dynamic> tx) {
     final successful = tx['status'] == 'successful';
+    final pending =
+        const ['pending', 'initialized', 'processing'].contains(tx['status']);
+    final theme = Theme.of(context);
+    final dark = theme.brightness == Brightness.dark;
+    final color = successful
+        ? (dark ? const Color(0xFF91DDB5) : const Color(0xFF246747))
+        : pending
+            ? (dark ? const Color(0xFFF1D17C) : const Color(0xFF80620C))
+            : (dark ? const Color(0xFFFFABB0) : const Color(0xFFA72B3A));
     return InkWell(
       onTap: () => _invoice(tx),
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 13),
+        padding: const EdgeInsets.symmetric(vertical: 18),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 42,
+              height: 42,
               decoration: BoxDecoration(
-                color: successful
-                    ? WpccColors.successBackground
-                    : Theme.of(context).colorScheme.surfaceContainerLow,
-                borderRadius: BorderRadius.circular(12),
+                color: color.withValues(alpha: .12),
+                shape: BoxShape.circle,
               ),
               child: Icon(
                 successful
                     ? PhosphorIcons.checkCircle()
-                    : PhosphorIcons.receipt(),
+                    : pending
+                        ? PhosphorIcons.clockCountdown()
+                        : PhosphorIcons.xCircle(),
                 size: 18,
-                color: successful
-                    ? WpccColors.success
-                    : Theme.of(context).colorScheme.onSurfaceVariant,
+                color: color,
               ),
             ),
             const SizedBox(width: 10),
@@ -225,7 +249,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                   Text(
                     _label(tx['giving_type']),
                     style: const TextStyle(
-                      fontSize: 12,
+                      fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -240,25 +264,29 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                 ],
               ),
             ),
-            Column(
+            const SizedBox(width: 12),
+            Expanded(
+                child: Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   _amount(tx),
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
-                  _label(tx['status']),
+                  tx['status'] == 'initialized'
+                      ? 'Processing'
+                      : _label(tx['status']),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 9,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        fontSize: 12,
+                        color: color,
                       ),
                 ),
               ],
-            ),
+            )),
           ],
         ),
       ),
@@ -284,8 +312,18 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
     );
     if (d == null) return '—';
     return DateFormat(
-      'd MMM yyyy · h:mm a',
+      'd MMM · h:mm a',
     ).format(d.toUtc().add(const Duration(hours: 1)));
+  }
+
+  String _month(Map<String, dynamic> tx) {
+    final date = DateTime.tryParse(
+        (tx['paid_at'] ?? tx['initiated_at'] ?? tx['created_at'])?.toString() ??
+            '');
+    return date == null
+        ? 'Other transactions'
+        : DateFormat('MMMM yyyy')
+            .format(date.toUtc().add(const Duration(hours: 1)));
   }
 
   String _label(dynamic value) => (value?.toString() ?? '—')
@@ -320,6 +358,14 @@ class _InvoiceSheet extends StatelessWidget {
         : DateFormat(
             'd MMM yyyy · h:mm a',
           ).format(date.toUtc().add(const Duration(hours: 1)));
+    final successful = tx['status'] == 'successful';
+    final failed = ['failed', 'abandoned', 'reversed'].contains(tx['status']);
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final statusColor = successful
+        ? (dark ? const Color(0xFF89D6B6) : const Color(0xFF237451))
+        : failed
+            ? Theme.of(context).colorScheme.error
+            : (dark ? const Color(0xFFE8CB73) : const Color(0xFF806314));
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(18, 4, 18, 28),
@@ -327,6 +373,27 @@ class _InvoiceSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Row(children: [
+            Icon(
+                successful
+                    ? PhosphorIcons.checkCircle()
+                    : failed
+                        ? PhosphorIcons.warningCircle()
+                        : PhosphorIcons.clockCountdown(),
+                size: 20,
+                color: statusColor),
+            const SizedBox(width: 8),
+            Expanded(
+                child: Text(
+                    tx['status'] == 'successful'
+                        ? 'Giving successful'
+                        : 'Payment ${tx['status'] ?? 'pending'}',
+                    style: Theme.of(context)
+                        .textTheme
+                        .bodyMedium
+                        ?.copyWith(color: statusColor))),
+          ]),
+          const SizedBox(height: 16),
           Text(
             amount,
             style: Theme.of(
@@ -334,7 +401,8 @@ class _InvoiceSheet extends StatelessWidget {
             ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 18),
-          _detail(context, 'Status', tx['status']),
+          const Divider(height: 24),
+          _detail(context, 'Giving type', tx['giving_type']),
           _detail(context, 'Date', dateLabel),
           _detail(
             context,
@@ -346,7 +414,6 @@ class _InvoiceSheet extends StatelessWidget {
             'Payment source',
             tx['source_summary'] ?? tx['payment_channel'] ?? 'Paystack',
           ),
-          _detail(context, 'Receipt type', tx['receipt_type'] ?? 'PDF receipt'),
           const SizedBox(height: 18),
           Row(
             children: [
@@ -357,7 +424,7 @@ class _InvoiceSheet extends StatelessWidget {
                     backgroundColor: Theme.of(context).colorScheme.onSurface,
                   ),
                   icon: Icon(PhosphorIcons.filePdf(), size: 17),
-                  label: const Text('Download PDF'),
+                  label: const Text('PDF'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -365,7 +432,7 @@ class _InvoiceSheet extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () => exporter.downloadImage(tx),
                   icon: Icon(PhosphorIcons.image(), size: 17),
-                  label: const Text('Download image'),
+                  label: const Text('Image'),
                 ),
               ),
             ],
@@ -385,15 +452,16 @@ class _InvoiceSheet extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
             Expanded(
               child: Text(
                 (value?.toString() ?? '—').replaceAll('_', ' '),
+                textAlign: TextAlign.right,
                 style:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
             ),
           ],

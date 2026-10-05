@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/member_photo_backdrop.dart';
 import '../../core/widgets/member_skeleton.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -28,6 +29,7 @@ class MediaAlbumDetailPage extends StatefulWidget {
 class _MediaAlbumDetailPageState extends State<MediaAlbumDetailPage> {
   late Future<Map<String, dynamic>?> album;
   late Future<List<Map<String, dynamic>>> tracks;
+  bool descriptionExpanded = false;
 
   @override
   void initState() {
@@ -39,6 +41,7 @@ class _MediaAlbumDetailPageState extends State<MediaAlbumDetailPage> {
   void didUpdateWidget(covariant MediaAlbumDetailPage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.albumId != widget.albumId || oldWidget.seed != widget.seed) {
+      descriptionExpanded = false;
       _load();
     }
   }
@@ -67,119 +70,186 @@ class _MediaAlbumDetailPageState extends State<MediaAlbumDetailPage> {
     final width = MediaQuery.sizeOf(context).width;
     final gutter = width < 600 ? 20.0 : 32.0;
     final colors = Theme.of(context).colorScheme;
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: SafeArea(
-        bottom: false,
-        child: Align(
-          alignment: Alignment.topCenter,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: width >= 900 ? 820 : 900),
-            child: FutureBuilder<Map<String, dynamic>?>(
-              future: album,
-              builder: (context, snapshot) =>
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                future: tracks,
-                builder: (context, trackSnapshot) {
-                  final data = snapshot.data;
-                  final rows =
-                      trackSnapshot.data ?? const <Map<String, dynamic>>[];
-                  final description =
-                      data?['description']?.toString().trim() ?? '';
-                  final title = data?['title']?.toString() ?? 'Album';
-                  return ListView(
-                    key: PageStorageKey('album-${widget.albumId}'),
-                    padding: EdgeInsets.only(
-                        bottom: MediaQuery.paddingOf(context).bottom + 112),
-                    children: [
-                      if (data != null)
-                        _AlbumHero(
-                          imageUrl: data['featured_image']?.toString() ?? '',
-                          title: title,
-                          height: width < 600 ? 300 : 380,
-                          gutter: gutter,
-                          onBack: _back,
-                        )
-                      else
-                        Padding(
-                          padding: EdgeInsets.fromLTRB(gutter, 20, gutter, 20),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: MemberIconButton(
-                                icon: PhosphorIconsRegular.caretLeft,
-                                label: 'Back',
-                                onPressed: _back),
-                          ),
-                        ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: gutter),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (snapshot.connectionState !=
-                                ConnectionState.done)
-                              const Padding(
-                                  padding: EdgeInsets.all(28),
-                                  child: Center(child: MemberSkeleton()))
-                            else if (snapshot.hasError || data == null)
-                              MemberStatus(
-                                  message: 'Album unavailable',
-                                  icon: PhosphorIconsRegular.disc,
-                                  onRetry: () => setState(_load))
-                            else ...[
-                              Semantics(
-                                  header: true,
-                                  child: MediaDisplayTitle(title)),
-                              Text(
-                                  trackSnapshot.connectionState ==
-                                              ConnectionState.done &&
-                                          !trackSnapshot.hasError
-                                      ? '${rows.length} ${rows.length == 1 ? 'message' : 'messages'} \u00b7 WPCC'
-                                      : 'WPCC Messages',
-                                  style: Theme.of(context).textTheme.bodySmall),
-                              if (description.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 17),
-                                  child: Text(description,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodyMedium
-                                          ?.copyWith(
-                                              height: 1.5,
-                                              color: colors.onSurfaceVariant)),
-                                ),
-                              const SizedBox(height: 25),
-                              const MemberSectionHeader(title: 'Messages'),
-                              if (trackSnapshot.connectionState !=
-                                  ConnectionState.done)
-                                const Padding(
-                                    padding: EdgeInsets.all(28),
-                                    child: Center(child: MemberSkeleton()))
-                              else if (trackSnapshot.hasError)
-                                MemberStatus(
-                                    message: 'Messages are unavailable',
-                                    onRetry: () => setState(() {
-                                          tracks = _loadTracks();
-                                        }))
-                              else if (rows.isEmpty)
-                                const MemberStatus(
-                                    message: 'No messages in this album')
+    return FutureBuilder<Map<String, dynamic>?>(
+        future: album,
+        builder: (context, backdrop) => MemberPhotoBackdrop(
+            route: '/media',
+            imageUrl: backdrop.data?['featured_image']?.toString(),
+            child: Scaffold(
+              backgroundColor: Colors.transparent,
+              body: SafeArea(
+                bottom: false,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints:
+                        BoxConstraints(maxWidth: width >= 900 ? 820 : 900),
+                    child: FutureBuilder<Map<String, dynamic>?>(
+                      future: album,
+                      builder: (context, snapshot) =>
+                          FutureBuilder<List<Map<String, dynamic>>>(
+                        future: tracks,
+                        builder: (context, trackSnapshot) {
+                          final data = snapshot.data;
+                          final rows = trackSnapshot.data ??
+                              const <Map<String, dynamic>>[];
+                          final description =
+                              data?['description']?.toString().trim() ?? '';
+                          final title = data?['title']?.toString() ?? 'Album';
+                          return ListView(
+                            key: PageStorageKey('album-${widget.albumId}'),
+                            padding: EdgeInsets.only(
+                                bottom:
+                                    MediaQuery.paddingOf(context).bottom + 112),
+                            children: [
+                              if (data != null)
+                                _AlbumHero(
+                                  imageUrl:
+                                      data['featured_image']?.toString() ?? '',
+                                  title: title,
+                                  height: width < 600 ? 300 : 380,
+                                  gutter: gutter,
+                                  onBack: _back,
+                                )
                               else
-                                MediaCollectionTracks(
-                                    album: data, tracks: rows),
+                                Padding(
+                                  padding: EdgeInsets.fromLTRB(
+                                      gutter, 20, gutter, 20),
+                                  child: Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: MemberIconButton(
+                                        icon: PhosphorIconsRegular.caretLeft,
+                                        label: 'Back',
+                                        onPressed: _back),
+                                  ),
+                                ),
+                              Padding(
+                                padding:
+                                    EdgeInsets.symmetric(horizontal: gutter),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    if (snapshot.connectionState !=
+                                        ConnectionState.done)
+                                      const Padding(
+                                          padding: EdgeInsets.all(28),
+                                          child:
+                                              Center(child: MemberSkeleton()))
+                                    else if (snapshot.hasError || data == null)
+                                      MemberStatus(
+                                          message: 'Album unavailable',
+                                          icon: PhosphorIconsRegular.disc,
+                                          onRetry: () => setState(_load))
+                                    else ...[
+                                      Semantics(
+                                          header: true,
+                                          child: MediaDisplayTitle(title)),
+                                      Text(
+                                          trackSnapshot.connectionState ==
+                                                      ConnectionState.done &&
+                                                  !trackSnapshot.hasError
+                                              ? '${rows.length} ${rows.length == 1 ? 'message' : 'messages'} \u00b7 WPCC'
+                                              : 'WPCC Messages',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall),
+                                      if (description.isNotEmpty)
+                                        Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 17),
+                                          child: LayoutBuilder(
+                                              builder: (context, bounds) {
+                                            final style = Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                    height: 1.5,
+                                                    color: colors
+                                                        .onSurfaceVariant);
+                                            final measure = TextPainter(
+                                                text: TextSpan(
+                                                    text: description,
+                                                    style: style),
+                                                textDirection:
+                                                    Directionality.of(context),
+                                                textScaler:
+                                                    MediaQuery.textScalerOf(
+                                                        context),
+                                                maxLines: 3)
+                                              ..layout(
+                                                  maxWidth: bounds.maxWidth);
+                                            final overflows =
+                                                measure.didExceedMaxLines;
+                                            measure.dispose();
+                                            return Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(description,
+                                                      maxLines:
+                                                          descriptionExpanded
+                                                              ? null
+                                                              : 3,
+                                                      overflow:
+                                                          descriptionExpanded
+                                                              ? TextOverflow
+                                                                  .visible
+                                                              : TextOverflow
+                                                                  .ellipsis,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodyMedium
+                                                          ?.copyWith(
+                                                              height: 1.5,
+                                                              color: colors
+                                                                  .onSurfaceVariant)),
+                                                  if (overflows)
+                                                    TextButton(
+                                                        onPressed: () => setState(() =>
+                                                            descriptionExpanded =
+                                                                !descriptionExpanded),
+                                                        child: Text(
+                                                            descriptionExpanded
+                                                                ? 'Show less'
+                                                                : 'Read more')),
+                                                ]);
+                                          }),
+                                        ),
+                                      const SizedBox(height: 25),
+                                      const MemberSectionHeader(
+                                          title: 'Messages'),
+                                      if (trackSnapshot.connectionState !=
+                                          ConnectionState.done)
+                                        const Padding(
+                                            padding: EdgeInsets.all(28),
+                                            child:
+                                                Center(child: MemberSkeleton()))
+                                      else if (trackSnapshot.hasError)
+                                        MemberStatus(
+                                            message: 'Messages are unavailable',
+                                            onRetry: () => setState(() {
+                                                  tracks = _loadTracks();
+                                                }))
+                                      else if (rows.isEmpty)
+                                        const MemberStatus(
+                                            message:
+                                                'No messages in this album')
+                                      else
+                                        MediaCollectionTracks(
+                                            album: data, tracks: rows),
+                                    ],
+                                  ],
+                                ),
+                              ),
                             ],
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                    ],
-                  );
-                },
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
-        ),
-      ),
-    );
+            )));
   }
 }
 

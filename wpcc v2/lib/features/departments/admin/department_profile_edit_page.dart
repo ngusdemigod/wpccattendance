@@ -2,116 +2,75 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
-
-import '../../../core/theme/app_theme.dart';
-import '../../../core/widgets/initials_avatar.dart';
+import '../../../core/widgets/member_components.dart';
+import '../../../core/widgets/member_skeleton.dart';
 import '../department_repository.dart';
 
 class DepartmentProfileEditPage extends StatefulWidget {
-  const DepartmentProfileEditPage({super.key, required this.departmentId});
+  const DepartmentProfileEditPage(
+      {super.key, required this.departmentId, this.repository});
   final String departmentId;
-
+  final DepartmentRepository? repository;
   @override
   State<DepartmentProfileEditPage> createState() =>
       _DepartmentProfileEditPageState();
 }
 
 class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
-  final repo = DepartmentRepository();
-  final name = TextEditingController();
-  final description = TextEditingController();
-  Map<String, dynamic>? department;
-  String? coverUrl;
-  String? avatarUrl;
-  PlatformFile? coverFile;
-  PlatformFile? avatarFile;
+  late final repo = widget.repository ?? DepartmentRepository();
+  late Future<Map<String, dynamic>?> department =
+      repo.context(widget.departmentId);
+  PlatformFile? cover, avatar;
   bool busy = false;
-  bool loading = true;
-  String? loadError;
 
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
+  Future<void> _pick(bool isCover) async {
     try {
-      department = await repo.context(widget.departmentId);
-      name.text = department?['name']?.toString() ?? '';
-      description.text = department?['description']?.toString() ?? '';
-      coverUrl = department?['cover_url']?.toString();
-      avatarUrl = department?['avatar_url']?.toString();
-      if (department == null) loadError = 'Department profile is unavailable.';
+      final result = await FilePicker.platform.pickFiles(
+          type: FileType.custom,
+          allowedExtensions: ['jpg', 'jpeg', 'png', 'webp'],
+          withData: true);
+      if (!mounted || result == null) return;
+      final file = result.files.single;
+      if (file.bytes == null || file.size == 0 || file.size > 5 * 1024 * 1024) {
+        throw StateError('Choose an image smaller than 5 MB.');
+      }
+      setState(() {
+        if (isCover) {
+          cover = file;
+        } else {
+          avatar = file;
+        }
+      });
     } catch (_) {
-      loadError = 'Unable to load the department profile.';
-    } finally {
-      if (mounted) setState(() => loading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Choose a JPG, PNG or WebP image under 5 MB.')));
+      }
     }
   }
 
-  @override
-  void dispose() {
-    name.dispose();
-    description.dispose();
-    super.dispose();
-  }
-
-  Future<PlatformFile?> _pickImage() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      withData: true,
-    );
-    return result?.files.single;
-  }
-
-  Future<void> _save() async {
-    if (department?['can_manage'] != true) return;
-    if (name.text.trim().length < 2 || description.text.length > 500) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Check department name and description.')),
-      );
-      return;
-    }
+  Future<void> _save(Map<String, dynamic> data) async {
+    if (busy || data['can_manage'] != true) return;
+    final branch = data['branch_id']?.toString();
+    if (branch == null) return;
     setState(() => busy = true);
     try {
-      final branch = department?['branch_id']?.toString();
-      if (branch == null) throw StateError('Department branch is unavailable');
-      if (coverFile != null) {
-        coverUrl = await repo.uploadPublicAsset(
-          branchId: branch,
-          departmentId: widget.departmentId,
-          file: coverFile!,
-          folder: 'departments',
-        );
-      }
-      if (avatarFile != null) {
-        avatarUrl = await repo.uploadPublicAsset(
-          branchId: branch,
-          departmentId: widget.departmentId,
-          file: avatarFile!,
-          folder: 'departments',
-        );
-      }
-      await repo.updateProfile(
-        departmentId: widget.departmentId,
-        name: name.text.trim(),
-        description: description.text.trim(),
-        coverUrl: coverUrl,
-        avatarUrl: avatarUrl,
-      );
-      if (mounted) {
-        context.pop(true);
-      }
+      Future<String?> upload(PlatformFile? file) async => file == null
+          ? null
+          : repo.uploadPublicAsset(
+              branchId: branch,
+              departmentId: widget.departmentId,
+              file: file,
+              folder: 'departments');
+      final coverUrl = await upload(cover);
+      final avatarUrl = await upload(avatar);
+      await repo.updateImages(widget.departmentId,
+          coverUrl: coverUrl, avatarUrl: avatarUrl);
+      if (mounted) context.pop(true);
     } catch (_) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Unable to update the department profile. Please try again.',
-            ),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Unable to save images. Please try again.')));
       }
     } finally {
       if (mounted) setState(() => busy = false);
@@ -119,289 +78,88 @@ class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: Icon(PhosphorIcons.caretLeft(), size: 20),
-        ),
-        title: const Text(
-          'Change profile',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-        ),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: busy ? null : _save,
-            child: const Text(
-              'Save',
-              style: TextStyle(fontSize: 12, color: WpccColors.primaryDeep),
-            ),
-          ),
-        ],
-      ),
-      body: loading
-          ? const Center(child: CircularProgressIndicator())
-          : loadError != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(loadError!),
-                      const SizedBox(height: 8),
-                      TextButton(
-                        onPressed: () {
-                          setState(() {
-                            loading = true;
-                            loadError = null;
-                          });
-                          _load();
-                        },
-                        child: const Text('Retry'),
-                      ),
-                    ],
-                  ),
-                )
-              : SafeArea(
-                  child: ListView(
-                    padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
-                    children: [
-                      Container(
-                        height: 177,
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(26),
-                          color: const Color(0xFF4E4267),
-                          image: coverUrl != null && coverUrl!.isNotEmpty
-                              ? DecorationImage(
-                                  image: NetworkImage(coverUrl!),
-                                  fit: BoxFit.cover,
-                                  colorFilter: const ColorFilter.mode(
-                                    Color(0x55000000),
-                                    BlendMode.darken,
-                                  ),
-                                )
-                              : null,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 9,
-                                vertical: 5,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white24,
-                                borderRadius: BorderRadius.circular(99),
-                              ),
-                              child: Text(
-                                '${department?['member_count'] ?? 0} members',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            const Spacer(),
-                            Text(
-                              name.text.isEmpty ? 'Department' : name.text,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineSmall
-                                  ?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              description.text.isEmpty
-                                  ? 'Department community and resources.'
-                                  : description.text,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: Colors.white70,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      InkWell(
-                        onTap: () async {
-                          try {
-                            final file = await _pickImage();
-                            if (!mounted) return;
-                            if (file != null) setState(() => coverFile = file);
-                          } catch (_) {
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Unable to select that image. Please try again.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
-                        child: Container(
-                          height: 48,
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: WpccColors.line),
-                          ),
-                          child: const Text(
-                            'Change cover image',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                        clipBehavior: Clip.antiAlias,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(26),
-                          border: Border.all(color: WpccColors.line),
-                        ),
-                        child: Column(
-                          children: [
-                            _ProfileField(
-                              controller: name,
-                              label: 'Department name',
-                              onChanged: (_) => setState(() {}),
-                            ),
-                            _ProfileField(
-                              controller: description,
-                              label: 'About department',
-                              maxLines: 4,
-                              onChanged: (_) => setState(() {}),
-                            ),
-                            InkWell(
-                              onTap: () async {
-                                final file = await _pickImage();
-                                if (mounted && file != null) {
-                                  setState(() => avatarFile = file);
-                                }
-                              },
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
-                                ),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Avatar initials',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .labelSmall
-                                                ?.copyWith(
-                                                  fontSize: 11,
-                                                  color: WpccColors.muted,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 5),
-                                          Text(
-                                            _initials(name.text),
-                                            style:
-                                                const TextStyle(fontSize: 14),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    InitialsAvatar(
-                                      initials: _initials(name.text),
-                                      imageUrl: avatarUrl,
-                                      size: 34,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      FilledButton(
-                        onPressed: busy ? null : _save,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: WpccColors.ink,
-                          minimumSize: const Size.fromHeight(50),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: busy
-                            ? const CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              )
-                            : const Text('Update profile'),
-                      ),
-                    ],
-                  ),
-                ),
-    );
-  }
-
-  String _initials(String value) => value
-      .trim()
-      .split(RegExp(r'\s+'))
-      .where((part) => part.isNotEmpty)
-      .take(2)
-      .map((part) => part[0].toUpperCase())
-      .join();
-}
-
-class _ProfileField extends StatelessWidget {
-  const _ProfileField({
-    required this.controller,
-    required this.label,
-    this.maxLines = 1,
-    this.onChanged,
-  });
-  final TextEditingController controller;
-  final String label;
-  final int maxLines;
-  final ValueChanged<String>? onChanged;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: const BoxDecoration(
-          border: Border(bottom: BorderSide(color: WpccColors.line)),
-        ),
-        child: TextField(
-          controller: controller,
-          maxLines: maxLines,
-          maxLength: maxLines > 1 ? 500 : null,
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            labelText: label,
-            counterText: '',
-            filled: false,
-            border: InputBorder.none,
-            enabledBorder: InputBorder.none,
-            focusedBorder: InputBorder.none,
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 16,
-            ),
-          ),
-          style: const TextStyle(fontSize: 14),
-        ),
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(
+            title: const Text('Department images'),
+            leading: MemberIconButton(
+                label: 'Back',
+                icon: PhosphorIconsRegular.caretLeft,
+                onPressed: () => context.canPop()
+                    ? context.pop()
+                    : context.go('/departments/${widget.departmentId}'))),
+        body: FutureBuilder<Map<String, dynamic>?>(
+            future: department,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState != ConnectionState.done) {
+                return const SingleChildScrollView(
+                    child: MemberSkeleton(hero: true));
+              }
+              if (snapshot.hasError) {
+                return MemberStatus(
+                    message: 'Unable to load department',
+                    onRetry: () => setState(() {
+                          department = repo.context(widget.departmentId);
+                        }));
+              }
+              final data = snapshot.data;
+              if (data == null || data['can_manage'] != true) {
+                return const MemberStatus(
+                    message:
+                        'Department image editing is not available for your account');
+              }
+              return Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 680),
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                      children: [
+                        Text(data['name']?.toString() ?? 'Department',
+                            style: Theme.of(context).textTheme.titleLarge),
+                        const SizedBox(height: 24),
+                        _image('Cover image', cover,
+                            data['cover_url']?.toString(), false),
+                        const SizedBox(height: 24),
+                        _image('Department image', avatar,
+                            data['avatar_url']?.toString(), true),
+                        const SizedBox(height: 32),
+                        FilledButton(
+                            onPressed: busy || (cover == null && avatar == null)
+                                ? null
+                                : () => _save(data),
+                            child: Text(busy ? 'Saving...' : 'Save images')),
+                      ],
+                    ),
+                  ));
+            }),
       );
+
+  Widget _image(String label, PlatformFile? file, String? url, bool circular) {
+    final fallback = ColoredBox(
+        color: Theme.of(context).colorScheme.surfaceContainerHigh,
+        child: const Center(child: Icon(PhosphorIconsRegular.image, size: 32)));
+    final image = file?.bytes != null
+        ? Image.memory(file!.bytes!,
+            fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback)
+        : url?.isNotEmpty == true
+            ? Image.network(url!,
+                fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback)
+            : fallback;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text(label, style: Theme.of(context).textTheme.titleSmall),
+      const SizedBox(height: 12),
+      if (circular)
+        SizedBox(width: 96, height: 96, child: ClipOval(child: image))
+      else
+        AspectRatio(
+            aspectRatio: 16 / 9,
+            child: ClipRRect(
+                borderRadius: BorderRadius.circular(12), child: image)),
+      const SizedBox(height: 8),
+      TextButton.icon(
+          onPressed: busy ? null : () => _pick(!circular),
+          icon: const Icon(PhosphorIconsRegular.uploadSimple, size: 20),
+          label: Text('Change ${label.toLowerCase()}')),
+    ]);
+  }
 }

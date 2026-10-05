@@ -44,96 +44,14 @@ Future<void> _capture(
 }
 
 void main() {
-  testWidgets('Events opens reference filters before navigating to Search',
-      (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-    for (final brightness in Brightness.values) {
-      for (final size in [const Size(390, 844), const Size(834, 1194)]) {
-        tester.view.physicalSize = size;
-        final router = GoRouter(initialLocation: '/events', routes: [
-          GoRoute(
-              path: '/events',
-              builder: (_, __) => Scaffold(
-                  body: EventsPage(
-                      loadRecurring: () async => [],
-                      loadEvents: ({required limit, required offset}) async =>
-                          []))),
-          GoRoute(
-              path: '/search',
-              builder: (_, state) => SearchPage(
-                  initialFilter: state.uri.queryParameters['filter'] ?? 'All',
-                  loadSearch: (_) async => [])),
-        ]);
-        await tester.pumpWidget(MaterialApp.router(
-            routerConfig: router,
-            theme: buildMemberTheme(buildWpccTheme(brightness: brightness))));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text('Church'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Search filters'));
-        await tester.pumpAndSettle();
-        expect(router.routeInformationProvider.value.uri.path, '/events');
-        expect(find.byType(MemberSheet), findsOneWidget);
-        final surface = find.byKey(const ValueKey('member-sheet-surface'));
-        expect(tester.getSize(surface).width, size.width < 600 ? 374 : 560);
-        expect(tester.getTopLeft(surface).dx, size.width < 600 ? 8 : 137);
-        final rows = find.descendant(
-            of: find.byType(MemberSheet), matching: find.byType(MemberListRow));
-        expect(tester.widgetList<MemberListRow>(rows).map((row) => row.title),
-            ['All', 'Events', 'Departments', 'Announcements', 'People']);
-        await tester.tap(find.byTooltip('Close'));
-        await tester.pumpAndSettle();
-        expect(router.routeInformationProvider.value.uri.path, '/events');
-        await tester.tap(find.byTooltip('Search filters'));
-        await tester.pumpAndSettle();
-        await tester.tap(find.descendant(
-            of: find.byType(MemberSheet), matching: find.text('Events')));
-        await tester.pumpAndSettle();
-        expect(find.byType(MemberSheet), findsNothing);
-        expect(
-            tester
-                .widget<MemberFilterChip>(
-                    find.widgetWithText(MemberFilterChip, 'Events'))
-                .selected,
-            isTrue);
-        await tester.tap(find.byTooltip('Back'));
-        await tester.pumpAndSettle();
-        expect(
-            tester
-                .widget<MemberFilterChip>(
-                    find.widgetWithText(MemberFilterChip, 'Church'))
-                .selected,
-            isTrue);
-        await tester.tap(find.byTooltip('Search filters'));
-        await tester.pumpAndSettle();
-        expect(
-            tester
-                .widget<MemberListRow>(find.descendant(
-                    of: find.byType(MemberSheet),
-                    matching: find.widgetWithText(MemberListRow, 'Events')))
-                .selected,
-            isTrue);
-        await tester.tap(find.byTooltip('Close'));
-        await tester.pumpAndSettle();
-        await tester.pumpWidget(const SizedBox());
-        router.dispose();
-        expect(tester.takeException(), isNull);
-      }
-    }
-  });
-
-  setUpAll(() async {
-    TestWidgetsFlutterBinding.ensureInitialized();
-    await (FontLoader('DM Sans')
-          ..addFont(rootBundle.load('assets/DMSans-Regular.ttf')))
-        .load();
-    await (FontLoader('packages/phosphor_flutter/PhosphorRegular')
-          ..addFont(rootBundle
-              .load('packages/phosphor_flutter/lib/fonts/Phosphor.ttf')))
-        .load();
+  testWidgets('Events search has no filter control', (tester) async {
+    await tester.pumpWidget(MaterialApp(home: Scaffold(body: EventsPage(
+      loadRecurring: () async => [],
+      loadEvents: ({required limit, required offset}) async => [],
+    ))));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Search filters'), findsNothing);
+    expect(tester.widget<MemberSearchBar>(find.byType(MemberSearchBar)).onFilter, isNull);
   });
   testWidgets('event geometry matches reference phone and tablet bounds',
       (tester) async {
@@ -151,6 +69,12 @@ void main() {
                     ]),
             brightness,
             1));
+        await tester.pumpAndSettle();
+        expect(find.text('Ongoing services'), findsOneWidget);
+        expect(find.text('Upcoming events'), findsOneWidget);
+        final poster = find.byType(MemberArtwork);
+        expect(tester.getSize(poster).width, tester.getSize(poster).height);
+        await tester.tap(find.text('Upcoming').first);
         await tester.pumpAndSettle();
         final artwork = find.byType(MemberArtwork);
         expect(tester.getSize(artwork), const Size(64, 66));
@@ -251,6 +175,10 @@ void main() {
               scale,
               boundary: boundary));
           await tester.pumpAndSettle();
+          await tester.drag(find.byType(ListView).at(1), const Offset(-180, 0));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Upcoming').first);
+          await tester.pumpAndSettle();
           expect(find.text('Sunday celebration'), findsOneWidget);
           if ((width == 390 || width == 834) && scale == 1) {
             await _capture(
@@ -339,6 +267,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Unable to load events'), findsOneWidget);
     await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Upcoming').first);
     await tester.pumpAndSettle();
     expect(find.text('Restored event'), findsOneWidget);
     expect(tester.takeException(), isNull);

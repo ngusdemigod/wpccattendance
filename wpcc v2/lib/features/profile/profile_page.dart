@@ -1,3 +1,5 @@
+import '../../core/widgets/member_photo_backdrop.dart';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../core/theme/app_motion.dart';
@@ -8,10 +10,19 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/widgets/initials_avatar.dart';
 import '../../core/widgets/member_components.dart';
 import '../../core/widgets/member_sheet.dart';
-import '../../core/widgets/member_glass.dart';
 import 'profile_repository.dart';
 import '../auth/auth_repository.dart';
 import '../rewards/rewards_card.dart';
+
+class _ProfilePhotoBackdrop extends StatelessWidget {
+  const _ProfilePhotoBackdrop({required this.imageUrl});
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    return MemberPhotoBackdrop(imageUrl: imageUrl, route: '/profile');
+  }
+}
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -51,97 +62,82 @@ class _ProfilePageState extends State<ProfilePage> {
                       onRetry: reload));
             }
             final profile = snapshot.data!;
-            return LayoutBuilder(
-                builder: (context, box) => Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: 680),
-                        child: ListView(
-                          padding: memberPagePadding(context, bottom: 124),
-                          children: [
-                            MemberPageHeader(
-                                title: 'My account',
-                                onBack: () {
-                                  if (context.canPop()) {
-                                    context.pop();
-                                  } else {
-                                    context.go('/home');
-                                  }
-                                },
-                                actions: [
-                                  MemberIconButton(
-                                      icon: PhosphorIcons.slidersHorizontal(),
-                                      label: 'Appearance',
-                                      plain: true,
-                                      onPressed: _showAppearance),
-                                ]),
-                            Padding(
-                                padding:
-                                    const EdgeInsets.only(top: 4, bottom: 24),
-                                child: _identity(
-                                    profile,
-                                    _initials(
-                                        profile['full_name']?.toString() ??
-                                            'WPCC Member'))),
-                            const RewardsCard(compact: true),
-                            const SizedBox(height: 24),
-                            _AccountGroup(title: 'Account', children: [
+            return Stack(fit: StackFit.expand, children: [
+              _ProfilePhotoBackdrop(
+                  imageUrl: avatarOverride ?? profile['avatar']?.toString()),
+              LayoutBuilder(
+                  builder: (context, box) => Align(
+                        alignment: Alignment.topCenter,
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: 680),
+                          child: ListView(
+                            padding: memberPagePadding(context, bottom: 124),
+                            children: [
+                              MemberPageHeader(title: 'My account', actions: [
+                                MemberIconButton(
+                                    icon: PhosphorIcons.gearSix(),
+                                    label: 'App settings',
+                                    plain: true,
+                                    onPressed: _showAppSettings),
+                              ]),
+                              Padding(
+                                  padding:
+                                      const EdgeInsets.only(top: 4, bottom: 24),
+                                  child: _identity(
+                                      profile,
+                                      _initials(
+                                          profile['full_name']?.toString() ??
+                                              'WPCC Member'))),
+                              const RewardsCard(compact: true),
+                              const SizedBox(height: 24),
+                              _AccountGroup(title: 'Account', children: [
+                                _ProfileAction(
+                                    title: 'Personal details',
+                                    icon: PhosphorIcons.user(),
+                                    onTap: () => _showPersonalDetails(profile)),
+                                _ProfileAction(
+                                    title: 'Set or change password',
+                                    icon: PhosphorIcons.lockKey(),
+                                    onTap: _setPassword,
+                                    divider: true),
+                              ]),
+                              const SizedBox(height: 24),
+                              _AccountGroup(title: 'Church life', children: [
+                                _ProfileAction(
+                                    title: 'My departments',
+                                    icon: PhosphorIcons.users(),
+                                    onTap: () => context.push('/departments')),
+                                _ProfileAction(
+                                    title: 'Prayer alerts',
+                                    icon: PhosphorIcons.bell(),
+                                    onTap: () => context.push('/prayer-alerts'),
+                                    divider: true),
+                                _ProfileAction(
+                                    title: 'Giving history',
+                                    icon: PhosphorIcons.clockCounterClockwise(),
+                                    onTap: () => context.push('/give/history'),
+                                    divider: true),
+                                _ProfileAction(
+                                    title: 'Classes',
+                                    subtitle: 'Unavailable',
+                                    icon: PhosphorIcons.graduationCap(),
+                                    divider: true),
+                              ]),
+                              const SizedBox(height: 20),
                               _ProfileAction(
-                                  title: 'Personal details',
-                                  icon: PhosphorIcons.user(),
-                                  onTap: () => _showPersonalDetails(profile)),
-                              _ProfileAction(
-                                  title: 'Appearance',
-                                  icon: PhosphorIcons.sun(),
-                                  onTap: _showAppearance,
-                                  divider: true),
-                              _ProfileAction(
-                                  title: 'Set or change password',
-                                  icon: PhosphorIcons.lockKey(),
-                                  onTap: _setPassword,
-                                  divider: true),
-                            ]),
-                            const SizedBox(height: 24),
-                            _AccountGroup(title: 'Church life', children: [
-                              _ProfileAction(
-                                  title: 'My departments',
-                                  icon: PhosphorIcons.users(),
-                                  onTap: () => context.push('/departments')),
-                              _ProfileAction(
-                                  title: 'Prayer alerts',
-                                  icon: PhosphorIcons.bell(),
-                                  onTap: () => context.push('/prayer-alerts'),
-                                  divider: true),
-                              _ProfileAction(
-                                  title: 'Giving history',
-                                  icon: PhosphorIcons.clockCounterClockwise(),
-                                  onTap: () => context.push('/give/history'),
-                                  divider: true),
-                              _ProfileAction(
-                                  title: 'Classes',
-                                  subtitle: 'Unavailable',
-                                  icon: PhosphorIcons.graduationCap(),
-                                  divider: true),
-                            ]),
-                            const SizedBox(height: 20),
-                            _ProfileAction(
-                                title: 'Search',
-                                icon: PhosphorIcons.magnifyingGlass(),
-                                onTap: () => context.push('/search'),
-                                divider: false),
-                            _ProfileAction(
-                                title: 'Log out',
-                                icon: PhosphorIcons.signOut(),
-                                divider: true,
-                                destructive: true,
-                                onTap: () async {
-                                  await AuthRepository().signOut();
-                                  if (context.mounted) context.go('/login');
-                                }),
-                          ],
+                                  title: 'Log out',
+                                  icon: PhosphorIcons.signOut(),
+                                  divider: true,
+                                  destructive: true,
+                                  onTap: () async {
+                                    await AuthRepository().signOut();
+                                    if (context.mounted) context.go('/login');
+                                  }),
+                            ],
+                          ),
                         ),
-                      ),
-                    ));
+                      ))
+            ]);
           },
         ),
       );
@@ -247,8 +243,23 @@ class _ProfilePageState extends State<ProfilePage> {
       );
 
   Future<void> _showAppearance() => showMemberAppearanceSheet(context);
-  Widget _row(IconData icon, String label, dynamic value) => Padding(
+  Future<void> _showAppSettings() => showMemberSheet<void>(
+      context: context,
+      title: 'App settings',
+      builder: (sheetContext) => _ProfileAction(
+          title: 'Appearance',
+          subtitle: 'Theme and transparency',
+          icon: PhosphorIcons.sun(),
+          onTap: () {
+            Navigator.pop(sheetContext);
+            _showAppearance();
+          }));
+  Widget _row(IconData icon, String label, dynamic value) => Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+            border: Border(
+                bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant))),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -273,7 +284,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ? value.toString()
                         : 'Not set',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: 15,
                       height: 1.4,
                       fontWeight: FontWeight.w500,
                     ),
@@ -313,57 +324,77 @@ class _ProfilePageState extends State<ProfilePage> {
     String? gender = p['gender']?.toString();
     String? maritalStatus = p['marital_status']?.toString();
     var saving = false;
-    final saved = await showModalBottomSheet<bool>(
-      sheetAnimationStyle: AppMotion.sheetStyle(context),
+    final saved = await showMemberSheet<bool>(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
+      title: 'Edit profile',
       builder: (sheetContext) => StatefulBuilder(
         builder: (context, setSheetState) {
           return SafeArea(
             top: false,
             child: Padding(
               padding: EdgeInsets.fromLTRB(
-                18,
-                18,
-                18,
-                18 + MediaQuery.viewInsetsOf(context).bottom,
+                0,
+                8,
+                0,
+                8,
               ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Edit profile',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 14),
+                    _detailsHeading('About you'),
                     TextField(
                       controller: bio,
-                      maxLines: 3,
+                      maxLines: 2,
                       decoration: const InputDecoration(labelText: 'Bio'),
                     ),
                     const SizedBox(height: 10),
-                    const Text('Occupations · select all that apply'),
-                    Wrap(spacing: 8, children: [
-                      for (final option in occupationOptions)
-                        FilterChip(
-                            label: Text(option),
-                            selected: occupations.contains(option),
-                            onSelected: saving
-                                ? null
-                                : (selected) => setSheetState(() {
-                                      if (selected) {
-                                        occupations.add(option);
-                                      } else {
-                                        occupations.remove(option);
-                                      }
-                                    })),
-                    ]),
+                    ExpansionTile(
+                        tilePadding: EdgeInsets.zero,
+                        childrenPadding: const EdgeInsets.only(bottom: 12),
+                        title: const Text('Occupations'),
+                        subtitle: Text(
+                            occupations.isEmpty
+                                ? 'Not set'
+                                : occupations.join(', '),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis),
+                        children: [
+                          Align(
+                              alignment: Alignment.centerLeft,
+                              child: Wrap(spacing: 8, runSpacing: 6, children: [
+                                for (final option in occupationOptions)
+                                  FilterChip(
+                                      labelStyle: TextStyle(
+                                          color: occupations.contains(option)
+                                              ? Theme.of(context)
+                                                  .colorScheme
+                                                  .surfaceContainerLowest
+                                              : Theme.of(context)
+                                                  .colorScheme
+                                                  .onSurface),
+                                      selectedColor: Theme.of(context)
+                                          .colorScheme
+                                          .onSurface,
+                                      checkmarkColor: Theme.of(context)
+                                          .colorScheme
+                                          .surfaceContainerLowest,
+                                      label: Text(option),
+                                      selected: occupations.contains(option),
+                                      onSelected: saving
+                                          ? null
+                                          : (selected) => setSheetState(() {
+                                                if (selected) {
+                                                  occupations.add(option);
+                                                } else {
+                                                  occupations.remove(option);
+                                                }
+                                              })),
+                              ]))
+                        ]),
+                    const SizedBox(height: 16),
+                    _detailsHeading('Contact & personal'),
                     TextField(
                         controller: phone,
                         keyboardType: TextInputType.phone,
@@ -481,7 +512,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       style: FilledButton.styleFrom(
                         backgroundColor:
                             Theme.of(context).colorScheme.onSurface,
-                        foregroundColor: Theme.of(context).colorScheme.surface,
+                        foregroundColor: Theme.of(context)
+                            .colorScheme
+                            .surfaceContainerLowest,
                         minimumSize: const Size.fromHeight(48),
                       ),
                       child: saving
@@ -490,7 +523,9 @@ class _ProfilePageState extends State<ProfilePage> {
                               height: 18,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Theme.of(context).colorScheme.surface,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerLowest,
                               ),
                             )
                           : const Text('Save changes'),
@@ -690,8 +725,12 @@ class _AccountGroup extends StatelessWidget {
               padding: const EdgeInsets.only(left: 4, bottom: 10),
               child:
                   Text(title, style: Theme.of(context).textTheme.titleMedium)),
-          MemberGlass(
-              radius: 20,
+          DecoratedBox(
+              decoration: BoxDecoration(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? const Color(0xFF232326)
+                      : const Color(0xFFFDFDFE),
+                  borderRadius: BorderRadius.circular(20)),
               child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 14),
                   child: Column(children: children))),

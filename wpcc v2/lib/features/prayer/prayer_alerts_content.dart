@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_motion.dart';
+import '../../core/widgets/member_sheet.dart';
 import '../../core/widgets/member_skeleton.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -157,48 +157,31 @@ class PrayerAlertsContent extends StatelessWidget {
       if (!busy.contains(alerts.first['id']?.toString())) action(alerts.first);
       return;
     }
-    final selected = await showModalBottomSheet<Map<String, dynamic>>(
-      sheetAnimationStyle: AppMotion.sheetStyle(context),
+    final selected = await showMemberSheet<Map<String, dynamic>>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (sheetContext) => DraggableScrollableSheet(
-        expand: false,
-        initialChildSize: .5,
-        minChildSize: .3,
-        maxChildSize: .9,
-        builder: (context, controller) => ListView(
-          controller: controller,
-          padding: EdgeInsets.fromLTRB(
-              20, 12, 20, MediaQuery.paddingOf(context).bottom + 20),
-          children: [
-            MemberPageHeader(title: title, actions: [
-              MemberIconButton(
-                  icon: PhosphorIconsRegular.x,
-                  label: 'Close',
-                  plain: true,
-                  onPressed: () => Navigator.pop(sheetContext)),
-            ]),
-            for (final alert in alerts)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: MemberListRow(
-                    title: alert['title']?.toString() ?? 'Prayer',
-                    subtitle:
-                        '${PrayerAlertRow.time(alert)} · ${PrayerAlertRow.schedule(alert)}',
-                    leading: Icon(PhosphorIconsRegular.bellSimple,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                    trailing: busy.contains(alert['id']?.toString())
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2))
-                        : const Icon(PhosphorIconsRegular.caretRight, size: 16),
-                    onTap: busy.contains(alert['id']?.toString())
-                        ? null
-                        : () => Navigator.pop(sheetContext, alert)),
-              ),
-          ],
-        ),
+      title: title,
+      builder: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final alert in alerts)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: MemberListRow(
+                  title: alert['title']?.toString() ?? 'Prayer',
+                  subtitle:
+                      '${PrayerAlertRow.time(alert)} · ${PrayerAlertRow.schedule(alert)}',
+                  leading: Icon(PhosphorIconsRegular.bellSimple,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant),
+                  trailing: busy.contains(alert['id']?.toString())
+                      ? const SizedBox.square(
+                          dimension: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Icon(PhosphorIconsRegular.caretRight, size: 16),
+                  onTap: busy.contains(alert['id']?.toString())
+                      ? null
+                      : () => Navigator.pop(sheetContext, alert)),
+            ),
+        ],
       ),
     );
     if (selected != null && context.mounted) action(selected);

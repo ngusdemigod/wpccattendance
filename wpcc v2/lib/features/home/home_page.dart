@@ -1,15 +1,18 @@
+import '../../core/widgets/member_photo_backdrop.dart';
+import '../../core/widgets/resource_card_pattern.dart';
+import '../../core/widgets/member_glass.dart';
+import '../../core/theme/member_material.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/widgets/member_skeleton.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/widgets/adaptive_layout.dart';
 import '../../core/utils/wpcc_time.dart';
 import '../../core/widgets/member_components.dart';
-import '../../core/widgets/member_sheet.dart';
 import '../data/providers.dart';
 import '../media/media_repository.dart';
 import '../media/media_player_controller.dart';
@@ -24,6 +27,7 @@ class HomePage extends ConsumerStatefulWidget {
     ('Devotional', '/devotional', PhosphorIcons.bookOpen()),
     ('Souls', '/souls', PhosphorIcons.heart()),
     ('Give', '/give', PhosphorIcons.gift()),
+    ('Service tools', '/resources/department-tools', PhosphorIcons.listChecks()),
     ('Classes', '/profile/classes', PhosphorIcons.graduationCap()),
     ('Counselling', '/counselling', PhosphorIcons.chatCircle()),
   ];
@@ -34,7 +38,6 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   String filter = 'Upcoming';
-  String _searchFilter = 'All';
   late Future<List<Map<String, dynamic>>> latest;
   @override
   void initState() {
@@ -62,24 +65,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     } catch (_) {}
   }
 
-  Future<void> _searchFilters() async {
-    final selected =
-        await showSearchFilterSheet(context, selected: _currentSearchFilter);
-    if (!mounted || selected == null) return;
-    _openSearch(selected);
-  }
-
-  String get _currentSearchFilter =>
-      MemberSearchScope.maybeOf(context)?.value ?? _searchFilter;
-
   void _openSearch(String section) {
-    _searchFilter = section;
     MemberSearchScope.maybeOf(context)?.value = section;
     context.push(
         Uri(path: '/search', queryParameters: {'filter': section}).toString());
   }
-
-  void _appearance() => showMemberAppearanceSheet(context);
 
   @override
   Widget build(BuildContext context) {
@@ -88,182 +78,198 @@ class _HomePageState extends ConsumerState<HomePage> {
     final announcements = ref.watch(announcementsProvider);
     final member =
         profile.asData?.value?['full_name']?.toString() ?? 'WPCC Member';
-    return SafeArea(
-      bottom: false,
-      child: RefreshIndicator(
-        onRefresh: _refresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: memberPagePadding(context, top: 20, bottom: 124),
-          children: [
-            Row(children: [
-              Image.asset('assets/images/wpcc_logo.png',
-                  width: 34,
-                  height: 34,
-                  fit: BoxFit.contain,
-                  semanticLabel: 'WPCC church logo'),
-              const SizedBox(width: 8),
-              const Expanded(
-                  child: Text('WPCC',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600))),
-              IconButton(
-                  tooltip: 'Change appearance',
-                  onPressed: _appearance,
-                  style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                  icon: Icon(PhosphorIcons.sun(), size: 20)),
-              Semantics(
-                  value: member,
-                  child: MemberIconButton(
-                      label: 'Profile',
-                      icon: PhosphorIcons.user(),
-                      onPressed: () => context.go('/profile'))),
-            ]),
-            const SizedBox(height: 12),
-            Align(
-                alignment: Alignment.centerLeft,
-                child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                        maxWidth: MediaQuery.sizeOf(context).width >= 900
-                            ? 720
-                            : double.infinity),
-                    child: MemberSearchBar(
-                        hint: 'Search events, departments, and more',
-                        onTap: () => _openSearch(_currentSearchFilter),
-                        onFilter: _searchFilters))),
-            const SizedBox(height: 12),
-            SizedBox(
-                height: 48,
-                child: ListView(scrollDirection: Axis.horizontal, children: [
-                  for (final group in [
-                    ('Upcoming', PhosphorIcons.flame()),
-                    ('Church', PhosphorIcons.mapPin()),
-                    ('Departments', PhosphorIcons.users()),
-                  ])
-                    Padding(
-                        padding: const EdgeInsets.only(right: 7),
-                        child: MemberFilterChip(
-                            label: group.$1,
-                            icon: group.$2,
-                            featured: group.$1 == 'Upcoming',
-                            selected: filter == group.$1,
-                            onPressed: () =>
-                                setState(() => filter = group.$1))),
-                ])),
-            const SizedBox(height: 14),
-            MemberSectionHeader(
-                title: 'Church events',
-                action: TextButton(
-                    onPressed: () => context.go('/events'),
-                    style: TextButton.styleFrom(
-                        textStyle: GoogleFonts.dmSans(
-                            textStyle: Theme.of(context).textTheme.labelLarge,
-                            fontWeight: FontWeight.w300)),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('See all'),
-                      const SizedBox(width: 4),
-                      Icon(PhosphorIcons.caretRight(), size: 16),
-                    ]))),
-            events.when(
-              data: (items) {
-                final visible = items
-                    .where((event) =>
-                        filter == 'Upcoming' ||
-                        (filter == 'Departments'
-                            ? event['department_id'] != null
-                            : event['department_id'] == null))
-                    .toList();
-                return visible.isEmpty
-                    ? MemberStatus(
-                        icon: PhosphorIcons.calendarBlank(),
-                        message: 'No upcoming events')
-                    : _EventRail(events: visible);
-              },
-              loading: () => const _LoadingBlock(height: 253),
-              error: (_, __) => MemberStatus(
-                  icon: PhosphorIcons.warningCircle(),
-                  message: 'Events unavailable',
-                  onRetry: () => ref.invalidate(upcomingEventsProvider)),
-            ),
-            const SizedBox(height: 25),
-            LayoutBuilder(
-                builder: (context, constraints) => AdaptiveSections(
-                        gap: constraints.maxWidth >= 900 ? 36 : 25,
+    final visibleEvents = (events.asData?.value ?? <Map<String, dynamic>>[])
+        .where((event) =>
+            filter == 'Upcoming' ||
+            (filter == 'Departments'
+                ? event['department_id'] != null
+                : event['department_id'] == null))
+        .toList();
+    final backdropImage = visibleEvents.isEmpty
+        ? ''
+        : visibleEvents.first['featured_image']?.toString() ?? '';
+    return Stack(fit: StackFit.expand, children: [
+      MemberPhotoBackdrop(imageUrl: backdropImage, route: '/home'),
+      SafeArea(
+        bottom: false,
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: memberPagePadding(context, top: 20, bottom: 124),
+            children: [
+              Row(children: [
+                ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.asset('assets/images/wpcc_logo.png',
+                        width: 34,
+                        height: 34,
+                        fit: BoxFit.contain,
+                        semanticLabel: 'WPCC church logo')),
+                const SizedBox(width: 8),
+                Expanded(
+                    child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const MemberSectionHeader(title: 'Quick links'),
-                                const HomeQuickLinks(),
-                              ]),
-                          Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const MemberSectionHeader(title: 'Daily Tasks'),
-                                announcements.when(
-                                  data: (rows) => rows.isEmpty
-                                      ? MemberStatus(
-                                          icon: PhosphorIcons.megaphone(),
-                                          message: 'No announcements yet')
-                                      : _AnnouncementRail(rows: rows),
-                                  loading: () =>
-                                      const _LoadingBlock(height: 154),
-                                  error: (_, __) => MemberStatus(
-                                      icon: PhosphorIcons.warningCircle(),
-                                      message: 'Announcements unavailable',
-                                      onRetry: () => ref
-                                          .invalidate(announcementsProvider)),
-                                ),
-                              ]),
-                        ])),
-            const SizedBox(height: 14),
-            MemberSectionHeader(
-                title: 'Latest message',
-                action: TextButton(
-                    onPressed: () => context.go('/media'),
-                    child: Row(mainAxisSize: MainAxisSize.min, children: [
-                      const Text('Messages'),
-                      const SizedBox(width: 4),
-                      Icon(PhosphorIcons.caretRight(), size: 16),
-                    ]))),
-            FutureBuilder<List<Map<String, dynamic>>>(
-                future: latest,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const _LoadingBlock(height: 76);
-                  }
-                  if (snapshot.hasError) {
-                    return MemberStatus(
-                        message: 'Message unavailable',
-                        onRetry: () => setState(() => latest = _latest()));
-                  }
-                  final rows = snapshot.data ?? [];
-                  if (rows.isEmpty) {
-                    return const MemberStatus(message: 'No messages yet');
-                  }
-                  final episode = rows.first;
-                  return MemberListRow(
-                      title: episode['title']?.toString() ?? 'Message',
-                      subtitle: episode['source_published_at'] == null
-                          ? null
-                          : WpccTime.compact(episode['source_published_at']),
-                      leading: MemberArtwork(
-                          imageUrl: episode['artwork_url']?.toString(),
-                          icon: PhosphorIcons.microphone(),
-                          size: 64,
-                          height: 66),
-                      trailing: MemberIconButton(
-                          icon: PhosphorIcons.play(),
-                          label: 'Play latest message',
-                          onPressed: () =>
-                              MediaPlayerController.instance.play(episode)),
-                      onTap: () => context.push('/media/${episode['id']}',
-                          extra: episode));
-                }),
-          ],
+                      Text('Wisdom Power Christian Centre',
+                          style: Theme.of(context).textTheme.titleSmall),
+                      if (profile.asData?.value?['branch_name']
+                              ?.toString()
+                              .trim()
+                              .isNotEmpty ??
+                          false) ...[
+                        const SizedBox(height: 2),
+                        Text(profile.asData!.value!['branch_name'].toString(),
+                            style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ])),
+                Semantics(
+                    value: member,
+                    child: MemberIconButton(
+                        label: 'Profile',
+                        icon: PhosphorIcons.user(),
+                        onPressed: () => context.go('/profile'))),
+              ]),
+              const SizedBox(height: 12),
+              Align(
+                  alignment: Alignment.centerLeft,
+                  child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width >= 900
+                              ? 720
+                              : double.infinity),
+                      child: MemberSearchBar(
+                          hint: 'Search', onTap: () => _openSearch('All')))),
+              const SizedBox(height: 12),
+              announcements.when(
+                data: (rows) => rows.isEmpty
+                    ? const SizedBox.shrink()
+                    : _AnnouncementStack(rows: rows),
+                loading: () => const _LoadingBlock(height: 240),
+                error: (_, __) => MemberStatus(
+                    message: 'Announcements unavailable',
+                    onRetry: () => ref.invalidate(announcementsProvider)),
+              ),
+              const SizedBox(height: 24),
+              const MemberSectionHeader(title: 'Quick links'),
+              const HomeQuickLinks(),
+              const SizedBox(height: 25),
+              MemberSectionHeader(
+                  title: 'Church events',
+                  action: TextButton(
+                      style: TextButton.styleFrom(
+                          textStyle:
+                              const TextStyle(fontFamily: 'DM Sans', fontWeight: FontWeight.w300)),
+                      onPressed: () => context.go('/events'),
+                      child: const Text('See all'))),
+              SizedBox(
+                  height: 48,
+                  child: ListView(scrollDirection: Axis.horizontal, children: [
+                    for (final group in [
+                      ('Upcoming', PhosphorIcons.flame()),
+                      ('Church', PhosphorIcons.mapPin()),
+                      ('Departments', PhosphorIcons.users()),
+                    ])
+                      Padding(
+                          padding: const EdgeInsets.only(right: 7),
+                          child: MemberFilterChip(
+                              label: group.$1,
+                              icon: group.$2,
+                              featured: group.$1 == 'Upcoming',
+                              selected: filter == group.$1,
+                              onPressed: () =>
+                                  setState(() => filter = group.$1))),
+                  ])),
+              const SizedBox(height: 14),
+              events.when(
+                data: (items) {
+                  final visible = items
+                      .where((event) =>
+                          filter == 'Upcoming' ||
+                          (filter == 'Departments'
+                              ? event['department_id'] != null
+                              : event['department_id'] == null))
+                      .toList();
+                  return visible.isEmpty
+                      ? MemberStatus(
+                          icon: PhosphorIcons.calendarBlank(),
+                          message: 'No upcoming events')
+                      : _EventRail(events: visible);
+                },
+                loading: () => const _LoadingBlock(height: 253),
+                error: (_, __) => MemberStatus(
+                    icon: PhosphorIcons.warningCircle(),
+                    message: 'Events unavailable',
+                    onRetry: () => ref.invalidate(upcomingEventsProvider)),
+              ),
+              const SizedBox(height: 25),
+              LayoutBuilder(
+                  builder: (context, constraints) => AdaptiveSections(
+                          gap: constraints.maxWidth >= 900 ? 36 : 25,
+                          children: [
+                            Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  MemberSectionHeader(
+                                      title: 'Resources',
+                                      action: TextButton(
+                                          onPressed: () => _showResources(
+                                              context,
+                                              announcements.valueOrNull ?? []),
+                                          child: const Text('View all'))),
+                                  _ResourceCards(
+                                      rows: announcements.valueOrNull ?? []),
+                                ]),
+                          ])),
+              const SizedBox(height: 14),
+              MemberSectionHeader(
+                  title: 'Latest message',
+                  action: TextButton(
+                      onPressed: () => context.go('/media'),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        const Text('Messages'),
+                        const SizedBox(width: 4),
+                        Icon(PhosphorIcons.caretRight(), size: 16),
+                      ]))),
+              FutureBuilder<List<Map<String, dynamic>>>(
+                  future: latest,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState != ConnectionState.done) {
+                      return const _LoadingBlock(height: 76);
+                    }
+                    if (snapshot.hasError) {
+                      return MemberStatus(
+                          message: 'Message unavailable',
+                          onRetry: () => setState(() => latest = _latest()));
+                    }
+                    final rows = snapshot.data ?? [];
+                    if (rows.isEmpty) {
+                      return const MemberStatus(message: 'No messages yet');
+                    }
+                    final episode = rows.first;
+                    return MemberListRow(
+                        title: episode['title']?.toString() ?? 'Message',
+                        subtitle: episode['source_published_at'] == null
+                            ? null
+                            : WpccTime.compact(episode['source_published_at']),
+                        leading: MemberArtwork(
+                            imageUrl: episode['artwork_url']?.toString(),
+                            icon: PhosphorIcons.microphone(),
+                            size: 64,
+                            height: 66),
+                        trailing: MemberIconButton(
+                            icon: PhosphorIcons.play(),
+                            label: 'Play latest message',
+                            onPressed: () =>
+                                MediaPlayerController.instance.play(episode)),
+                        onTap: () => context.push('/media/${episode['id']}',
+                            extra: episode));
+                  }),
+            ],
+          ),
         ),
-      ),
-    );
+      )
+    ]);
   }
 }
 
@@ -273,16 +279,17 @@ class HomeQuickLinks extends StatelessWidget {
   Widget build(BuildContext context) {
     final tablet = MediaQuery.sizeOf(context).width >= 600;
     final scale = MediaQuery.textScalerOf(context).scale(12) / 12;
-    return SizedBox(
-      height: (tablet ? 78 : 70) + 8 + 34 * scale,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: HomePage.actions.length,
-        separatorBuilder: (_, __) => SizedBox(width: tablet ? 22 : 12),
-        itemBuilder: (_, index) => SizedBox(
-            width: (tablet ? 78 : 70) + (scale - 1) * 35,
-            child: _Shortcut(action: HomePage.actions[index], tablet: tablet)),
-      ),
+    return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 4,
+          mainAxisExtent: (tablet ? 78 : 70) + 8 + 34 * scale,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 16),
+      itemCount: HomePage.actions.length,
+      itemBuilder: (_, index) =>
+          _Shortcut(action: HomePage.actions[index], tablet: tablet),
     );
   }
 }
@@ -316,11 +323,15 @@ class _Shortcut extends StatelessWidget {
                     width: tablet ? 78 : 70,
                     height: tablet ? 78 : 70,
                     child: ClipOval(
-                        child: CustomPaint(
-                            key: ValueKey('quick-link-pattern:${action.$2}'),
-                            painter: _QuickLinkPatternPainter(action.$2),
-                            child: Icon(action.$3,
-                                size: 30, color: Colors.white))),
+                        child: MemberGlass(
+                            radius: 100,
+                            child: CustomPaint(
+                                key:
+                                    ValueKey('quick-link-pattern:${action.$2}'),
+                                painter: _QuickLinkPatternPainter(action.$2,
+                                    opacity: 0),
+                                child: Icon(action.$3,
+                                    size: 24, color: colors.onSurface)))),
                   )),
               const SizedBox(height: 8),
               LayoutBuilder(builder: (context, constraints) {
@@ -353,11 +364,15 @@ class _Shortcut extends StatelessWidget {
 }
 
 class _QuickLinkPatternPainter extends CustomPainter {
-  const _QuickLinkPatternPainter(this.route);
+  const _QuickLinkPatternPainter(this.route, {required this.opacity});
   final String route;
+  final double opacity;
 
   @override
   void paint(Canvas canvas, Size size) {
+    if (opacity == 0) return;
+    canvas.saveLayer(Offset.zero & size,
+        Paint()..color = Colors.white.withValues(alpha: opacity));
     canvas.save();
     canvas.scale(size.width / 100, size.height / 100);
     const bounds = Rect.fromLTWH(0, 0, 100, 100);
@@ -469,11 +484,12 @@ class _QuickLinkPatternPainter extends CustomPainter {
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1);
     canvas.restore();
+    canvas.restore();
   }
 
   @override
   bool shouldRepaint(_QuickLinkPatternPainter oldDelegate) =>
-      route != oldDelegate.route;
+      route != oldDelegate.route || opacity != oldDelegate.opacity;
 }
 
 class _EventRail extends StatelessWidget {
@@ -512,114 +528,248 @@ class _EventRail extends StatelessWidget {
   }
 }
 
-class _AnnouncementRail extends StatelessWidget {
-  const _AnnouncementRail({required this.rows});
+void _showAnnouncement(BuildContext context, Map<String, dynamic> row) {
+  showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      sheetAnimationStyle: AppMotion.sheetStyle(context),
+      builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(row['title']?.toString() ?? 'Announcement',
+                        style: Theme.of(context).textTheme.titleLarge),
+                    const SizedBox(height: 16),
+                    Text((row['content'] ?? row['body'] ?? '').toString()),
+                  ]))));
+}
+
+class _AnnouncementStack extends StatelessWidget {
+  const _AnnouncementStack({required this.rows});
   final List<Map<String, dynamic>> rows;
   @override
+  Widget build(BuildContext context) => Center(
+      child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: LayoutBuilder(builder: (context, bounds) {
+            final height = (bounds.maxWidth * 9 / 16).clamp(190.0, 400.0) +
+                (MediaQuery.textScalerOf(context).scale(22) - 22) * 4;
+            return SizedBox(
+                height: height + 16,
+                child: Stack(children: [
+                  for (final inset in [12.0, 6.0])
+                    Positioned(
+                        left: inset,
+                        right: inset,
+                        top: inset,
+                        bottom: 0,
+                        child: ExcludeSemantics(
+                            child: MemberGlass(
+                                outlined: false,
+                                radius: 20,
+                                child: const SizedBox.expand()))),
+                  Positioned.fill(
+                      bottom: 16,
+                      child: ScrollConfiguration(
+                          behavior: ScrollConfiguration.of(context)
+                              .copyWith(dragDevices: {
+                            PointerDeviceKind.touch,
+                            PointerDeviceKind.mouse,
+                            PointerDeviceKind.stylus,
+                            PointerDeviceKind.trackpad
+                          }),
+                          child: PageView.builder(
+                              key: const PageStorageKey('announcement-stack'),
+                              itemCount: rows.length,
+                              itemBuilder: (context, index) {
+                                final row = rows[index];
+                                return Padding(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 1),
+                                    child: MemberGlass(
+                                        outlined: false,
+                                        frosted: true,
+                                        radius: 20,
+                                        child: Material(
+                                            color: Colors.transparent,
+                                            child: InkWell(
+                                                onTap: () => _showAnnouncement(
+                                                    context, row),
+                                                child: Padding(
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            24),
+                                                    child: Column(
+                                                        mainAxisAlignment:
+                                                            MainAxisAlignment
+                                                                .center,
+                                                        children: [
+                                                          Text(
+                                                              row['department_name']
+                                                                      ?.toString() ??
+                                                                  'Announcement',
+                                                              maxLines: 1,
+                                                              overflow:
+                                                                  TextOverflow
+                                                                      .ellipsis,
+                                                              style: Theme.of(
+                                                                      context)
+                                                                  .textTheme
+                                                                  .bodySmall),
+                                                          const SizedBox(
+                                                              height: 12),
+                                                          Flexible(
+                                                              child: Text(
+                                                                  row['title']
+                                                                          ?.toString() ??
+                                                                      'Announcement',
+                                                                  textAlign:
+                                                                      TextAlign
+                                                                          .center,
+                                                                  maxLines: 3,
+                                                                  overflow:
+                                                                      TextOverflow
+                                                                          .ellipsis,
+                                                                  style: const TextStyle(
+                                                                      fontSize:
+                                                                          22,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .w500))),
+                                                          const SizedBox(
+                                                              height: 12),
+                                                          const Text(
+                                                              'Read announcement',
+                                                              style: TextStyle(
+                                                                  fontSize:
+                                                                      12)),
+                                                        ]))))));
+                              }))),
+                ]));
+          })));
+}
+
+void _showResources(BuildContext context, List<Map<String, dynamic>> rows) {
+  showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      sheetAnimationStyle: AppMotion.sheetStyle(context),
+      builder: (context) => SafeArea(
+          child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                const MemberSectionHeader(title: 'Resources'),
+                _ResourceCards(rows: rows, grid: true),
+              ]))));
+}
+
+class _ResourceCards extends StatelessWidget {
+  const _ResourceCards({required this.rows, this.grid = false});
+  final List<Map<String, dynamic>> rows;
+  final bool grid;
+  @override
   Widget build(BuildContext context) {
-    final tablet = MediaQuery.sizeOf(context).width >= 600;
-    final extra = (MediaQuery.textScalerOf(context).scale(14) - 14) * 4;
-    return SizedBox(
-      height: (tablet ? 184 : 154) + extra,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        itemCount: rows.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
-        itemBuilder: (context, index) {
-          final row = rows[index];
-          final image =
-              (row['featured_image'] ?? row['image_url'])?.toString() ?? '';
-          final title = row['title']?.toString() ?? 'Announcement';
-          final source = (row['department_name'] ??
-                      row['source_name'] ??
-                      row['scope_label'])
-                  ?.toString() ??
-              '';
-          return SizedBox(
-            width: tablet ? 180 : 150,
-            child: Material(
-              color: Theme.of(context).colorScheme.surface,
-              clipBehavior: Clip.antiAlias,
-              borderRadius: BorderRadius.circular(20),
-              child: InkWell(
-                onTap: () => showModalBottomSheet<void>(
-                    sheetAnimationStyle: AppMotion.sheetStyle(context),
-                    context: context,
-                    showDragHandle: true,
-                    isScrollControlled: true,
-                    builder: (context) => SafeArea(
-                        child: Padding(
-                            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
-                            child: SingleChildScrollView(
-                                child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                  Text(title,
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .titleLarge),
-                                  if (source.isNotEmpty) ...[
-                                    const SizedBox(height: 6),
-                                    Text(source)
-                                  ],
-                                  const SizedBox(height: 16),
-                                  Text((row['content'] ?? row['body'] ?? '')
-                                      .toString()),
-                                ]))))),
-                child: Stack(fit: StackFit.expand, children: [
-                  if (image.isNotEmpty)
-                    Image.network(image,
-                        fit: BoxFit.cover,
-                        excludeFromSemantics: true,
-                        errorBuilder: (_, __, ___) => const SizedBox()),
-                  if (image.isNotEmpty)
-                    const DecoratedBox(
-                        decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                          Color(0xCC000000),
-                          Color(0x99000000),
-                          Colors.transparent
-                        ]))),
-                  Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(title,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    height: 19 / 14,
-                                    fontWeight: FontWeight.w500,
-                                    color:
-                                        image.isEmpty ? null : Colors.white)),
-                            if (source.isNotEmpty) ...[
-                              const SizedBox(height: 3),
-                              Text(source,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: image.isEmpty
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .onSurfaceVariant
-                                          : const Color(0xFFE5DFE2))),
-                            ],
-                          ])),
-                ]),
-              ),
-            ),
-          );
-        },
+    final tools = [
+      (
+        'Anonymous reports',
+        'Report a concern privately',
+        '/resources/anonymous-reports'
       ),
-    );
+      (
+        'Department files',
+        'Documents from your departments',
+        '/resources/department-files'
+      ),
+      (
+        'Service tools',
+        'Your department workflows',
+        '/resources/department-tools'
+      ),
+    ];
+    Widget card(int index) {
+      final tool = tools[index];
+      return ResourceCardSurface(
+          child: CustomPaint(
+              painter: ResourceCardPattern(index: index,
+                  dark: Theme.of(context).brightness == Brightness.dark,
+                  enabled: !MemberMaterials.solid(context)),
+              child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                      onTap: () => context.push(tool.$3),
+                      child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(tool.$1,
+                                    style: const TextStyle(
+                                        fontFamily: 'DM Sans',
+                                        fontSize: 16,
+                                        height: 1.35,
+                                        fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 10),
+                                Text(tool.$2,
+                                    style:
+                                        Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'DM Sans', fontSize: 13, height: 1.5)),
+                                const SizedBox(height: 10),
+                                const Spacer(),
+                                Align(
+                                    alignment: Alignment.centerRight,
+                                    child: Icon(PhosphorIcons.caretRight(),
+                                        size: 24)),
+                              ]))))));
+    }
+
+    double heightFor(double width) {
+      var result = 154.0;
+      for (final tool in tools) {
+        double measure(String value, TextStyle style) {
+          final painter = TextPainter(text: TextSpan(text: value, style: style),
+              textDirection: Directionality.of(context),
+              textScaler: MediaQuery.textScalerOf(context))..layout(maxWidth: width - 42);
+          final height = painter.height;
+          painter.dispose();
+          return height;
+        }
+        final height = 86 + measure(tool.$1, const TextStyle(fontFamily: 'DM Sans',
+            fontSize: 16, height: 1.35, fontWeight: FontWeight.w600)) +
+            measure(tool.$2, const TextStyle(fontFamily: 'DM Sans', fontSize: 13, height: 1.5));
+        if (height > result) result = height;
+      }
+      return result;
+    }
+    if (grid)
+      return LayoutBuilder(builder: (context, bounds) {
+        final columns = MediaQuery.textScalerOf(context).scale(16) > 22
+            ? 1
+            : bounds.maxWidth >= 650
+                ? 3
+                : 2;
+        return GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisExtent: heightFor((bounds.maxWidth - (columns - 1) * 12) / columns),
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12),
+            itemCount: tools.length,
+            itemBuilder: (_, index) => card(index));
+      });
+    return SizedBox(
+        height: heightFor(184),
+        child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: tools.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 12),
+            itemBuilder: (_, index) =>
+                SizedBox(width: 184, child: card(index))));
   }
 }
 

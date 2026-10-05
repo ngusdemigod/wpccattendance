@@ -14,6 +14,7 @@ import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/core/theme/member_theme.dart';
 import 'package:wpcc_community/core/widgets/member_components.dart';
 import 'package:wpcc_community/core/widgets/member_sheet.dart';
+import 'package:wpcc_community/core/widgets/member_skeleton.dart';
 import 'package:wpcc_community/features/departments/departments_page.dart';
 import 'package:wpcc_community/features/data/providers.dart';
 import 'package:wpcc_community/features/events/events_page.dart';
@@ -494,7 +495,7 @@ void main() {
     await tester.enterText(find.byType(TextField), 'first');
     await tester.pump();
     expect(find.text('No results'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(MemberSkeleton), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.enterText(find.byType(TextField), 'second');
     first.complete([
@@ -502,7 +503,7 @@ void main() {
     ]);
     await tester.pump();
     expect(find.text('Stale event'), findsNothing);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(MemberSkeleton), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 350));
     await tester.pumpAndSettle();
     expect(find.text('Sunday celebration'), findsOneWidget);

@@ -1,8 +1,13 @@
 import '../rewards/rewards_repository.dart';
 import 'dart:math' as math;
+import '../../core/widgets/member_photo_backdrop.dart';
 
 import 'package:flutter/material.dart';
 import '../../core/theme/app_motion.dart';
+import '../../core/theme/member_material.dart';
+import '../../core/theme/member_theme.dart';
+import '../../core/widgets/member_components.dart';
+import '../../core/widgets/member_glass.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -11,19 +16,25 @@ import '../../core/widgets/animated_search_filter.dart';
 import '../../core/widgets/initials_avatar.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'department_repository.dart';
+import 'tools/department_tool_card.dart';
 
 class DepartmentDetailPage extends StatefulWidget {
   const DepartmentDetailPage(
-      {super.key, required this.departmentId, this.seed});
+      {super.key,
+      required this.departmentId,
+      this.seed,
+      this.repository,
+      this.initialTab = 0});
+  final int initialTab;
+  final DepartmentRepository? repository;
   final String departmentId;
   final Map<String, dynamic>? seed;
   @override
   State<DepartmentDetailPage> createState() => _DepartmentDetailPageState();
 }
 
-class _DepartmentDetailPageState extends State<DepartmentDetailPage>
-    with SingleTickerProviderStateMixin {
-  final repo = DepartmentRepository();
+class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
+  late final repo = widget.repository ?? DepartmentRepository();
   int tab = 0;
   int direction = 1;
   String memberSearch = '';
@@ -46,6 +57,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
   void initState() {
     super.initState();
     currentDepartment = widget.seed;
+    tab = widget.initialTab;
     leaders = repo.leadership(widget.departmentId);
     members = repo.members(widget.departmentId);
     attendance = repo.attendanceEvents(widget.departmentId);
@@ -79,22 +91,32 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
   @override
   Widget build(BuildContext context) {
     final name = currentDepartment?['name']?.toString() ?? 'Department';
+    final avatar = currentDepartment?['avatar_url']?.toString().trim() ?? '';
+    final image = avatar.isNotEmpty
+        ? avatar
+        : currentDepartment?['cover_url']?.toString() ?? '';
     return Scaffold(
       body: CustomScrollView(controller: scrollController, slivers: [
         SliverAppBar(
           pinned: true,
           expandedHeight: 290,
           elevation: 0,
-          backgroundColor: headerFrosted
-              ? Colors.white.withValues(alpha: .88)
-              : Colors.transparent,
+          backgroundColor:
+              headerFrosted ? MemberVisuals.page(context) : Colors.transparent,
           foregroundColor: headerFrosted
               ? Theme.of(context).colorScheme.onSurface
               : Colors.white,
           surfaceTintColor: Colors.transparent,
+          leading: MemberIconButton(
+              icon: PhosphorIcons.caretLeft(),
+              label: 'Back',
+              plain: true,
+              onPressed: () => context.canPop()
+                  ? context.pop()
+                  : context.go('/departments')),
           title: Text('Department',
               style: TextStyle(
-                  fontSize: 14,
+                  fontSize: 20,
                   fontWeight: FontWeight.w500,
                   color: headerFrosted
                       ? Theme.of(context).colorScheme.onSurface
@@ -103,16 +125,21 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
             IconButton(
                 tooltip: 'Join another department',
                 icon: const Icon(Icons.add),
-                onPressed: () => context.push('/departments')),
+                // Return to the existing shell instead of stacking another one.
+                onPressed: () => context.go('/departments')),
             FutureBuilder<Map<String, dynamic>?>(
                 future: deptContext,
                 builder: (context, s) {
                   final canManage = s.data?['can_manage'] == true;
                   if (!canManage) return const SizedBox.shrink();
                   return PopupMenuButton<String>(
+                      tooltip: 'Manage department',
                       icon: Icon(PhosphorIcons.dotsThree(), size: 21),
                       onSelected: _departmentAction,
                       itemBuilder: (context) => [
+                            const PopupMenuItem(
+                                value: 'requests',
+                                child: Text('Join requests')),
                             const PopupMenuItem(
                                 value: 'announcement',
                                 child: Text('Post announcement',
@@ -127,7 +154,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
                                     style: TextStyle(fontSize: 12))),
                             const PopupMenuItem(
                                 value: 'profile',
-                                child: Text('Change profile',
+                                child: Text('Department images',
                                     style: TextStyle(fontSize: 12))),
                             const PopupMenuItem(
                                 value: 'wallet',
@@ -138,29 +165,13 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
           ],
           flexibleSpace: FlexibleSpaceBar(
             background: Stack(fit: StackFit.expand, children: [
-              if ((currentDepartment?['cover_url']?.toString() ?? '')
-                  .isNotEmpty)
-                Image.network(currentDepartment!['cover_url'].toString(),
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => const DecoratedBox(
-                            decoration: BoxDecoration(
-                                gradient: LinearGradient(colors: [
-                          Color(0xFF3D3E4C),
-                          Color(0xFF777A8B)
-                        ]))))
-              else
-                const DecoratedBox(
-                    decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [Color(0xFF3D3E4C), Color(0xFF777A8B)]))),
+              MemberPhotoBackdrop(imageUrl: image, route: '/departments'),
               const DecoratedBox(
                   decoration: BoxDecoration(
                       gradient: LinearGradient(
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Color(0xB3000000)]))),
+                          colors: [Color(0x66000000), Color(0xCC000000)]))),
               Positioned(
                   left: 18,
                   right: 18,
@@ -175,7 +186,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
                                 ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w600,
-                                    letterSpacing: -.7)),
+                                    letterSpacing: 0)),
                         const SizedBox(height: 7),
                         if (currentDepartment?['member_count'] != null) ...[
                           Container(
@@ -227,7 +238,9 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
                         ?.copyWith(
                             fontSize: 12,
                             color: tab == i
-                                ? Colors.white
+                                ? Theme.of(context)
+                                    .colorScheme
+                                    .surfaceContainerLowest
                                 : Theme.of(context)
                                     .colorScheme
                                     .onSurfaceVariant),
@@ -269,6 +282,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
 
   Future<void> _departmentAction(String action) async {
     final route = switch (action) {
+      'requests' => '/departments/${widget.departmentId}/requests',
       'announcement' => '/departments/${widget.departmentId}/announcement',
       'event' => '/departments/${widget.departmentId}/event/new',
       'files' => '/departments/${widget.departmentId}/files/manage',
@@ -278,7 +292,8 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
     };
     if (route == null) return;
     final changed = await context.push<bool>(route);
-    if (changed == true && mounted) {
+    if ((changed == true || action == 'files' || action == 'requests') &&
+        mounted) {
       final fresh = await repo.context(widget.departmentId);
       if (!mounted) return;
       setState(() {
@@ -286,6 +301,8 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
         deptContext = Future.value(fresh);
         wallets = repo.wallets(widget.departmentId);
         files = repo.files(widget.departmentId);
+        members = repo.members(widget.departmentId);
+        leaders = repo.leadership(widget.departmentId);
         attendance = repo.attendanceEvents(widget.departmentId);
       });
     }
@@ -293,6 +310,12 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
 
   Widget _overview() =>
       Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        DepartmentToolCard(
+            title: 'Service tools',
+            description: 'View your department workflows, files and schedules.',
+            icon: PhosphorIconsRegular.listChecks,
+            onTap: () => context.push('/resources/department-tools?department=${Uri.encodeComponent(widget.departmentId)}')),
+        const SizedBox(height: 20),
         FutureBuilder<List<Map<String, dynamic>>>(
           future: leaders,
           builder: (context, snapshot) {
@@ -545,95 +568,96 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      transitionAnimationController: AnimationController(
-          vsync: this, duration: const Duration(milliseconds: 220)),
       builder: (context) => DraggableScrollableSheet(
         initialChildSize: .62,
         minChildSize: .42,
         maxChildSize: .84,
-        builder: (context, scroll) => Container(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
-          decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-          child: ListView(controller: scroll, children: [
-            Center(
-                child: Container(
-                    width: 38,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFD9DBE1),
-                        borderRadius: BorderRadius.circular(99)))),
-            const SizedBox(height: 18),
-            Center(
-                child: GestureDetector(
-              onTap: () => _expandAvatar(data),
-              child: InitialsAvatar(
-                  initials: data['initials']?.toString() ?? '--',
-                  imageUrl: data['avatar']?.toString(),
-                  size: 96),
+        builder: (context, scroll) => MemberGlass(
+            radius: 32,
+            weight: MemberMaterialWeight.sheet,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
+              child: ListView(controller: scroll, children: [
+                Center(
+                    child: Container(
+                        width: 38,
+                        height: 4,
+                        decoration: BoxDecoration(
+                            color: const Color(0xFFD9DBE1),
+                            borderRadius: BorderRadius.circular(99)))),
+                const SizedBox(height: 18),
+                Center(
+                    child: GestureDetector(
+                  onTap: () => _expandAvatar(data),
+                  child: InitialsAvatar(
+                      initials: data['initials']?.toString() ?? '--',
+                      imageUrl: data['avatar']?.toString(),
+                      size: 96),
+                )),
+                const SizedBox(height: 12),
+                Text(data['full_name']?.toString() ?? '',
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                if (points != null)
+                  Text('$points WP', textAlign: TextAlign.center),
+                const SizedBox(height: 20),
+                _DetailCard(
+                    icon: PhosphorIcons.phone(),
+                    label: 'Phone number',
+                    value: data['phone']?.toString() ?? 'Not available'),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant),
+                      borderRadius: BorderRadius.circular(22)),
+                  child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(children: [
+                          Icon(PhosphorIcons.usersThree(), size: 19),
+                          const SizedBox(width: 10),
+                          Text('Departments',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant))
+                        ]),
+                        const SizedBox(height: 12),
+                        Wrap(
+                            spacing: 7,
+                            runSpacing: 7,
+                            children: ((data['departments'] as List?) ??
+                                    const [])
+                                .map((d) => Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 7),
+                                      decoration: BoxDecoration(
+                                          border: Border.all(
+                                              color: Theme.of(context)
+                                                  .colorScheme
+                                                  .outlineVariant),
+                                          borderRadius:
+                                              BorderRadius.circular(99)),
+                                      child: Text(
+                                          (d as Map)['name']?.toString() ?? '',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall),
+                                    ))
+                                .toList()),
+                      ]),
+                ),
+              ]),
             )),
-            const SizedBox(height: 12),
-            Text(data['full_name']?.toString() ?? '',
-                textAlign: TextAlign.center,
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-            if (points != null) Text('$points WP', textAlign: TextAlign.center),
-            const SizedBox(height: 20),
-            _DetailCard(
-                icon: PhosphorIcons.phone(),
-                label: 'Phone number',
-                value: data['phone']?.toString() ?? 'Not available'),
-            const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface,
-                  border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant),
-                  borderRadius: BorderRadius.circular(22)),
-              child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(children: [
-                      Icon(PhosphorIcons.usersThree(), size: 19),
-                      const SizedBox(width: 10),
-                      Text('Departments',
-                          style: Theme.of(context)
-                              .textTheme
-                              .bodySmall
-                              ?.copyWith(
-                                  color: Theme.of(context)
-                                      .colorScheme
-                                      .onSurfaceVariant))
-                    ]),
-                    const SizedBox(height: 12),
-                    Wrap(
-                        spacing: 7,
-                        runSpacing: 7,
-                        children: ((data['departments'] as List?) ?? const [])
-                            .map((d) => Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 7),
-                                  decoration: BoxDecoration(
-                                      border: Border.all(
-                                          color: Theme.of(context)
-                                              .colorScheme
-                                              .outlineVariant),
-                                      borderRadius: BorderRadius.circular(99)),
-                                  child: Text(
-                                      (d as Map)['name']?.toString() ?? '',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall),
-                                ))
-                            .toList()),
-                  ]),
-            ),
-          ]),
-        ),
       ),
     );
   }
@@ -813,114 +837,141 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage>
       backgroundColor: Colors.transparent,
       builder: (context) => FractionallySizedBox(
         heightFactor: .78,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
-          decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(30))),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Center(
-                child: Container(
-                    width: 38,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: const Color(0xFFD9DBE1),
-                        borderRadius: BorderRadius.circular(99)))),
-            const SizedBox(height: 18),
-            Text(event['title']?.toString() ?? 'Attendance',
-                style: Theme.of(context)
-                    .textTheme
-                    .titleLarge
-                    ?.copyWith(fontWeight: FontWeight.w600)),
-            if (start != null)
-              Text(WpccTime.compact(start.toIso8601String()),
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 18),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text('Present members',
-                  style: Theme.of(context)
-                      .textTheme
-                      .titleSmall
-                      ?.copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
-              Text('Ranked by check-in time',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant))
-            ]),
-            const SizedBox(height: 8),
-            Expanded(
-                child: rows.isEmpty
-                    ? SectionEmptyState(
-                        icon: PhosphorIcons.userList(),
-                        message: 'No present members')
-                    : ListView.builder(
-                        itemCount: rows.length,
-                        itemBuilder: (context, i) {
-                          final row = rows[i];
-                          final check = DateTime.tryParse(
-                              row['checked_in_at']?.toString() ?? '');
-                          final delta = row['minutes_from_start'] as int? ?? 0;
-                          final relative = delta == 0
-                              ? 'On time'
-                              : delta < 0
-                                  ? '${delta.abs()} min early'
-                                  : '$delta min late';
-                          return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              child: Row(children: [
-                                InitialsAvatar(
-                                    initials:
-                                        row['initials']?.toString() ?? '--',
-                                    imageUrl: row['avatar']?.toString(),
-                                    size: 40),
-                                const SizedBox(width: 11),
-                                Expanded(
-                                    child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                      Text(row['full_name']?.toString() ?? '',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .titleSmall
-                                              ?.copyWith(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w500)),
-                                      Text(relative,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .bodySmall
-                                              ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant))
-                                    ])),
-                                Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                          check == null
-                                              ? ''
-                                              : WpccTime.eventTime(
-                                                  check.toIso8601String(),
-                                                  null),
-                                          style: const TextStyle(
-                                              fontSize: 13,
-                                              fontWeight: FontWeight.w600)),
-                                      Text('Check-in',
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                  color: Theme.of(context)
-                                                      .colorScheme
-                                                      .onSurfaceVariant))
-                                    ]),
-                              ]));
-                        })),
-          ]),
-        ),
+        child: MemberGlass(
+            radius: 32,
+            weight: MemberMaterialWeight.sheet,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 24),
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                        child: Container(
+                            width: 38,
+                            height: 4,
+                            decoration: BoxDecoration(
+                                color: const Color(0xFFD9DBE1),
+                                borderRadius: BorderRadius.circular(99)))),
+                    const SizedBox(height: 18),
+                    Text(event['title']?.toString() ?? 'Attendance',
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleLarge
+                            ?.copyWith(fontWeight: FontWeight.w600)),
+                    if (start != null)
+                      Text(WpccTime.compact(start.toIso8601String()),
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodySmall
+                              ?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurfaceVariant)),
+                    const SizedBox(height: 18),
+                    Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('Present members',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleSmall
+                                  ?.copyWith(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500)),
+                          Text('Ranked by check-in time',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant))
+                        ]),
+                    const SizedBox(height: 8),
+                    Expanded(
+                        child: rows.isEmpty
+                            ? SectionEmptyState(
+                                icon: PhosphorIcons.userList(),
+                                message: 'No present members')
+                            : ListView.builder(
+                                itemCount: rows.length,
+                                itemBuilder: (context, i) {
+                                  final row = rows[i];
+                                  final check = DateTime.tryParse(
+                                      row['checked_in_at']?.toString() ?? '');
+                                  final delta =
+                                      row['minutes_from_start'] as int? ?? 0;
+                                  final relative = delta == 0
+                                      ? 'On time'
+                                      : delta < 0
+                                          ? '${delta.abs()} min early'
+                                          : '$delta min late';
+                                  return Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                          vertical: 8),
+                                      child: Row(children: [
+                                        InitialsAvatar(
+                                            initials:
+                                                row['initials']?.toString() ??
+                                                    '--',
+                                            imageUrl: row['avatar']?.toString(),
+                                            size: 40),
+                                        const SizedBox(width: 11),
+                                        Expanded(
+                                            child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                              Text(
+                                                  row['full_name']
+                                                          ?.toString() ??
+                                                      '',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .titleSmall
+                                                      ?.copyWith(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w500)),
+                                              Text(relative,
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .bodySmall
+                                                      ?.copyWith(
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant))
+                                            ])),
+                                        Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.end,
+                                            children: [
+                                              Text(
+                                                  check == null
+                                                      ? ''
+                                                      : WpccTime.eventTime(
+                                                          check
+                                                              .toIso8601String(),
+                                                          null),
+                                                  style: const TextStyle(
+                                                      fontSize: 13,
+                                                      fontWeight:
+                                                          FontWeight.w600)),
+                                              Text('Check-in',
+                                                  style: Theme.of(context)
+                                                      .textTheme
+                                                      .labelSmall
+                                                      ?.copyWith(
+                                                          color: Theme.of(
+                                                                  context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant))
+                                            ]),
+                                      ]));
+                                })),
+                  ]),
+            )),
       ),
     );
   }

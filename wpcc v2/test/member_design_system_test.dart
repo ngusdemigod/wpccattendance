@@ -6,7 +6,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wpcc_community/app/app_shell.dart';
@@ -56,6 +55,55 @@ const soul = {
 };
 
 void main() {
+  testWidgets('dock glides, redirects mid-flight and respects reduced motion',
+      (tester) async {
+    for (final reduced in [false, true]) {
+      final router = GoRouter(initialLocation: '/home', routes: [
+        ShellRoute(
+            builder: (_, __, child) =>
+                MemberTheme(child: AppShell(child: child)),
+            routes: [
+              for (final path in [
+                '/home',
+                '/events',
+                '/media',
+                '/give',
+                '/profile'
+              ])
+                GoRoute(path: path, builder: (_, __) => const SizedBox()),
+            ]),
+      ]);
+      await tester.pumpWidget(MaterialApp.router(
+        routerConfig: router,
+        builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(context).copyWith(disableAnimations: reduced),
+            child: child!),
+      ));
+      await tester.pumpAndSettle();
+      final marker = find.byKey(const ValueKey('dock-selection'));
+      final start = tester.getCenter(marker).dx;
+      await tester.tap(find.byTooltip('Profile'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 60));
+      final mid = tester.getCenter(marker).dx;
+      expect(mid, greaterThan(start));
+      final target = tester.getCenter(find.byTooltip('Profile')).dx;
+      if (reduced) {
+        expect(mid, closeTo(target, .1));
+      } else {
+        expect(mid, lessThan(target));
+      }
+      await tester.tap(find.byTooltip('Events'));
+      await tester.pump();
+      if (!reduced) expect(tester.getCenter(marker).dx, closeTo(mid, .1));
+      await tester.pumpAndSettle();
+      expect(tester.getCenter(marker).dx,
+          closeTo(tester.getCenter(find.byTooltip('Events')).dx, .1));
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox());
+      router.dispose();
+    }
+  });
   test('dock selects only corresponding primary views', () {
     const shell = AppShell(child: SizedBox());
     for (final entry in {
@@ -110,8 +158,7 @@ void main() {
         member.textTheme.labelSmall
       ]) {
         expect(style!.letterSpacing, 0);
-        expect(style.fontFamily,
-            GoogleFonts.dmSans(fontWeight: style.fontWeight).fontFamily);
+        expect(style.fontFamily, 'DM Sans');
       }
       final colors = member.colorScheme;
       final backdrops = brightness == Brightness.dark
@@ -173,8 +220,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
           theme: buildMemberTheme(buildWpccTheme()),
           builder: (context, child) => MediaQuery(
-              data:
-                  MediaQuery.of(context).copyWith(accessibleNavigation: solid),
+              data: MediaQuery.of(context).copyWith(highContrast: solid),
               child: child!),
           home: Scaffold(
               body: Padding(
@@ -192,10 +238,14 @@ void main() {
       final clip = tester.widget<ClipRRect>(
           find.descendant(of: search, matching: find.byType(ClipRRect)));
       expect(clip.borderRadius, BorderRadius.circular(26));
-      final backdrop = tester.widget<BackdropFilter>(
-          find.descendant(of: search, matching: find.byType(BackdropFilter)));
-      expect(backdrop.filter,
-          ui.ImageFilter.blur(sigmaX: solid ? 0 : 12, sigmaY: solid ? 0 : 12));
+      final backdrop = find.descendant(
+          of: search, matching: find.byType(BackdropFilter));
+      if (solid) {
+        expect(backdrop, findsNothing);
+      } else {
+        expect(tester.widget<BackdropFilter>(backdrop).filter,
+            ui.ImageFilter.blur(sigmaX: 24, sigmaY: 24));
+      }
       await tester.tap(filter);
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);
@@ -528,7 +578,7 @@ void main() {
             hasLength(1));
         expect(
             _semanticsNodes(tester).where(
-                (node) => node.getSemanticsData().label == 'Playback position'),
+                (node) => node.getSemanticsData().label == 'Playback progress'),
             hasLength(1));
         await tester.tap(find.text('Open sheet'));
         await tester.pumpAndSettle();
@@ -613,17 +663,25 @@ void main() {
         ));
         await tester.pumpAndSettle();
         final home = find.byTooltip('Home');
+        final dockBounds =
+            tester.getRect(find.byKey(const ValueKey('floating-navigation')));
+        final playerBounds =
+            tester.getRect(find.byKey(const ValueKey('floating-player')));
+        expect(playerBounds.width, dockBounds.width);
+        expect(dockBounds.top - playerBounds.bottom, closeTo(4, .01));
         expect(tester.getSize(home), const Size(50, 50));
         expect(tester.getTopLeft(home).dx, (size.width - 292) / 2 + 5);
         final bottom = size.width < 600 ? 22 : 24;
         expect(tester.getTopLeft(home).dy, size.height - bottom - 60 + 5);
         final artwork = find.byType(MemberArtwork);
-        expect(tester.getSize(artwork), const Size(38, 38));
+        expect(tester.getSize(artwork), const Size(34, 34));
         expect(tester.widget<MemberArtwork>(artwork).radius, 8);
-        expect(tester.getTopLeft(artwork).dx, size.width < 600 ? 20 : 32);
-        expect(tester.getTopLeft(artwork).dy, lessThan(30));
-        expect(tester.getSize(find.byType(Slider)).height,
-            greaterThanOrEqualTo(48));
+        expect(tester.getTopLeft(artwork).dx,
+            closeTo((size.width - 292) / 2 + 14, 1));
+        expect(tester.getBottomLeft(artwork).dy,
+            lessThan(tester.getTopLeft(home).dy));
+        expect(tester.getSize(find.byType(LinearProgressIndicator)).width,
+            lessThanOrEqualTo(292));
         expect(find.byTooltip('Play'), findsOneWidget);
         expect(find.byTooltip('Close player'), findsOneWidget);
         expect(tester.takeException(), isNull);
@@ -684,7 +742,7 @@ void main() {
               tester
                   .getTopLeft(find.text('A real message with a long title'))
                   .dy,
-              lessThan(tester.getTopLeft(find.textContaining('Screen /')).dy));
+              lessThan(tester.getTopLeft(find.byTooltip('Home')).dy));
         }
       }
     }

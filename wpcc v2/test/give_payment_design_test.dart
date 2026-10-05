@@ -53,6 +53,9 @@ const eventRows = <String, List<Map<String, dynamic>>>{
 
 class RecordingGivingRepository implements GiveRepository {
   final calls = <Map<String, dynamic>>[];
+  List<Map<String, dynamic>> projectRows = [];
+  @override
+  Future<List<Map<String, dynamic>>> projects() async => projectRows;
   Completer<Map<String, dynamic>>? pending;
   @override
   dynamic noSuchMethod(Invocation invocation) =>
@@ -82,6 +85,7 @@ Widget app(
   Brightness brightness = Brightness.light,
   double scale = 1,
   bool reduced = true,
+  Map<String, dynamic> paymentPayload = payload,
   Future<Map<String, List<Map<String, dynamic>>>> Function()? events,
 }) =>
     MaterialApp(
@@ -92,7 +96,7 @@ Widget app(
           child: child!),
       home: GivePaymentPage(
           key: UniqueKey(),
-          payload: payload,
+          payload: paymentPayload,
           repository: repo,
           eventLoader: events ?? () async => eventRows),
     );
@@ -105,6 +109,46 @@ Future<void> tapVisible(WidgetTester tester, Finder target) async {
 }
 
 void main() {
+  testWidgets('project entry selects a real project without a Projects tab',
+      (tester) async {
+    final repo = RecordingGivingRepository()
+      ..projectRows = [
+        {'id': 'selected-project', 'title': 'Building fund'}
+      ];
+    await tester
+        .pumpWidget(app(repo, paymentPayload: {'giving_type': 'project'}));
+    await tester.pumpAndSettle();
+    expect(find.text('Projects'), findsNothing);
+    await tapVisible(tester, find.text('Choose a project'));
+    await tapVisible(tester, find.text('Building fund'));
+    await tapVisible(tester, find.text('5'));
+    await tapVisible(tester, find.text('00'));
+    await tapVisible(tester, find.text('Continue'));
+    expect(repo.calls.single['project_id'], 'selected-project');
+    expect(repo.calls.single['giving_type'], 'project');
+    expect(repo.calls.single['amount_kobo'], 50000);
+  });
+
+  testWidgets('empty projects cannot start a project payment', (tester) async {
+    final repo = RecordingGivingRepository();
+    await tester
+        .pumpWidget(app(repo, paymentPayload: {'giving_type': 'project'}));
+    await tester.pumpAndSettle();
+    expect(find.text('Projects'), findsNothing);
+    await tapVisible(tester, find.text('Choose a project'));
+    expect(find.text('No active church projects'), findsOneWidget);
+    Navigator.of(tester.element(find.text('No active church projects'))).pop();
+    await tester.pumpAndSettle();
+    await tapVisible(tester, find.text('5'));
+    await tapVisible(tester, find.text('00'));
+    expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+            .onPressed,
+        isNull);
+    expect(repo.calls, isEmpty);
+  });
+
   setUpAll(() async {
     TestWidgetsFlutterBinding.ensureInitialized();
     for (final family in ['DMSans_regular', 'DM Sans']) {
@@ -198,6 +242,38 @@ void main() {
   });
 
   testWidgets(
+      'type tabs preserve amount and clear unrelated project at checkout',
+      (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(412, 915);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    final repo = RecordingGivingRepository();
+    await tester.pumpWidget(app(repo));
+    await tester.pumpAndSettle();
+    final submit = find.widgetWithText(FilledButton, 'Continue');
+    expect(tester.getBottomLeft(submit).dy, closeTo(915 - 24, 1));
+    await tapVisible(tester, find.text('Auto give'));
+    expect(tester.getBottomLeft(submit).dy, closeTo(915 - 24, 1));
+    await tapVisible(tester, find.text('Auto give'));
+    await tester.tap(find.text('₦5,000'));
+    await tester.tap(find.text('Tithe'));
+    await tester.pumpAndSettle();
+    expect(find.text('₦5,000.00'), findsOneWidget);
+    expect(
+        tester
+            .widget<ChoiceChip>(find.widgetWithText(ChoiceChip, 'Tithe'))
+            .selected,
+        isTrue);
+    await tester.tap(submit);
+    await tester.pumpAndSettle();
+    expect(repo.calls.single['giving_type'], 'tithe');
+    expect(repo.calls.single['project_id'], isNull);
+    expect(repo.calls.single['amount_kobo'], 500000);
+    expect(repo.calls.single['auto_give'], isNull);
+  });
+
+  testWidgets(
       'One-time checkout keeps purpose amount project and no recurring payload',
       (tester) async {
     final repo = RecordingGivingRepository();
@@ -256,7 +332,7 @@ void main() {
         const TimeOfDay(hour: 8, minute: 0));
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
-    await tapVisible(tester, find.text('One-time'));
+    await tapVisible(tester, find.text('Auto give'));
     await tapVisible(tester, find.text('Auto give'));
     expect(find.text('4 selected'), findsOneWidget);
     await tapVisible(tester, find.text('Continue'));
@@ -409,7 +485,7 @@ void main() {
       }
       await tapVisible(tester, find.text('Auto give'));
       expect(find.text('Repeat days'), findsOneWidget);
-      await tapVisible(tester, find.text('One-time'));
+      await tapVisible(tester, find.text('Auto give'));
       expect(find.text('Repeat days'), findsNothing);
     }
   });

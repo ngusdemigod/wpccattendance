@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/core/theme/member_theme.dart';
 import 'package:wpcc_community/core/widgets/member_components.dart';
+import 'package:wpcc_community/core/widgets/member_skeleton.dart';
 import 'package:wpcc_community/features/devotional/devotional_page.dart';
 import 'package:wpcc_community/features/prayer/prayer_alerts_content.dart';
 
@@ -574,7 +575,7 @@ void main() {
     await tester.pumpWidget(app(DevotionalPage(
         loadPosts: ({int offset = 0, int limit = 20}) => pending.future)));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(MemberSkeleton), findsOneWidget);
     pending.complete([]);
     await tester.pumpAndSettle();
     expect(find.text('No devotional posts yet'), findsOneWidget);
@@ -602,7 +603,7 @@ void main() {
       onToggle: (_, __) {},
     ))));
     await tester.pump();
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(find.byType(MemberSkeleton), findsOneWidget);
     expect(find.text('Prayer alerts'), findsOneWidget);
     var retries = 0;
     await tester.pumpWidget(app(Scaffold(

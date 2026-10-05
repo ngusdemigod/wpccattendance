@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/member_photo_backdrop.dart';
 import '../../core/widgets/member_skeleton.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -47,42 +48,35 @@ class _MediaEpisodeDetailPageState extends State<MediaEpisodeDetailPage> {
   @override
   Widget build(BuildContext context) => Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-          bottom: false,
-          child: FutureBuilder<Map<String, dynamic>?>(
-              future: episode,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState != ConnectionState.done) {
-                  return const SingleChildScrollView(
+      body: FutureBuilder<Map<String, dynamic>?>(
+          future: episode,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState != ConnectionState.done) {
+              return const SafeArea(
+                  child: SingleChildScrollView(
                       padding: EdgeInsets.all(24),
-                      child: MemberSkeleton(hero: true));
-                }
-                if (snapshot.hasError || snapshot.data == null) {
-                  return Column(children: [
-                    _DetailHeader(provider: ''),
-                    Expanded(
-                        child: Center(
-                            child: MemberStatus(
-                                message: 'Message unavailable',
-                                icon: PhosphorIconsRegular.warningCircle,
-                                onRetry: () => setState(() {
-                                      episode = _load();
-                                    })))),
-                  ]);
-                }
-                return Align(
-                    alignment: Alignment.topCenter,
-                    child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                            maxWidth: MediaQuery.sizeOf(context).width >= 900
-                                ? 820
-                                : 1180),
-                        child: _EpisodeBody(
-                            key: ValueKey(widget.episodeId),
-                            episode: snapshot.data!,
-                            loadAlbums: widget.loadAlbums,
-                            loadTracks: widget.loadAlbumTracks)));
-              })));
+                      child: MemberSkeleton(hero: true)));
+            }
+            if (snapshot.hasError || snapshot.data == null) {
+              return SafeArea(
+                  child: Column(children: [
+                _DetailHeader(provider: ''),
+                Expanded(
+                    child: Center(
+                        child: MemberStatus(
+                            message: 'Message unavailable',
+                            icon: PhosphorIconsRegular.warningCircle,
+                            onRetry: () => setState(() {
+                                  episode = _load();
+                                })))),
+              ]));
+            }
+            return _EpisodeBody(
+                key: ValueKey(widget.episodeId),
+                episode: snapshot.data!,
+                loadAlbums: widget.loadAlbums,
+                loadTracks: widget.loadAlbumTracks);
+          }));
 }
 
 typedef _Collection = ({
@@ -141,102 +135,139 @@ class _EpisodeBodyState extends State<_EpisodeBody> {
         final provider = episode['provider_url']?.toString() ?? '';
         final description = episode['description']?.toString().trim() ?? '';
         final album = snapshot.data?.album;
-        return ListView(
-            padding: memberPagePadding(context,
-                phone: 20,
-                top: 20,
-                bottom: MediaQuery.paddingOf(context).bottom + 112),
-            children: [
-              _DetailHeader(provider: provider),
-              Align(
-                  alignment: Alignment.centerLeft,
-                  child: ConstrainedBox(
-                      constraints: BoxConstraints(
-                          maxWidth: MediaQuery.sizeOf(context).width >= 600
-                              ? 680
-                              : double.infinity),
-                      child: LayoutBuilder(
-                          builder: (context, box) => SizedBox(
-                              width: box.maxWidth,
-                              height: (box.maxWidth * .75).clamp(0.0, 430.0),
-                              child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(20),
-                                  child: _Artwork(
-                                      url: album?['featured_image']
-                                              ?.toString() ??
-                                          episode['artwork_url']?.toString() ??
-                                          '')))))),
-              const SizedBox(height: 22),
-              Text(album?['title']?.toString() ?? 'WPCC Messages',
-                  style: Theme.of(context).textTheme.bodySmall),
-              const SizedBox(height: 9),
-              MediaDisplayTitle(episode['title']?.toString() ?? 'Message'),
-              if (provider.isNotEmpty)
-                MediaProviderLink(
-                    url: provider,
-                    label: 'Open in Spotify',
-                    showChevron: false),
-              if (description.isNotEmpty)
-                Padding(
-                    padding: const EdgeInsets.only(top: 17),
-                    child: Text(description,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            height: 1.5, color: colors.onSurfaceVariant))),
-              const SizedBox(height: 22),
-              ValueListenableBuilder<MediaPlayerState>(
-                  valueListenable: MediaPlayerController.instance,
-                  builder: (context, state, _) {
-                    final active =
-                        state.episode?.id == episode['id']?.toString() &&
-                            state.isPlaying;
-                    return Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton.filled(
-                          tooltip: active ? 'Pause message' : 'Play message',
-                          style: IconButton.styleFrom(
-                              backgroundColor: colors.onSurface,
-                              foregroundColor: colors.surfaceContainerLowest,
-                              fixedSize: const Size(56, 56),
-                              shape: const CircleBorder()),
-                          onPressed: () {
-                            if (state.episode?.id ==
-                                episode['id']?.toString()) {
-                              MediaPlayerController.instance.togglePlayback();
-                            } else {
-                              MediaPlayerController.instance.play(episode);
-                            }
-                          },
-                          icon: Icon(
-                              active
-                                  ? PhosphorIconsFill.pause
-                                  : PhosphorIconsFill.play,
-                              size: 24)),
-                    );
-                  }),
-              if (snapshot.connectionState != ConnectionState.done)
-                const Padding(
-                    padding: EdgeInsets.all(28),
-                    child: Center(child: CircularProgressIndicator()))
-              else if (snapshot.hasError)
-                MemberStatus(
-                    message: 'Collection unavailable',
-                    onRetry: () => setState(() {
-                          collection = _findCollection();
-                        }))
-              else if (snapshot.data != null) ...[
-                const SizedBox(height: 22),
-                Semantics(
-                    header: true,
-                    child: Text('In this collection',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleSmall
-                            ?.copyWith(fontSize: 17, height: 24 / 17))),
-                const SizedBox(height: 13),
-                MediaCollectionTracks(
-                    album: snapshot.data!.album, tracks: snapshot.data!.tracks),
-              ],
-            ]);
+        return MemberPhotoBackdrop(
+            route: '/media',
+            imageUrl: album?['featured_image']?.toString() ??
+                episode['artwork_url']?.toString(),
+            child: SafeArea(
+                bottom: false,
+                child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                            maxWidth: MediaQuery.sizeOf(context).width >= 900
+                                ? 820
+                                : 1180),
+                        child: ListView(
+                            padding: memberPagePadding(context,
+                                phone: 20,
+                                top: 20,
+                                bottom:
+                                    MediaQuery.paddingOf(context).bottom + 112),
+                            children: [
+                              _DetailHeader(provider: provider),
+                              Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                          maxWidth:
+                                              MediaQuery.sizeOf(context).width >= 600
+                                                  ? 680
+                                                  : double.infinity),
+                                      child: LayoutBuilder(
+                                          builder: (context, box) => SizedBox(
+                                              width: box.maxWidth,
+                                              height: (box.maxWidth * .75)
+                                                  .clamp(0.0, 430.0),
+                                              child: ClipRRect(
+                                                  key: const ValueKey(
+                                                      'message-artwork'),
+                                                  borderRadius:
+                                                      BorderRadius.circular(20),
+                                                  child: _Artwork(
+                                                      url: album?['featured_image']?.toString() ??
+                                                          episode['artwork_url']?.toString() ??
+                                                          '')))))),
+                              const SizedBox(height: 22),
+                              Text(
+                                  album?['title']?.toString() ??
+                                      'WPCC Messages',
+                                  style: Theme.of(context).textTheme.bodySmall),
+                              const SizedBox(height: 9),
+                              MediaDisplayTitle(
+                                  episode['title']?.toString() ?? 'Message'),
+                              if (provider.isNotEmpty)
+                                MediaProviderLink(
+                                    url: provider,
+                                    label: 'Open in Spotify',
+                                    showChevron: false),
+                              if (description.isNotEmpty)
+                                Padding(
+                                    padding: const EdgeInsets.only(top: 17),
+                                    child: Text(description,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                                height: 1.5,
+                                                color:
+                                                    colors.onSurfaceVariant))),
+                              const SizedBox(height: 22),
+                              ValueListenableBuilder<MediaPlayerState>(
+                                  valueListenable:
+                                      MediaPlayerController.instance,
+                                  builder: (context, state, _) {
+                                    final active = state.episode?.id ==
+                                            episode['id']?.toString() &&
+                                        state.isPlaying;
+                                    return Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: IconButton.filled(
+                                          tooltip: active
+                                              ? 'Pause message'
+                                              : 'Play message',
+                                          style: IconButton.styleFrom(
+                                              backgroundColor: colors.onSurface,
+                                              foregroundColor:
+                                                  colors.surfaceContainerLowest,
+                                              fixedSize: const Size(56, 56),
+                                              shape: const CircleBorder()),
+                                          onPressed: () {
+                                            if (state.episode?.id ==
+                                                episode['id']?.toString()) {
+                                              MediaPlayerController.instance
+                                                  .togglePlayback();
+                                            } else {
+                                              MediaPlayerController.instance
+                                                  .play(episode);
+                                            }
+                                          },
+                                          icon: Icon(
+                                              active
+                                                  ? PhosphorIconsFill.pause
+                                                  : PhosphorIconsFill.play,
+                                              size: 24)),
+                                    );
+                                  }),
+                              if (snapshot.connectionState !=
+                                  ConnectionState.done)
+                                const Padding(
+                                    padding: EdgeInsets.all(28),
+                                    child: Center(
+                                        child: CircularProgressIndicator()))
+                              else if (snapshot.hasError)
+                                MemberStatus(
+                                    message: 'Collection unavailable',
+                                    onRetry: () => setState(() {
+                                          collection = _findCollection();
+                                        }))
+                              else if (snapshot.data != null) ...[
+                                const SizedBox(height: 22),
+                                Semantics(
+                                    header: true,
+                                    child: Text('In this collection',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
+                                                fontSize: 17,
+                                                height: 24 / 17))),
+                                const SizedBox(height: 13),
+                                MediaCollectionTracks(
+                                    album: snapshot.data!.album,
+                                    tracks: snapshot.data!.tracks),
+                              ],
+                            ])))));
       });
 }
 
@@ -254,11 +285,8 @@ class _DetailHeader extends StatelessWidget {
                 context.canPop() ? context.pop() : context.go('/media')),
         const SizedBox(width: 10),
         Expanded(
-            child: Text('Message',
-                style: Theme.of(context)
-                    .textTheme
-                    .headlineSmall
-                    ?.copyWith(fontSize: 28, height: 35 / 28))),
+            child:
+                Text('Message', style: Theme.of(context).textTheme.titleSmall)),
         MemberIconButton(
             icon: PhosphorIconsRegular.export,
             label: 'Share message',

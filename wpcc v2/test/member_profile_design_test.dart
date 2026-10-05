@@ -80,7 +80,11 @@ void main() {
             home: const Scaffold(body: ProfilePage())));
         await tester.runAsync(() => ProfileRepository().profile());
         await tester.pumpAndSettle();
-        await tester.tap(find.byTooltip('Appearance'));
+        expect(find.text('Appearance'), findsNothing);
+        await tester.tap(find.byTooltip('App settings'));
+        await tester.pumpAndSettle();
+        expect(find.text('App settings'), findsOneWidget);
+        await tester.tap(find.text('Appearance'));
         await tester.pumpAndSettle();
         expect(find.byType(MemberSheet), findsOneWidget);
         final surface = find.byKey(const ValueKey('member-sheet-surface'));
@@ -102,8 +106,10 @@ void main() {
         expect(ThemePreference.instance.value, ThemeMode.light);
         expect((await SharedPreferences.getInstance()).getString('wpcc.theme'),
             'light');
-        await tester.scrollUntilVisible(find.text('Appearance'), 150,
+        await tester.scrollUntilVisible(find.byTooltip('App settings'), -150,
             scrollable: find.byType(Scrollable).first);
+        await tester.tap(find.byTooltip('App settings'));
+        await tester.pumpAndSettle();
         await tester.tap(find.text('Appearance'));
         await tester.pumpAndSettle();
         expect(
@@ -112,7 +118,8 @@ void main() {
                     find.widgetWithText(MemberListRow, 'Light'))
                 .selected,
             isTrue);
-        await tester.tap(find.byTooltip('Close'));
+        await tester.tap(find.descendant(
+            of: find.byType(MemberSheet), matching: find.byTooltip('Close')));
         await tester.pumpAndSettle();
         expect(find.byType(MemberSheet), findsNothing);
         expect(tester.takeException(), isNull);
@@ -141,7 +148,8 @@ void main() {
     await tester.scrollUntilVisible(find.text('Personal details'), 200,
         scrollable: find.byType(Scrollable).first);
     await Scrollable.ensureVisible(
-        tester.element(find.text('Personal details')), alignment: .2);
+        tester.element(find.text('Personal details')),
+        alignment: .2);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Personal details'));
     await tester.pumpAndSettle();
@@ -157,6 +165,10 @@ void main() {
     await tester.ensureVisible(save);
     await tester.pumpAndSettle();
     expect(save.hitTestable(), findsOneWidget);
+    final saveStyle = tester.widget<FilledButton>(save).style!;
+    expect(saveStyle.foregroundColor!.resolve({})!.a, 1);
+    expect(saveStyle.foregroundColor!.resolve({}),
+        isNot(saveStyle.backgroundColor!.resolve({})));
     expect(tester.takeException(), isNull);
     await tester.pumpWidget(const SizedBox.shrink());
   });
@@ -228,8 +240,12 @@ void main() {
           expect(tester.takeException(), isNull);
           Navigator.of(tester.element(find.text('Marital status'))).pop();
           await tester.pumpAndSettle();
-          await tester.ensureVisible(find.text('Appearance').last);
-          await tester.tap(find.text('Appearance').last);
+          await tester.scrollUntilVisible(find.byTooltip('App settings'), -250,
+              scrollable: scrollable);
+          await tester.pumpAndSettle();
+          await tester.tap(find.byTooltip('App settings'));
+          await tester.pumpAndSettle();
+          await tester.tap(find.text('Appearance'));
           await tester.pumpAndSettle();
           expect(find.text('Light'), findsOneWidget);
           expect(find.text('Dark'), findsOneWidget);

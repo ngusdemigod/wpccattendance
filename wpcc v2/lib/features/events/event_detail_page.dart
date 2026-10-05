@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/widgets/member_photo_backdrop.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/widgets/member_skeleton.dart';
 import '../../core/theme/member_theme.dart';
@@ -131,107 +132,116 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 ]));
               }
               final image = event['featured_image']?.toString().trim() ?? '';
-              return SafeArea(
-                bottom: false,
-                child: Center(
-                    child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                      maxWidth:
-                          MediaQuery.sizeOf(context).width >= 900 ? 820 : 1180),
-                  child: ListView(
-                    controller: scrollController,
-                    padding: memberPagePadding(context, top: 20, bottom: 124),
-                    children: [
-                      Row(children: [
-                        MemberIconButton(
-                            label: 'Back',
-                            icon: PhosphorIcons.caretLeft(),
-                            onPressed: _back),
-                        const SizedBox(width: 10),
-                        Expanded(
-                            child: Text('Event',
-                                style:
-                                    Theme.of(context).textTheme.headlineSmall)),
-                        if (image.isNotEmpty)
-                          MemberIconButton(
-                              label: 'View full flyer',
-                              icon: PhosphorIcons.arrowsOut(),
-                              plain: true,
-                              onPressed: () => _showFlyer(image)),
-                      ]),
-                      const SizedBox(height: 20),
-                      Align(
-                        alignment: Alignment.centerLeft,
+              return MemberPhotoBackdrop(
+                  imageUrl: image,
+                  route: '/events',
+                  child: SafeArea(
+                    bottom: false,
+                    child: Center(
                         child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 680),
-                          child: Semantics(
-                            button: image.isNotEmpty,
-                            label: 'View full event flyer',
-                            onTap:
-                                image.isEmpty ? null : () => _showFlyer(image),
-                            excludeSemantics: true,
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(20),
-                              child: LayoutBuilder(
-                                builder: (context, box) => SizedBox(
-                                  width: box.maxWidth,
-                                  height:
-                                      (box.maxWidth * .75).clamp(0.0, 430.0),
-                                  child: InkWell(
-                                    onTap: image.isEmpty
-                                        ? null
-                                        : () => _showFlyer(image),
-                                    child: Hero(
-                                        tag: 'event-image:${widget.eventId}',
-                                        child: image.isEmpty
-                                            ? _heroFallback()
-                                            : Image.network(image,
-                                                fit: BoxFit.contain,
-                                                excludeFromSemantics: true,
-                                                errorBuilder: (_, __, ___) =>
-                                                    _heroFallback())),
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width >= 900
+                              ? 820
+                              : 1180),
+                      child: ListView(
+                        controller: scrollController,
+                        padding:
+                            memberPagePadding(context, top: 20, bottom: 124),
+                        children: [
+                          Row(children: [
+                            MemberIconButton(
+                                label: 'Back',
+                                icon: PhosphorIcons.caretLeft(),
+                                onPressed: _back),
+                            const SizedBox(width: 10),
+                            Expanded(
+                                child: Text('Event',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall)),
+                            if (image.isNotEmpty)
+                              MemberIconButton(
+                                  label: 'View full flyer',
+                                  icon: PhosphorIcons.arrowsOut(),
+                                  plain: true,
+                                  onPressed: () => _showFlyer(image)),
+                          ]),
+                          const SizedBox(height: 20),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 680),
+                              child: Semantics(
+                                button: image.isNotEmpty,
+                                label: 'View full event flyer',
+                                onTap: image.isEmpty
+                                    ? null
+                                    : () => _showFlyer(image),
+                                excludeSemantics: true,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: LayoutBuilder(
+                                    builder: (context, box) => SizedBox(
+                                      width: box.maxWidth,
+                                      height: (box.maxWidth * .75)
+                                          .clamp(0.0, 430.0),
+                                      child: InkWell(
+                                        onTap: image.isEmpty
+                                            ? null
+                                            : () => _showFlyer(image),
+                                        child: Hero(
+                                            tag:
+                                                'event-image:${widget.eventId}',
+                                            child: image.isEmpty
+                                                ? _heroFallback()
+                                                : Image.network(image,
+                                                    fit: BoxFit.contain,
+                                                    excludeFromSemantics: true,
+                                                    errorBuilder:
+                                                        (_, __, ___) =>
+                                                            _heroFallback())),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
+                          const SizedBox(height: 22),
+                          Text(
+                              isRecurring
+                                  ? 'Recurring'
+                                  : event['department_id'] != null
+                                      ? 'Department'
+                                      : 'Church',
+                              style: Theme.of(context).textTheme.bodySmall),
+                          const SizedBox(height: 9),
+                          AnimatedSwitcher(
+                              duration: MediaQuery.disableAnimationsOf(context)
+                                  ? Duration.zero
+                                  : const Duration(milliseconds: 180),
+                              child: tab == 0
+                                  ? _overview(event)
+                                  : _attendance(event,
+                                      key: const ValueKey('attendance'))),
+                          if (!isRecurring) ...[
+                            const SizedBox(height: 20),
+                            TextButton.icon(
+                                onPressed: () =>
+                                    setState(() => tab = tab == 0 ? 1 : 0),
+                                icon: Icon(
+                                    tab == 0
+                                        ? PhosphorIcons.users()
+                                        : PhosphorIcons.arrowLeft(),
+                                    size: 20),
+                                label: Text(tab == 0
+                                    ? 'View attendance'
+                                    : 'Event overview')),
+                          ],
+                        ],
                       ),
-                      const SizedBox(height: 22),
-                      Text(
-                          isRecurring
-                              ? 'Recurring'
-                              : event['department_id'] != null
-                                  ? 'Department'
-                                  : 'Church',
-                          style: Theme.of(context).textTheme.bodySmall),
-                      const SizedBox(height: 9),
-                      AnimatedSwitcher(
-                          duration: MediaQuery.disableAnimationsOf(context)
-                              ? Duration.zero
-                              : const Duration(milliseconds: 180),
-                          child: tab == 0
-                              ? _overview(event)
-                              : _attendance(event,
-                                  key: const ValueKey('attendance'))),
-                      if (!isRecurring) ...[
-                        const SizedBox(height: 20),
-                        TextButton.icon(
-                            onPressed: () =>
-                                setState(() => tab = tab == 0 ? 1 : 0),
-                            icon: Icon(
-                                tab == 0
-                                    ? PhosphorIcons.users()
-                                    : PhosphorIcons.arrowLeft(),
-                                size: 20),
-                            label: Text(tab == 0
-                                ? 'View attendance'
-                                : 'Event overview')),
-                      ],
-                    ],
-                  ),
-                )),
-              );
+                    )),
+                  ));
             }),
       );
 

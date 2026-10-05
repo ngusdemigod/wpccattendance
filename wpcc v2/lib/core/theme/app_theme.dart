@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ThemePreference extends ValueNotifier<ThemeMode> {
@@ -91,8 +90,8 @@ ThemeData buildWpccTheme({Brightness brightness = Brightness.light}) {
       error: dark ? const Color(0xFFFFABA4) : WpccColors.error,
     ),
   );
-  final text = GoogleFonts.dmSansTextTheme(base.textTheme)
-      .apply(bodyColor: ink, displayColor: ink);
+  final text = base.textTheme.apply(
+      fontFamily: 'DM Sans', bodyColor: ink, displayColor: ink);
   return base.copyWith(
     textTheme: text.copyWith(
       headlineSmall: text.headlineSmall?.copyWith(

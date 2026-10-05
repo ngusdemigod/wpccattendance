@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_motion.dart';
+import '../../core/widgets/member_sheet.dart';
 import '../../core/widgets/member_skeleton.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
@@ -38,12 +38,9 @@ class _SoulsPageState extends State<SoulsPage> {
   }
 
   Future<void> addSoul() async {
-    final created = await showModalBottomSheet<bool>(
-      sheetAnimationStyle: AppMotion.sheetStyle(context),
+    final created = await showMemberSheet<bool>(
       context: context,
-      isScrollControlled: true,
-      useSafeArea: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      title: 'Add a soul',
       builder: (_) => _AddSoulSheet(repository: repository),
     );
     if (created == true) await refresh();
@@ -276,23 +273,12 @@ class _AddSoulSheetState extends State<_AddSoulSheet> {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: EdgeInsets.fromLTRB(
-            20, 12, 20, MediaQuery.viewInsetsOf(context).bottom + 20),
+        padding: const EdgeInsets.only(bottom: 12),
         child: SingleChildScrollView(
           child: Form(
             key: key,
             child:
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Row(children: [
-                Expanded(
-                    child: Text('Add a soul',
-                        style: Theme.of(context).textTheme.titleLarge)),
-                IconButton(
-                    tooltip: 'Close',
-                    onPressed: () => Navigator.pop(context),
-                    icon: Icon(PhosphorIcons.x())),
-              ]),
-              const SizedBox(height: 14),
               FutureBuilder<List<Map<String, dynamic>>>(
                 future: events,
                 builder: (context, snapshot) {

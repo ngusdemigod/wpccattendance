@@ -36,11 +36,12 @@ class _DepartmentManageFilesPageState extends State<DepartmentManageFilesPage> {
 
   Future<void> _upload() async {
     final contextRow = await department;
+    if (!mounted) return;
     final branch = contextRow?['branch_id']?.toString();
     if (branch == null) return;
     final result = await FilePicker.platform
         .pickFiles(withData: true, allowMultiple: false);
-    if (result == null) return;
+    if (result == null || !mounted) return;
     setState(() => uploading = true);
     try {
       await repo.uploadPrivateFile(
@@ -91,8 +92,9 @@ class _DepartmentManageFilesPageState extends State<DepartmentManageFilesPage> {
                   label: Text(uploading ? 'Uploading…' : 'Upload files'),
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
-                    foregroundColor: WpccColors.ink,
-                    side: const BorderSide(color: WpccColors.line),
+                    foregroundColor: Theme.of(context).colorScheme.onSurface,
+                    side: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -114,6 +116,7 @@ class _DepartmentManageFilesPageState extends State<DepartmentManageFilesPage> {
                       childAspectRatio: .76,
                     ),
                     itemBuilder: (context, index) => _FileManageCard(
+                      departmentId: widget.departmentId,
                       row: rows[index],
                       onChanged: () {
                         if (mounted) setState(_reload);
@@ -130,7 +133,9 @@ class _DepartmentManageFilesPageState extends State<DepartmentManageFilesPage> {
 }
 
 class _FileManageCard extends StatefulWidget {
-  const _FileManageCard({required this.row, required this.onChanged});
+  const _FileManageCard(
+      {required this.row, required this.onChanged, required this.departmentId});
+  final String departmentId;
   final Map<String, dynamic> row;
   final VoidCallback onChanged;
 
@@ -148,9 +153,9 @@ class _FileManageCardState extends State<_FileManageCard> {
     return Container(
       padding: const EdgeInsets.all(9),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: WpccColors.line),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -161,7 +166,7 @@ class _FileManageCardState extends State<_FileManageCard> {
                 Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                      color: WpccColors.subtle,
+                      color: Theme.of(context).colorScheme.surfaceContainerHigh,
                       borderRadius: BorderRadius.circular(16)),
                   child: Icon(_icon(), size: 29),
                 ),
@@ -231,7 +236,8 @@ class _FileManageCardState extends State<_FileManageCard> {
       widget.row['visibility'] = next;
     });
     try {
-      await repo.toggleVisibility(widget.row['id'].toString(), next);
+      await repo.toggleVisibility(widget.row['id'].toString(), next,
+          departmentId: widget.departmentId);
       widget.onChanged();
     } catch (_) {
       if (mounted) {
@@ -266,7 +272,8 @@ class _FileManageCardState extends State<_FileManageCard> {
     if (confirmed != true || !mounted || busy) return;
     setState(() => busy = true);
     try {
-      await repo.deleteFile(widget.row['id'].toString());
+      await repo.deleteFile(widget.row['id'].toString(),
+          departmentId: widget.departmentId);
       widget.onChanged();
     } catch (_) {
       if (mounted) {

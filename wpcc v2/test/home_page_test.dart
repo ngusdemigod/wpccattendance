@@ -7,7 +7,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/core/theme/member_theme.dart';
@@ -18,6 +17,19 @@ import 'package:wpcc_community/features/home/home_page.dart';
 import 'package:wpcc_community/features/search/search_page.dart';
 
 void main() {
+  testWidgets('quick links use solid surfaces in high contrast',
+      (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      theme: buildMemberTheme(buildWpccTheme()),
+      home: const MediaQuery(
+          data: MediaQueryData(highContrast: true),
+          child: Scaffold(body: HomeQuickLinks())),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.byType(BackdropFilter), findsNothing);
+    expect(find.byTooltip('Departments'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   testWidgets('Home preserves reference search and latest artwork geometry',
       (tester) async {
     tester.view.devicePixelRatio = 1;
@@ -55,95 +67,16 @@ void main() {
     }
   });
 
-  testWidgets('Home filters open a sheet and carry the choice into real Search',
-      (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-    for (final size in [const Size(390, 844), const Size(834, 1194)]) {
-      tester.view.physicalSize = size;
-      final router = GoRouter(initialLocation: '/home', routes: [
-        GoRoute(
-            path: '/home',
-            builder: (_, __) =>
-                Scaffold(body: HomePage(loadLatest: () async => []))),
-        GoRoute(
-            path: '/search',
-            builder: (_, state) => SearchPage(
-                initialFilter: state.uri.queryParameters['filter'] ?? 'All',
-                loadSearch: (_) async => [
-                      {
-                        'section': 'events',
-                        'id': 'event',
-                        'title': 'Church event'
-                      },
-                      {
-                        'section': 'departments',
-                        'id': 'team',
-                        'title': 'Church team'
-                      },
-                    ])),
-      ]);
-      await tester.pumpWidget(ProviderScope(
-          overrides: [
-            currentProfileProvider
-                .overrideWith((_) async => {'full_name': 'Member'}),
-            upcomingEventsProvider.overrideWith((_) async => []),
-            announcementsProvider.overrideWith((_) async => []),
-          ],
-          child: MaterialApp.router(
-              routerConfig: router,
-              theme: buildMemberTheme(buildWpccTheme()))));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byTooltip('Search filters'));
-      await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/home');
-      expect(find.byType(MemberSheet), findsOneWidget);
-      expect(
-          find.descendant(
-              of: find.byType(MemberSheet), matching: find.text('Messages')),
-          findsNothing);
-      await tester.tap(find.byTooltip('Close'));
-      await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/home');
-      await tester.tap(find.byTooltip('Search filters'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.descendant(
-          of: find.byType(MemberSheet), matching: find.text('Departments')));
-      await tester.pumpAndSettle();
-      expect(find.byType(MemberSheet), findsNothing);
-      expect(
-          GoRouterState.of(tester.element(find.byType(SearchPage)))
-              .uri
-              .queryParameters['filter'],
-          'Departments');
-      final chip = tester.widget<MemberFilterChip>(
-          find.widgetWithText(MemberFilterChip, 'Departments'));
-      expect(chip.selected, isTrue);
-      await tester.enterText(find.byType(TextField), 'church');
-      await tester.pump(const Duration(milliseconds: 350));
-      await tester.pumpAndSettle();
-      expect(find.text('Church team'), findsOneWidget);
-      expect(find.text('Church event'), findsNothing);
-      await tester.tap(find.byTooltip('Back'));
-      await tester.pumpAndSettle();
-      expect(router.routeInformationProvider.value.uri.path, '/home');
-      await tester.tap(find.byTooltip('Search filters'));
-      await tester.pumpAndSettle();
-      expect(
-          tester
-              .widget<MemberListRow>(find.descendant(
-                  of: find.byType(MemberSheet),
-                  matching: find.widgetWithText(MemberListRow, 'Departments')))
-              .selected,
-          isTrue);
-      await tester.tap(find.byTooltip('Close'));
-      await tester.pumpAndSettle();
-      await tester.pumpWidget(const SizedBox());
-      router.dispose();
-      expect(tester.takeException(), isNull);
-    }
+  testWidgets('Home search has no filter control', (tester) async {
+    await tester.pumpWidget(ProviderScope(overrides: [
+      currentProfileProvider.overrideWith((_) async => {'full_name': 'Member'}),
+      upcomingEventsProvider.overrideWith((_) async => []),
+      announcementsProvider.overrideWith((_) async => []),
+    ], child: MaterialApp(home: Scaffold(body: HomePage(loadLatest: () async => [])))));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip('Search filters'), findsNothing);
+    expect(tester.widget<MemberSearchBar>(find.byType(MemberSearchBar)).onFilter, isNull);
+    expect(tester.takeException(), isNull);
   });
   testWidgets(
       'appearance uses reference order and persists the real preference',
@@ -162,8 +95,18 @@ void main() {
             theme: buildMemberTheme(buildWpccTheme()),
             home: Scaffold(body: HomePage(loadLatest: () async => [])))));
     await tester.pumpAndSettle();
+    expect(find.byTooltip('Change appearance'), findsNothing);
+    await tester.pumpWidget(MaterialApp(
+      theme: buildMemberTheme(buildWpccTheme()),
+      home: Scaffold(
+          body: Builder(
+              builder: (context) => TextButton(
+                    onPressed: () => showMemberAppearanceSheet(context),
+                    child: const Text('Appearance settings'),
+                  ))),
+    ));
     for (final mode in [ThemeMode.dark, ThemeMode.light, ThemeMode.system]) {
-      await tester.tap(find.byTooltip('Change appearance'));
+      await tester.tap(find.text('Appearance settings'));
       await tester.pumpAndSettle();
       final rows = find.descendant(
           of: find.byType(MemberSheet), matching: find.byType(MemberListRow));
@@ -197,6 +140,7 @@ void main() {
       'Devotional',
       'Souls',
       'Give',
+      'Service tools',
       'Classes',
       'Counselling'
     ]);
@@ -206,6 +150,7 @@ void main() {
       '/devotional',
       '/souls',
       '/give',
+      '/resources/department-tools',
       '/profile/classes',
       '/counselling'
     ]);
@@ -265,8 +210,9 @@ void main() {
           final icon = tester.widget<Icon>(
               find.descendant(of: art, matching: find.byType(Icon)));
           expect(icon.icon, action.$3);
-          expect(icon.size, 30);
-          expect(icon.color, Colors.white);
+          expect(icon.size, 24);
+          expect(
+              icon.color, Theme.of(tester.element(art)).colorScheme.onSurface);
 
           final recorder = ui.PictureRecorder();
           painter.paint(Canvas(recorder), const Size(100, 100));
@@ -274,13 +220,17 @@ void main() {
           await tester.runAsync(() async {
             final image = await picture.toImage(100, 100);
             final bytes = await image.toByteData();
-            int red(int x, int y) => bytes!.getUint8((y * 100 + x) * 4);
-            int green(int x, int y) => bytes!.getUint8((y * 100 + x) * 4 + 1);
-            int blue(int x, int y) => bytes!.getUint8((y * 100 + x) * 4 + 2);
+            final alpha = bytes!.getUint8((30 * 100 + 20) * 4 + 3);
+            expect(alpha, lessThan(70),
+                reason: 'Pattern should remain a subtle tint');
+            int red(int x, int y) => bytes.getUint8((y * 100 + x) * 4);
+            int green(int x, int y) => bytes.getUint8((y * 100 + x) * 4 + 1);
+            int blue(int x, int y) => bytes.getUint8((y * 100 + x) * 4 + 2);
             final upper = [red(20, 30), green(20, 30), blue(20, 30)];
             final lower = [red(20, 80), green(20, 80), blue(20, 80)];
             if (HomePage.actions.indexOf(action) < 5) {
-              expect(lower, isNot(upper), reason: action.$1);
+              expect(lower, upper,
+                  reason: 'Quick links have no colored pattern');
             } else {
               expect(lower, upper);
             }
@@ -307,7 +257,9 @@ void main() {
           await tester.pumpWidget(ProviderScope(
             overrides: [
               currentProfileProvider
-                  .overrideWith((ref) async => {'full_name': 'WPCC Member'}),
+                  .overrideWith((ref) async => {
+                    'full_name': 'WPCC Member', 'branch_name': 'Test branch'
+                  }),
               upcomingEventsProvider.overrideWith((ref) async => [
                     {
                       'event_id': 'fixture',
@@ -337,18 +289,24 @@ void main() {
             ),
           ));
           await tester.pumpAndSettle();
-          expect(find.text('WPCC'), findsOneWidget);
-          expect(find.text('Daily Tasks'), findsOneWidget);
+          expect(find.text('Wisdom Power Christian Centre'), findsOneWidget);
+          expect(find.text('Test branch'), findsOneWidget);
+          expect(find.text('His Glory Expression'), findsNothing);
+          expect(find.text('Daily Tasks'), findsNothing);
           expect(find.text('Church life'), findsNothing);
+          await tester.scrollUntilVisible(find.text('Sunday celebration'), 200,
+              scrollable: find.byType(Scrollable).first);
           final seeAll = tester
               .widget<TextButton>(find.widgetWithText(TextButton, 'See all'));
           final seeAllStyle = seeAll.style!.textStyle!.resolve({})!;
           expect(seeAllStyle.fontWeight, FontWeight.w300);
-          expect(seeAllStyle.fontFamily,
-              GoogleFonts.dmSans(fontWeight: FontWeight.w300).fontFamily);
+          expect(seeAllStyle.fontFamily, 'DM Sans');
           expect(find.text('Sunday celebration'), findsWidgets);
-          expect(tester.getTopLeft(find.byType(MemberPosterCard)).dy,
-              lessThan(tester.getTopLeft(find.text('Quick links')).dy));
+          await tester.scrollUntilVisible(find.text('Resources'), 200,
+              scrollable: find.byType(Scrollable).first);
+          expect(find.text('Resources'), findsOneWidget);
+          await tester.drag(find.byType(Scrollable).first, const Offset(0, 2500));
+          await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           if (Platform.environment['CAPTURE_HOME'] == 'true' &&
               (width == 390 || width == 834) &&
@@ -396,10 +354,16 @@ void main() {
         child: MaterialApp(
             home: Scaffold(body: HomePage(loadLatest: () async => [])))));
     await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Events unavailable'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Events unavailable'), findsOneWidget);
+    await tester.ensureVisible(find.text('Retry'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Retry'));
     await tester.pumpAndSettle();
     expect(find.text('Restored event'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Devotional'), -200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Devotional'), findsOneWidget);
   });
 
@@ -500,9 +464,20 @@ void main() {
             {
               'title': 'Community update',
               'body': 'The full announcement remains available.'
-            }
+            },
+            {'title': 'Second update', 'body': 'Second announcement body.'}
           ]),
     ], child: MaterialApp.router(routerConfig: router)));
+    await tester.pumpAndSettle();
+    final stack = find.byKey(const PageStorageKey('announcement-stack'));
+    await tester.drag(stack, const Offset(-800, 0), kind: ui.PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Second update'));
+    await tester.pumpAndSettle();
+    expect(find.text('Second announcement body.'), findsOneWidget);
+    Navigator.of(tester.element(find.text('Second announcement body.'))).pop();
+    await tester.pumpAndSettle();
+    await tester.drag(stack, const Offset(800, 0));
     await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(MemberFilterChip, 'Church'));
     await tester.pumpAndSettle();

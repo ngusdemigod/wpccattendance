@@ -1,0 +1,17 @@
+/* Shared card treatment for department, workflow and assigned-task entry points. */
+.grid{gap:12px;align-items:stretch}
+.card{width:100%;min-height:194px;padding:20px 16px;gap:8px;border-radius:20px;background:var(--fill);box-shadow:inset 0 1px 0 #ffffff09;transition:background-color 140ms ease,box-shadow 140ms ease;justify-content:flex-start;overflow-wrap:normal;word-break:normal}
+.card-top{display:flex;align-items:center;justify-content:space-between;width:100%;height:28px;flex:none;margin-bottom:12px}
+.card-icon,.card-chevron{font-family:DepartmentIcons!important;font-weight:400;font-style:normal;line-height:1;display:inline-block;speak:none}
+.card-icon{font-size:26px;color:var(--ink)}
+.card-chevron{font-size:16px;color:var(--muted)}
+.card strong{font-size:.9375em;line-height:1.4;font-weight:600;overflow-wrap:anywhere}
+.card small{font-size:.8125em;line-height:1.5;color:var(--muted);overflow-wrap:anywhere}
+.light .card{box-shadow:inset 0 0 0 1px #16201c0a;background:#ffffffc9}
+.solid .card{background:var(--sheet);backdrop-filter:none}
+@media(hover:hover){.card:hover{background:#ffffff12;box-shadow:inset 0 0 0 1px #ffffff16}.light .card:hover{background:#fff;box-shadow:inset 0 0 0 1px #16201c20}}
+@media(min-width:600px){.card{padding:22px;min-height:204px}.grid{gap:16px}}
+.large .card{min-height:0;padding:22px}.large .card-top{margin-bottom:8px}
+@media(prefers-reduced-motion:reduce){.card{transition:none}}
+@media(prefers-reduced-transparency:reduce){.card,.light .card{background:var(--sheet);backdrop-filter:none}}
+@media(forced-colors:active){.card{border:1px solid ButtonText;box-shadow:none}.card-icon,.card-chevron,.card small{color:ButtonText}}

@@ -16,6 +16,34 @@ class DepartmentRepository {
   final SupabaseClient client;
   final cache = SwrCache.instance;
 
+  Future<List<Map<String, dynamic>>> pendingRequests(
+      String departmentId) async {
+    final rows = await client.rpc('community_department_pending_requests',
+        params: {'p_department_id': departmentId});
+    return (rows as List)
+        .map((row) => Map<String, dynamic>.from(row as Map))
+        .toList();
+  }
+
+  Future<void> reviewRequest(
+      String departmentId, String requestId, bool approve) async {
+    await client.rpc('community_review_department_request', params: {
+      'p_request_id': requestId,
+      'p_approve': approve,
+    });
+    cache.invalidate('department:$departmentId:');
+  }
+
+  Future<void> updateImages(String departmentId,
+      {String? coverUrl, String? avatarUrl}) async {
+    await client.rpc('community_update_department_images', params: {
+      'p_department_id': departmentId,
+      'p_cover_url': coverUrl,
+      'p_avatar_url': avatarUrl,
+    });
+    cache.invalidate('department:$departmentId:');
+  }
+
   Future<Map<String, dynamic>?> context(String departmentId) =>
       cache.get('department:$departmentId:context', () async {
         final rows = await client.rpc('community_department_context',
@@ -236,16 +264,19 @@ class DepartmentRepository {
     final data = body.isEmpty
         ? <String, dynamic>{}
         : Map<String, dynamic>.from(jsonDecode(body) as Map);
+    cache.invalidate('department:$departmentId:files');
     return Map<String, dynamic>.from((data['attachment'] as Map?) ?? data);
   }
 
-  Future<void> toggleVisibility(String attachmentId, String visibility) =>
-      client.rpc('community_update_attachment_visibility', params: {
-        'p_attachment_id': attachmentId,
-        'p_visibility': visibility
-      });
+  Future<void> toggleVisibility(String attachmentId, String visibility,
+      {required String departmentId}) async {
+    await client.rpc('community_update_attachment_visibility',
+        params: {'p_attachment_id': attachmentId, 'p_visibility': visibility});
+    cache.invalidate('department:$departmentId:files');
+  }
 
-  Future<void> deleteFile(String attachmentId) async {
+  Future<void> deleteFile(String attachmentId,
+      {required String departmentId}) async {
     final token = client.auth.currentSession?.accessToken;
     if (token == null) throw StateError('Authentication required');
     final response = await http.post(
@@ -258,6 +289,7 @@ class DepartmentRepository {
         },
         body: '{"attachment_id":"$attachmentId"}');
     if (response.statusCode >= 400) throw StateError('Unable to remove file');
+    cache.invalidate('department:$departmentId:files');
   }
 
   Future<void> openFile(String attachmentId) async {

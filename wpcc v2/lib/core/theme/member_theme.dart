@@ -1,18 +1,28 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'member_material.dart';
 
 /// Member-only styling: entry, installation and confirmation keep their theme.
 class MemberTheme extends StatelessWidget {
-  const MemberTheme({super.key, required this.child, this.media = false});
+  const MemberTheme(
+      {super.key,
+      required this.child,
+      this.media = false,
+      this.backdrop = true,
+      this.route = '/home'});
+  final String route;
   final Widget child;
   final bool media;
+  final bool backdrop;
 
   @override
   Widget build(BuildContext context) {
     final theme = buildMemberTheme(Theme.of(context));
     return Theme(
       data: theme,
-      child: MemberBackdrop(media: media, child: child),
+      child: backdrop
+          ? MemberBackdrop(media: media, route: route, child: child)
+          : child,
     );
   }
 }
@@ -45,21 +55,21 @@ ThemeData buildMemberTheme(ThemeData base) {
   );
   TextStyle style(double size, double lineHeight, FontWeight weight,
           {Color? color}) =>
-      GoogleFonts.dmSans(
-        textStyle: base.textTheme.bodyMedium,
+      TextStyle(
+        fontFamily: 'DM Sans',
         fontSize: size,
         height: lineHeight / size,
         fontWeight: weight,
         letterSpacing: 0,
         color: color ?? ink,
       );
-  final text = base.textTheme.copyWith(
+  final text = base.textTheme.apply(fontFamily: 'DM Sans').copyWith(
     headlineLarge: style(40, 49, FontWeight.w600),
     headlineMedium: style(38, 46, FontWeight.w600),
     headlineSmall: style(28, 35, FontWeight.w600),
     titleLarge: style(19, 25, FontWeight.w600),
     titleMedium: style(15, 21, FontWeight.w500),
-    titleSmall: style(16, 22, FontWeight.w600),
+    titleSmall: style(14, 20, FontWeight.w600),
     bodyLarge: style(16, 27, FontWeight.w400),
     bodyMedium: style(14, 21, FontWeight.w400),
     bodySmall: style(12, 18, FontWeight.w400, color: secondary),
@@ -74,10 +84,14 @@ ThemeData buildMemberTheme(ThemeData base) {
     scaffoldBackgroundColor: Colors.transparent,
     colorScheme: colors,
     textTheme: text,
+    primaryTextTheme: base.primaryTextTheme.apply(fontFamily: 'DM Sans'),
     iconTheme: IconThemeData(color: ink, size: 22),
+    actionIconTheme: ActionIconThemeData(
+        backButtonIconBuilder: (_) =>
+            const Icon(PhosphorIconsRegular.caretLeft, size: 20)),
     appBarTheme: base.appBarTheme.copyWith(
       backgroundColor: Colors.transparent,
-      titleTextStyle: text.titleLarge,
+      titleTextStyle: text.titleSmall?.copyWith(fontSize: 20, height: 26 / 20),
       foregroundColor: ink,
     ),
     iconButtonTheme: IconButtonThemeData(
@@ -178,17 +192,13 @@ abstract final class MemberVisuals {
           ? const Color(0xFF949095)
           : const Color(0xFF756F76);
   static Color dock(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xD9454547)
-          : const Color(0xE8E7E4E7);
+      MemberMaterials.fill(context, MemberMaterialWeight.navigation);
   static Color selected(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark
           ? const Color(0xFF1B1B1B)
           : Colors.white;
   static Color sheet(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark
-          ? const Color(0xF5343236)
-          : const Color(0xF5F4F2F5);
+      MemberMaterials.fill(context, MemberMaterialWeight.sheet);
   static TextStyle? display(BuildContext context) =>
       MediaQuery.sizeOf(context).width >= 600
           ? Theme.of(context).textTheme.headlineLarge
@@ -196,7 +206,12 @@ abstract final class MemberVisuals {
 }
 
 class MemberBackdrop extends StatelessWidget {
-  const MemberBackdrop({super.key, required this.child, this.media = false});
+  const MemberBackdrop(
+      {super.key,
+      required this.child,
+      this.media = false,
+      this.route = '/home'});
+  final String route;
   final Widget child;
   final bool media;
   @override
@@ -237,7 +252,9 @@ class MemberBackdrop extends StatelessWidget {
                 gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: colors,
+              colors: route == '/home' && !media
+                  ? colors
+                  : MemberPagePalette.colors(media ? '/media' : route, dark),
               stops: [
                 0,
                 ((media ? 200 : 180) / height).clamp(0, 1),
@@ -247,4 +264,32 @@ class MemberBackdrop extends StatelessWidget {
             )),
             child: child);
       });
+}
+
+/// Stable route-family colors keep a detail page connected to its parent.
+abstract final class MemberPagePalette {
+  static List<Color> colors(String route, bool dark) {
+    final family = Uri.parse(route)
+            .path
+            .split('/')
+            .where((part) => part.isNotEmpty)
+            .firstOrNull ??
+        'home';
+    final pair = switch (family) {
+      'home' => (0xFF3A1E25, 0xFFF1E4E9),
+      'events' => (0xFF19394B, 0xFFE2EDF7),
+      'media' => (0xFF303D22, 0xFFE9EEDC),
+      'give' => (0xFF153B36, 0xFFE3F1EA),
+      'profile' => (0xFF38304B, 0xFFEDE6F5),
+      'departments' => (0xFF263B40, 0xFFDDEEEF),
+      'prayer-alerts' || 'prayer-session' => (0xFF25324C, 0xFFE4EAF9),
+      'devotional' => (0xFF443A25, 0xFFF3EDDD),
+      'souls' => (0xFF43302B, 0xFFF5E5DF),
+      'search' => (0xFF2E3B39, 0xFFE5EEEB),
+      _ => (0xFF39264D, 0xFFEDE3F6),
+    };
+    final tint = Color(dark ? pair.$1 : pair.$2);
+    final base = dark ? const Color(0xFF151517) : const Color(0xFFF7F7F8);
+    return [tint, Color.lerp(tint, base, .55)!, base, base];
+  }
 }

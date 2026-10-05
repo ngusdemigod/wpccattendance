@@ -2,11 +2,13 @@ import 'dart:math' as math;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/physics.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../theme/app_theme.dart';
 import '../theme/member_theme.dart';
 import '../theme/app_motion.dart';
+import '../theme/member_material.dart';
 import 'member_components.dart';
 
 /// Reference sheets sit above the entire member shell, including its dock.
@@ -83,6 +85,16 @@ Future<void> showMemberAppearanceSheet(BuildContext context) => showMemberSheet<
                     Navigator.of(context).pop();
                   },
                 )),
+          const SizedBox(height: 12),
+          ValueListenableBuilder<bool>(
+            valueListenable: TransparencyPreference.instance,
+            builder: (context, reduced, _) => SwitchListTile.adaptive(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: const Text('Reduce transparency'),
+              value: reduced,
+              onChanged: TransparencyPreference.instance.select,
+            ),
+          ),
         ]));
 
 class MemberSheet extends StatefulWidget {
@@ -102,25 +114,32 @@ class MemberSheet extends StatefulWidget {
 class _MemberSheetState extends State<MemberSheet>
     with SingleTickerProviderStateMixin {
   double _offset = 0;
-  double _settleStart = 0;
   late final AnimationController _settle;
   @override
   void initState() {
     super.initState();
-    _settle = AnimationController(vsync: this, duration: AppMotion.control)
+    _settle = AnimationController.unbounded(vsync: this)
+      ..addStatusListener((status) {
+        if (status == AnimationStatus.completed && mounted) {
+          setState(() => _offset = 0);
+        }
+      })
       ..addListener(() => setState(() {
-            _offset =
-                _settleStart * (1 - AppMotion.curve.transform(_settle.value));
+            _offset = math.max(0, _settle.value);
           }));
   }
 
-  void _returnToRest() {
+  void _returnToRest([double velocity = 0]) {
     if (MediaQuery.disableAnimationsOf(context)) {
       setState(() => _offset = 0);
       return;
     }
-    _settleStart = _offset;
-    _settle.forward(from: 0);
+    _settle.animateWith(SpringSimulation(
+        const SpringDescription(mass: 1, stiffness: 420, damping: 41),
+        _offset,
+        0,
+        velocity,
+        tolerance: const Tolerance(distance: .1, velocity: .1)));
   }
 
   @override
@@ -149,7 +168,7 @@ class _MemberSheetState extends State<MemberSheet>
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final tablet = media.size.width >= 600;
-    final solid = media.highContrast || media.accessibleNavigation;
+    final solid = MemberMaterials.solid(context);
     final colors = Theme.of(context).colorScheme;
     return Stack(children: [
       Positioned.fill(
@@ -223,14 +242,14 @@ class _MemberSheetState extends State<MemberSheet>
                                           0, _offset + details.delta.dy));
                                     },
                                     onDragEnd: (details) {
-                                      if (_offset > 100 ||
-                                          _offset > 20 &&
-                                              details.velocity.pixelsPerSecond
-                                                      .dy >
-                                                  600) {
+                                      final velocity =
+                                          details.velocity.pixelsPerSecond.dy;
+                                      final projected =
+                                          _offset + velocity * .16;
+                                      if (velocity >= 0 && projected > 100) {
                                         _dismiss();
                                       } else {
-                                        _returnToRest();
+                                        _returnToRest(velocity);
                                       }
                                     },
                                     onDragCancel: _returnToRest,

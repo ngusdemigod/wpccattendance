@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../core/widgets/adaptive_layout.dart';
 import '../../core/widgets/member_components.dart';
+import '../../core/widgets/member_sheet.dart';
 import '../../core/widgets/initials_avatar.dart';
 import '../departments/department_repository.dart';
 import '../home/home_page.dart';
@@ -48,16 +49,9 @@ class _SearchPageState extends State<SearchPage> {
     super.didChangeDependencies();
     if (_filterInitialized) return;
     final selection = MemberSearchScope.maybeOf(context);
-    final requested = widget.initialFilter ?? selection?.value ?? 'All';
-    filter =
-        sections.any((section) => section.$1 == requested) ? requested : 'All';
+    filter = 'All';
     selection?.value = filter;
     _filterInitialized = true;
-  }
-
-  void _selectFilter(String selected) {
-    MemberSearchScope.maybeOf(context)?.value = selected;
-    setState(() => filter = selected);
   }
 
   @override
@@ -138,14 +132,6 @@ class _SearchPageState extends State<SearchPage> {
           )
           .toList();
 
-  static const sections = searchSections;
-
-  Future<void> _filters() async {
-    final selected = await showSearchFilterSheet(context, selected: filter);
-    if (!mounted || selected == null) return;
-    _selectFilter(selected);
-  }
-
   Widget _heading(String title) => Padding(
       padding: const EdgeInsets.only(bottom: 13),
       child: Text(title,
@@ -190,23 +176,9 @@ class _SearchPageState extends State<SearchPage> {
                         : () {
                             controller.clear();
                             _changed('');
-                          },
-                    onFilter: _filters),
+                          }),
               ),
             ),
-            const SizedBox(height: 12),
-            SizedBox(
-                height: 48,
-                child: ListView(scrollDirection: Axis.horizontal, children: [
-                  for (final section in sections)
-                    Padding(
-                        padding: const EdgeInsets.only(right: 7),
-                        child: MemberFilterChip(
-                            label: section.$1,
-                            icon: section.$2,
-                            selected: filter == section.$1,
-                            onPressed: () => _selectFilter(section.$1))),
-                ])),
             const SizedBox(height: 25),
             if (hasQuery) ...[
               if (loading)
@@ -320,11 +292,9 @@ class _SearchPageState extends State<SearchPage> {
     try {
       final member = await departmentRepo.publicMember(id);
       if (!mounted || member == null) return;
-      await showModalBottomSheet<void>(
-        sheetAnimationStyle: AppMotion.sheetStyle(context),
+      await showMemberSheet<void>(
         context: context,
-        isScrollControlled: true,
-        backgroundColor: Colors.transparent,
+        title: 'Member details',
         builder: (context) => _PublicMemberSheet(member: member),
       );
     } catch (_) {
@@ -390,24 +360,11 @@ class _PublicMemberSheet extends StatelessWidget {
         18,
         24 + MediaQuery.paddingOf(context).bottom,
       ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-      ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Container(
-              width: 42,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(99),
-              ),
-            ),
-            const SizedBox(height: 16),
             Tooltip(
               message: 'View $name photo',
               child: Semantics(

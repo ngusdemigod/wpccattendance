@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_motion.dart';
+import '../theme/member_material.dart';
+import 'member_glass.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 class AnimatedSearchFilter extends StatefulWidget {
@@ -50,12 +52,8 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
         curve: AppMotion.curve,
         width: expanded ? 218 : 50,
         height: 50,
-        decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surface.withValues(alpha: .94),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant)),
-        child: Row(children: [
+        child: MemberGlass(outlined: false, frosted: true, radius: 26, weight: MemberMaterialWeight.navigation,
+          child: Row(children: [
           IconButton(
               onPressed: expanded ? () => focusNode.requestFocus() : open,
               tooltip: 'Search',
@@ -92,7 +90,7 @@ class _AnimatedSearchFilterState extends State<AnimatedSearchFilter> {
               tooltip: 'Clear search',
               constraints: const BoxConstraints.tightFor(width: 48, height: 48),
             ),
-        ]),
+        ])),
       ),
       const SizedBox(width: 8),
       PopupMenuButton<String>(

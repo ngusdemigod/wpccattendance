@@ -1,22 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/services/receipt_export_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/widgets/member_components.dart';
+import '../../core/widgets/member_glass.dart';
+import 'giving_backdrop.dart';
 import 'give_repository.dart';
 
 class GiveResultPage extends StatefulWidget {
-  const GiveResultPage({super.key, required this.reference});
+  const GiveResultPage({super.key, required this.reference, this.repository});
   final String reference;
+  final GiveRepository? repository;
 
   @override
   State<GiveResultPage> createState() => _GiveResultPageState();
 }
 
 class _GiveResultPageState extends State<GiveResultPage> {
-  final repo = GiveRepository();
+  late final repo = widget.repository ?? GiveRepository();
   final exporter = const ReceiptExportService();
   late Future<_PaymentLookup> future;
 
@@ -46,161 +51,253 @@ class _GiveResultPageState extends State<GiveResultPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: FutureBuilder<_PaymentLookup>(
-          future: future,
-          builder: (context, snapshot) {
-            if (snapshot.connectionState != ConnectionState.done) {
-              return const Center(child: CircularProgressIndicator());
-            }
-            final lookup =
-                snapshot.data ?? const _PaymentLookup.transientError();
-            if (lookup.state == _PaymentLookupState.notFound) {
-              return _notFound(context);
-            }
-            if (lookup.state == _PaymentLookupState.transientError) {
-              return _transientError(context);
-            }
-            final tx = lookup.transaction!;
-            final status = tx['status']?.toString() ?? 'pending';
-            final successful = status == 'successful';
-            final pending = status == 'pending' || status == 'initialized';
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(22, 46, 22, 30),
-              children: [
-                Center(
-                  child: Container(
-                    width: 82,
-                    height: 82,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: successful
-                          ? WpccColors.successBackground
-                          : pending
-                              ? WpccColors.warningBackground
-                              : WpccColors.errorBackground,
-                    ),
-                    child: Icon(
-                      successful
-                          ? PhosphorIcons.check()
-                          : pending
-                              ? PhosphorIcons.clockCountdown()
-                              : PhosphorIcons.x(),
-                      size: 36,
-                      color: successful
-                          ? WpccColors.success
-                          : pending
-                              ? WpccColors.warning
-                              : WpccColors.error,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Text(
-                  successful
-                      ? 'Giving successful'
-                      : pending
-                          ? 'Payment pending'
-                          : 'Payment failed',
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 8),
-                if (successful)
-                  Text(
-                    'Thank you for giving. Your receipt is ready.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
-                  ),
-                if (successful) const SizedBox(height: 18),
-                Text(
-                  _amount(tx),
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                ),
-                const SizedBox(height: 26),
-                Container(
-                  padding: const EdgeInsets.all(15),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    border: Border.all(
-                        color: Theme.of(context).colorScheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(24),
-                  ),
-                  child: Column(
-                    children: [
-                      _row('Giving type', _label(tx['giving_type'])),
-                      _row(
-                        'Reference',
-                        tx['paystack_reference']?.toString() ??
-                            tx['internal_reference']?.toString() ??
-                            '—',
-                      ),
-                      _row(
-                        'Payment source',
-                        tx['source_summary']?.toString() ??
-                            tx['payment_channel']?.toString() ??
-                            'Paystack',
-                      ),
-                      _row('Status', _label(status)),
-                    ],
-                  ),
-                ),
-                if (successful) ...[
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => exporter.downloadPdf(tx),
-                          icon: Icon(PhosphorIcons.filePdf(), size: 17),
-                          label: const Text('PDF'),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () => exporter.downloadImage(tx),
-                          icon: Icon(PhosphorIcons.image(), size: 17),
-                          label: const Text('Image'),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-                if (pending) ...[
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: _retry,
-                    icon: Icon(PhosphorIcons.arrowClockwise(), size: 17),
-                    label: const Text('Check payment status'),
-                  ),
-                ],
-                const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => context.go('/give'),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.onSurface,
-                    minimumSize: const Size.fromHeight(50),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                  ),
-                  child: const Text('Back to Give'),
-                ),
-              ],
-            );
-          },
-        ),
-      ),
-    );
+    return FutureBuilder<_PaymentLookup>(
+        future: future,
+        builder: (context, snapshot) => GivingBackdrop(
+            status: snapshot.connectionState != ConnectionState.done
+                ? 'processing'
+                : snapshot.data?.transaction?['status']?.toString(),
+            child: Scaffold(
+              body: SafeArea(
+                child: Center(
+                    child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxWidth: 560),
+                        child: Builder(
+                          builder: (context) {
+                            if (snapshot.connectionState !=
+                                ConnectionState.done) {
+                              return const Center(
+                                  child: CircularProgressIndicator());
+                            }
+                            final lookup = snapshot.data ??
+                                const _PaymentLookup.transientError();
+                            if (lookup.state == _PaymentLookupState.notFound) {
+                              return _notFound(context);
+                            }
+                            if (lookup.state ==
+                                _PaymentLookupState.transientError) {
+                              return _transientError(context);
+                            }
+                            final tx = lookup.transaction!;
+                            final status =
+                                tx['status']?.toString() ?? 'pending';
+                            final successful = status == 'successful';
+                            final pending = status == 'pending' ||
+                                status == 'initialized' ||
+                                status == 'processing';
+                            return ListView(
+                              padding:
+                                  const EdgeInsets.fromLTRB(24, 16, 24, 32),
+                              children: [
+                                Row(children: [
+                                  Expanded(
+                                      child: Text('Giving',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleLarge)),
+                                  MemberIconButton(
+                                      icon: PhosphorIcons.x(),
+                                      label: 'Back to Give',
+                                      onPressed: () => context.go('/give')),
+                                ]),
+                                const SizedBox(height: 32),
+                                Center(
+                                  child: Container(
+                                    width: 64,
+                                    height: 64,
+                                    decoration: BoxDecoration(
+                                      shape: BoxShape.circle,
+                                      color: successful
+                                          ? WpccColors.successBackground
+                                          : pending
+                                              ? WpccColors.warningBackground
+                                              : WpccColors.errorBackground,
+                                    ),
+                                    child: Icon(
+                                      successful
+                                          ? PhosphorIcons.check()
+                                          : pending
+                                              ? PhosphorIcons.clockCountdown()
+                                              : PhosphorIcons.x(),
+                                      size: 28,
+                                      color: successful
+                                          ? WpccColors.success
+                                          : pending
+                                              ? WpccColors.warning
+                                              : WpccColors.error,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 18),
+                                Text(
+                                  successful
+                                      ? 'Giving successful'
+                                      : pending
+                                          ? 'Payment pending'
+                                          : 'Payment failed',
+                                  textAlign: TextAlign.center,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                ),
+                                const SizedBox(height: 8),
+                                if (successful)
+                                  Text(
+                                    'Thank you for your generosity.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Theme.of(context)
+                                            .colorScheme
+                                            .onSurfaceVariant),
+                                  ),
+                                if (successful) const SizedBox(height: 18),
+                                FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Text(
+                                      _amount(tx),
+                                      textAlign: TextAlign.center,
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .headlineMedium
+                                          ?.copyWith(
+                                            fontSize: 46,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                    )),
+                                const SizedBox(height: 32),
+                                MemberGlass(
+                                    radius: 20,
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(20),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                              successful
+                                                  ? 'Receipt'
+                                                  : 'Payment details',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleMedium),
+                                          const SizedBox(height: 12),
+                                          _row('Giving type',
+                                              _label(tx['giving_type'])),
+                                          _row(
+                                            'Payment source',
+                                            tx['source_summary']?.toString() ??
+                                                tx['payment_channel']
+                                                    ?.toString() ??
+                                                'Paystack',
+                                          ),
+                                          _row('Status', _label(status)),
+                                          const Padding(
+                                              padding: EdgeInsets.symmetric(
+                                                  vertical: 12),
+                                              child: Divider(height: 1)),
+                                          Row(children: [
+                                            Expanded(
+                                                child: Text(
+                                                    'Transaction reference',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall)),
+                                            IconButton(
+                                                tooltip: 'Copy reference',
+                                                onPressed: () async {
+                                                  final reference =
+                                                      tx['paystack_reference']
+                                                              ?.toString() ??
+                                                          tx['internal_reference']
+                                                              ?.toString() ??
+                                                          widget.reference;
+                                                  await Clipboard.setData(
+                                                      ClipboardData(
+                                                          text: reference));
+                                                  if (context.mounted) {
+                                                    ScaffoldMessenger.of(
+                                                            context)
+                                                        .showSnackBar(
+                                                            const SnackBar(
+                                                                content: Text(
+                                                                    'Reference copied')));
+                                                  }
+                                                },
+                                                icon: Icon(PhosphorIcons.copy(),
+                                                    size: 18)),
+                                          ]),
+                                          SelectableText(
+                                              tx['paystack_reference']
+                                                      ?.toString() ??
+                                                  tx['internal_reference']
+                                                      ?.toString() ??
+                                                  widget.reference,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall),
+                                        ],
+                                      ),
+                                    )),
+                                if (successful) ...[
+                                  const SizedBox(height: 24),
+                                  Text('Download receipt',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              exporter.downloadPdf(tx),
+                                          icon: Icon(PhosphorIcons.filePdf(),
+                                              size: 17),
+                                          label: const Text('PDF'),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: OutlinedButton.icon(
+                                          onPressed: () =>
+                                              exporter.downloadImage(tx),
+                                          icon: Icon(PhosphorIcons.image(),
+                                              size: 17),
+                                          label: const Text('Image'),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                                if (pending) ...[
+                                  const SizedBox(height: 16),
+                                  OutlinedButton.icon(
+                                    onPressed: _retry,
+                                    icon: Icon(PhosphorIcons.arrowClockwise(),
+                                        size: 17),
+                                    label: const Text('Check payment status'),
+                                  ),
+                                ],
+                                const SizedBox(height: 24),
+                                FilledButton(
+                                  onPressed: () => context.go('/give'),
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor:
+                                        Theme.of(context).colorScheme.onSurface,
+                                    minimumSize: const Size.fromHeight(50),
+                                  ),
+                                  child: const Text('Back to Give'),
+                                ),
+                              ],
+                            );
+                          },
+                        ))),
+              ),
+            )));
   }
 
   Widget _notFound(BuildContext context) => Center(
@@ -241,20 +338,20 @@ class _GiveResultPageState extends State<GiveResultPage> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SizedBox(
-              width: 112,
+            Expanded(
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 11,
+                    fontSize: 13,
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
             Expanded(
               child: Text(
                 value,
+                textAlign: TextAlign.end,
                 style:
-                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
               ),
             ),
           ],

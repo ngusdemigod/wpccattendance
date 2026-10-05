@@ -45,6 +45,57 @@ GiveHomePage page({bool initialHistory = false}) => GiveHomePage(
     loadHistory: ({required limit, required offset}) async => []);
 
 void main() {
+  testWidgets('scheduled cards and grouped history fit enlarged phone text',
+      (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await tester.pumpWidget(MaterialApp(
+      theme: buildMemberTheme(buildWpccTheme()),
+      home: MediaQuery(
+        data: const MediaQueryData(textScaler: TextScaler.linear(2)),
+        child: Scaffold(
+            body: GiveHomePage(
+          loadAccounts: () async => accounts,
+          loadProjects: () async => projects,
+          loadMandates: () async => [
+            {
+              'giving_type': 'prophet_offering',
+              'amount_kobo': 25000,
+              'status': 'active',
+              'rule_keys': ['weekday:4']
+            }
+          ],
+          loadHistory: ({required limit, required offset}) async => [
+            {
+              'giving_type': 'offering',
+              'amount_kobo': 500000,
+              'status': 'pending',
+              'created_at': '2026-10-04T10:00:00Z'
+            },
+            {
+              'giving_type': 'tithe',
+              'amount_kobo': 25000,
+              'status': 'successful',
+              'created_at': '2026-09-24T10:00:00Z'
+            },
+          ],
+        )),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scheduled'));
+    await tester.pumpAndSettle();
+    expect(find.text('Thursday'), findsOneWidget);
+    expect(find.text('Active'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text('History'));
+    await tester.pumpAndSettle();
+    expect(find.text('October 2026'), findsOneWidget);
+    expect(find.text('September 2026'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
   for (final brightness in Brightness.values) {
     for (final size in [
       const Size(320, 844),
@@ -68,6 +119,14 @@ void main() {
                   child: Scaffold(body: page()))));
           await tester.pumpAndSettle();
           expect(find.text('Give now'), findsOneWidget);
+          expect(find.text('Giving'), findsOneWidget);
+          await tester.tap(find.text('Scheduled'));
+          await tester.pumpAndSettle();
+          expect(find.text('No scheduled gifts'), findsOneWidget);
+          expect(find.text('Give now'), findsNothing);
+          expect(tester.takeException(), isNull);
+          await tester.tap(find.text('Give'));
+          await tester.pumpAndSettle();
           expect(find.text('1234567890'), findsOneWidget);
           expect(tester.takeException(), isNull);
           await tester.scrollUntilVisible(find.text('Church building'), 250,
@@ -117,24 +176,13 @@ void main() {
     await tester.tap(find.byTooltip('Copy account number').first);
     await tester.pump();
     expect(copied, '1234567890');
-    for (final entry in {
-      'Offering': 'offering',
-      'Tithe': 'tithe',
-      'Prophet offering': 'prophet_offering'
-    }.entries) {
-      await tester.ensureVisible(find.text(entry.key));
-      await tester.tap(find.text(entry.key));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Give now'));
-      await tester.pumpAndSettle();
-      expect(payment, {'giving_type': entry.value, 'title': entry.key});
-      router.pop();
-      await tester.pumpAndSettle();
-    }
-    await tester.ensureVisible(find.text('Projects'));
-    await tester.tap(find.text('Projects'));
+    await tester.tap(find.text('Give now'));
+    await tester.pumpAndSettle();
+    expect(payment, {'giving_type': 'offering', 'title': 'Offering'});
+    router.pop();
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.text('Church building'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Church building'));
     await tester.pumpAndSettle();
     expect(payment, {
@@ -143,6 +191,8 @@ void main() {
       'title': 'Church building'
     });
     router.pop();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scheduled'));
     await tester.pumpAndSettle();
     await tester.ensureVisible(find.byTooltip('Manage scheduled givings'));
     await tester.tap(find.byTooltip('Manage scheduled givings'));
@@ -206,7 +256,6 @@ void main() {
                 }))));
     await tester.pumpAndSettle();
     expect(calls, 0);
-    await tester.tap(find.text('Tithe'));
     await tester.tap(find.text('History'));
     await tester.pumpAndSettle();
     expect(calls, 1);
@@ -250,8 +299,8 @@ void main() {
     await tester.tap(find.text('Offering').first);
     await tester.pumpAndSettle();
     expect(find.text('Giving receipt'), findsOneWidget);
-    expect(find.text('Download PDF'), findsOneWidget);
-    expect(find.text('Download image'), findsOneWidget);
+    expect(find.text('PDF'), findsOneWidget);
+    expect(find.text('Image'), findsOneWidget);
     Navigator.of(tester.element(find.text('Giving receipt'))).pop();
     await tester.pumpAndSettle();
     await tester.drag(find.byKey(const PageStorageKey('giving-history-scroll')),
@@ -261,8 +310,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets(
-      'project selection brings grid into view without starting payment',
+  testWidgets('overview retains projects without duplicate giving type choices',
       (tester) async {
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
@@ -270,8 +318,10 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(MaterialApp(home: Scaffold(body: page())));
     await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text('Projects'));
-    await tester.tap(find.text('Projects'));
+    expect(find.text('Projects'), findsNothing);
+    expect(find.text('Tithe'), findsNothing);
+    expect(find.text('Prophet offering'), findsNothing);
+    await tester.ensureVisible(find.text('Church building'));
     await tester.pumpAndSettle();
     expect(find.text('Church building').hitTestable(), findsOneWidget);
     expect(tester.takeException(), isNull);

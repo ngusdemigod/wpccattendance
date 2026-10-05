@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_motion.dart';
+import '../../core/widgets/member_sheet.dart';
 import '../../core/widgets/member_skeleton.dart';
 import '../../core/widgets/adaptive_layout.dart';
 import 'package:go_router/go_router.dart';
@@ -9,7 +9,9 @@ import '../../core/widgets/member_components.dart';
 import '../data/supabase_repository.dart';
 
 class DepartmentsPage extends StatefulWidget {
-  const DepartmentsPage({super.key, this.loadDepartments});
+  const DepartmentsPage(
+      {super.key, this.loadDepartments, this.filesOnly = false});
+  final bool filesOnly;
   final Future<List<Map<String, dynamic>>> Function()? loadDepartments;
   @override
   State<DepartmentsPage> createState() => _DepartmentsPageState();
@@ -43,16 +45,20 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
             padding: memberPagePadding(context, phone: 20, top: 20),
             children: [
               MemberPageHeader(
-                  title: 'Departments',
+                  title: widget.filesOnly ? 'Department files' : 'Departments',
                   onBack: () =>
                       context.canPop() ? context.pop() : context.go('/home'),
                   actions: [
-                    MemberIconButton(
-                        icon: PhosphorIconsRegular.plus,
-                        label: 'Join another department',
-                        onPressed: _joinDepartment),
+                    if (!widget.filesOnly)
+                      MemberIconButton(
+                          icon: PhosphorIconsRegular.plus,
+                          label: 'Join another department',
+                          onPressed: _joinDepartment),
                   ]),
-              Text('Find your place to serve.',
+              Text(
+                  widget.filesOnly
+                      ? 'Choose a department.'
+                      : 'Find your place to serve.',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant)),
               const SizedBox(height: 25),
@@ -91,7 +97,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
                               gap: 12,
                               children: joined.map(_card).toList()),
                         ],
-                        if (pending.isNotEmpty) ...[
+                        if (!widget.filesOnly && pending.isNotEmpty) ...[
                           if (joined.isNotEmpty) const SizedBox(height: 28),
                           const MemberSectionHeader(title: 'Pending requests'),
                           for (final row in pending) ...[
@@ -114,15 +120,12 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
     try {
       final departments = await repo.departmentDirectory();
       if (!mounted) return;
-      final selected = await showModalBottomSheet<String>(
-          sheetAnimationStyle: AppMotion.sheetStyle(context),
+      final selected = await showMemberSheet<String>(
           context: context,
-          showDragHandle: true,
-          useSafeArea: true,
+          title: 'Join a department',
           builder: (context) => SafeArea(
                   child: ListView(shrinkWrap: true, children: [
                 const ListTile(
-                    title: Text('Join a department'),
                     subtitle: Text(
                         'Your request goes to an administrator for approval.')),
                 for (final department
@@ -206,7 +209,7 @@ class _DepartmentsPageState extends State<DepartmentsPage> {
       onTap: pending
           ? null
           : () => context.push(
-                '/departments/${d['department_id']}',
+                '/departments/${d['department_id']}${widget.filesOnly ? '?tab=files' : ''}',
                 extra: {
                   'id': d['department_id'],
                   'name': d['name'],
