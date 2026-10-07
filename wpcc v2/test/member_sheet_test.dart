@@ -99,7 +99,7 @@ void main() {
           expect(rect.height, 519);
         }
         final title = tester.widget<Text>(find.text('Search filters'));
-        expect(title.style!.fontSize, 26);
+        expect(title.style!.fontSize, 20);
         expect(title.style!.height, 33 / 26);
         expect(
             title.style!.fontFamily,
@@ -140,7 +140,7 @@ void main() {
       await tester.tap(find.text('Open filters'));
       await tester.pumpAndSettle();
       final context = tester.element(find.byType(MemberSheet));
-      expect(Theme.of(context).textTheme.titleMedium!.fontSize, 15);
+      expect(Theme.of(context).textTheme.titleMedium!.fontSize, 14);
       expect(ModalRoute.of(context)!.navigator,
           Navigator.of(context, rootNavigator: true));
       if (action == 'backdrop') {

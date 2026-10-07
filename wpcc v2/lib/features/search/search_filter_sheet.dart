@@ -9,8 +9,36 @@ const searchSections = [
   ('Events', PhosphorIconsRegular.calendarBlank),
   ('Departments', PhosphorIconsRegular.users),
   ('Announcements', PhosphorIconsRegular.chatCircle),
+  ('Media', PhosphorIconsRegular.playCircle),
+  ('Audio', PhosphorIconsRegular.headphones),
+  ('Devotional', PhosphorIconsRegular.bookOpen),
+  ('Classes', PhosphorIconsRegular.graduationCap),
   ('People', PhosphorIconsRegular.user),
 ];
+
+/// Result `section` keys, in the order their groups are shown, with the label
+/// used by [searchSections] and the filter sheet.
+const searchSectionKeys = [
+  ('events', 'Events'),
+  ('departments', 'Departments'),
+  ('announcements', 'Announcements'),
+  ('media', 'Media'),
+  ('audio', 'Audio'),
+  ('devotional', 'Devotional'),
+  ('classes', 'Classes'),
+  ('people', 'People'),
+];
+
+/// Label for a result `section` key, or 'All' when the key is unknown.
+String searchSectionLabel(String key) {
+  for (final entry in searchSectionKeys) {
+    if (entry.$1 == key) return entry.$2;
+  }
+  return 'All';
+}
+
+bool isSearchSection(String? label) =>
+    label != null && searchSections.any((section) => section.$1 == label);
 
 class MemberSearchScope extends StatefulWidget {
   const MemberSearchScope({super.key, required this.child});

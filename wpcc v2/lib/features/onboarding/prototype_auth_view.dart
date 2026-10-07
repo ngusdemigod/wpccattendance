@@ -2,7 +2,9 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/theme/app_motion.dart';
+import 'onboarding_style.dart';
 
 class PrototypeAuthScope extends InheritedWidget {
   const PrototypeAuthScope(
@@ -65,16 +67,6 @@ class _PrototypeAuthViewState extends State<PrototypeAuthView>
       AnimationController(vsync: this, duration: AppMotion.control, value: 1);
   static const ease = Cubic(.22, .72, .18, 1);
   bool get verification => widget.otpSent || widget.linkSent;
-  TextStyle body(double size,
-          {Color color = Colors.white, FontWeight weight = FontWeight.w400}) =>
-      GoogleFonts.dmSans(
-          fontSize: size, color: color, fontWeight: weight, height: 1.42);
-  TextStyle heading(double size) => GoogleFonts.manrope(
-      fontSize: size,
-      height: .98,
-      letterSpacing: -size * .055,
-      fontWeight: FontWeight.w800,
-      color: Colors.white);
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -106,451 +98,283 @@ class _PrototypeAuthViewState extends State<PrototypeAuthView>
     }
   }
 
-  Widget button(String label, VoidCallback? action,
-          {Color fill = Colors.white}) =>
-      SizedBox(
-          width: double.infinity,
-          height: 54,
-          child: FilledButton(
-              onPressed: action,
-              style: FilledButton.styleFrom(
-                  backgroundColor: fill,
-                  foregroundColor: fill == Colors.white
-                      ? const Color(0xff151515)
-                      : Colors.white,
-                  disabledBackgroundColor: Colors.white.withValues(alpha: .18),
-                  disabledForegroundColor: Colors.white38,
-                  shape: const StadiumBorder(),
-                  textStyle: body(14, weight: FontWeight.w600)),
-              child: Text(label)));
-  Widget field(String label, TextEditingController controller,
-          {bool email = false, bool secret = false}) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label,
-            style: body(12, color: Colors.white70, weight: FontWeight.w600)),
-        const SizedBox(height: 9),
-        TextField(
-            controller: controller,
-            enabled: !widget.loading,
-            obscureText: secret && obscure,
-            autofillHints: secret
-                ? const [AutofillHints.password]
-                : email
-                    ? const [AutofillHints.email]
-                    : null,
-            keyboardType:
-                email ? TextInputType.emailAddress : TextInputType.text,
-            style: body(15, weight: FontWeight.w500),
-            onChanged: (_) => setState(() {}),
-            onSubmitted: (_) => widget.onSubmit(),
-            decoration: InputDecoration(
-                hintText: secret
-                    ? 'Enter your password'
-                    : email
-                        ? 'Enter your email address'
-                        : 'Enter your member code',
-                hintStyle: body(15, color: Colors.white38),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: .12),
-                contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: Colors.white24)),
-                enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: Colors.white24)),
-                focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: Colors.white60)),
-                suffixIcon: secret
-                    ? IconButton(
-                        tooltip: obscure ? 'Show password' : 'Hide password',
-                        onPressed: () => setState(() => obscure = !obscure),
-                        icon: Icon(
-                            obscure
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: Colors.white70))
-                    : null)),
+
+  Widget _field(String label, TextEditingController controller,
+          {bool email = false, bool secret = false, String? error}) =>
+      OnbField(
+          label: label,
+          controller: controller,
+          enabled: !widget.loading,
+          obscure: secret && obscure,
+          error: error,
+          autofillHints: secret
+              ? const [AutofillHints.password]
+              : email
+                  ? const [AutofillHints.email]
+                  : null,
+          keyboard: email ? TextInputType.emailAddress : TextInputType.text,
+          hint: secret
+              ? 'Enter your password'
+              : email
+                  ? 'Enter your email address'
+                  : 'Enter your member code',
+          onChanged: (_) => setState(() {}),
+          onSubmitted: (_) => widget.onSubmit(),
+          suffix: secret
+              ? IconButton(
+                  tooltip: obscure ? 'Show password' : 'Hide password',
+                  onPressed: () => setState(() => obscure = !obscure),
+                  icon: Icon(
+                      obscure ? PhosphorIcons.eye() : PhosphorIcons.eyeSlash(),
+                      size: 20,
+                      color: Onb.inkAlpha(.72)))
+              : null);
+
+  Widget _backdrop() => AnimatedBuilder(
+      animation: kenBurns,
+      builder: (context, background) => Transform.scale(
+          scale: 1.015 + .04 * kenBurns.value, child: background),
+      child: RepaintBoundary(
+          child: ImageFiltered(
+              imageFilter: ui.ImageFilter.blur(
+                  sigmaX: verification
+                      ? 10
+                      : selected
+                          ? 2
+                          : 0,
+                  sigmaY: verification
+                      ? 10
+                      : selected
+                          ? 2
+                          : 0),
+              child: Image.asset(
+                  'assets/images/onboarding_${widget.scope.photo}.jpg',
+                  fit: BoxFit.cover,
+                  color: Onb.canvas.withValues(alpha: verification ? .38 : .2),
+                  colorBlendMode: BlendMode.darken,
+                  excludeFromSemantics: true))));
+
+  void _back() {
+    if (verification) {
+      widget.onBack();
+      return;
+    }
+    if (selected) {
+      setState(() => selected = false);
+      return;
+    }
+    widget.scope.onBack();
+  }
+
+  Widget _topBar(double gutter) => Center(
+      child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                      gutter, Onb.s12, gutter, Onb.s8),
+                  child: OnbBackButton(
+                      tooltip: 'Go back',
+                      onPressed: widget.loading ? null : _back)))));
+
+  Widget _chooser() => Column(children: [
+        OnbPrimaryButton(
+            label: 'Sign in with membership code',
+            onPressed: () => choose(false, false)),
+        const SizedBox(height: Onb.s12),
+        OnbSecondaryButton(
+            label: 'Sign in with email',
+            icon: PhosphorIcons.envelopeSimple(),
+            onPressed: () => choose(true, false)),
+        const SizedBox(height: Onb.s4),
+        Center(
+            child: OnbTextAction(
+                label: 'Sign in with password',
+                onPressed: () => choose(true, true))),
       ]);
-  @override
-  Widget build(BuildContext context) {
-    final short = MediaQuery.sizeOf(context).height <= 780;
-    final canSubmit = (widget.useEmail || widget.usePassword
+
+  Widget _form(BuildContext context) {
+    final emailMode = widget.useEmail || widget.usePassword;
+    final canSubmit = (emailMode
             ? widget.email.text.trim().isNotEmpty
             : widget.code.text.trim().isNotEmpty) &&
         (!widget.usePassword || widget.password.text.isNotEmpty) &&
         !widget.loading;
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      AnimatedBuilder(
+          animation: fieldEntrance,
+          child: _field(emailMode ? 'Email address' : 'Membership code',
+              emailMode ? widget.email : widget.code,
+              email: emailMode,
+              error: widget.usePassword ? null : widget.error),
+          builder: (context, child) {
+            final progress = AppMotion.curve.transform(fieldEntrance.value);
+            return Opacity(
+                opacity: progress,
+                child: Transform.translate(
+                    offset: Offset(0, 8 * (1 - progress)), child: child));
+          }),
+      if (widget.usePassword) ...[
+        const SizedBox(height: Onb.s20),
+        _field('Password', widget.password,
+            secret: true, error: widget.error),
+      ],
+      Align(
+          alignment: Alignment.centerRight,
+          child: OnbTextAction(
+              label: widget.useEmail ? 'Forgot email address?' : 'Forgot member code?',
+              alpha: .7,
+              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text(
+                          'Contact church admin for help with your account.'))))),
+      const SizedBox(height: Onb.s8),
+      OnbPrimaryButton(
+          label: widget.loading ? 'Please wait…' : 'Continue',
+          onPressed: canSubmit ? widget.onSubmit : null),
+      const SizedBox(height: Onb.s8),
+      Center(
+          child: Wrap(alignment: WrapAlignment.center, children: [
+        OnbTextAction(
+            label: widget.useEmail ? 'Use Membership Code' : 'Use Email Address',
+            onPressed:
+                widget.loading ? null : () => choose(!widget.useEmail, false)),
+        if (!widget.usePassword)
+          OnbTextAction(
+              label: 'Use password',
+              onPressed: widget.loading ? null : () => choose(true, true)),
+      ])),
+    ]);
+  }
+
+  Widget _terms(BuildContext context) => Padding(
+      padding: const EdgeInsets.only(top: Onb.s8),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('By signing in, you agree to our',
+            style: Onb.body(12, alpha: .66, height: 1.4)),
+        Wrap(crossAxisAlignment: WrapCrossAlignment.center, children: [
+          for (final (index, title)
+              in ['Terms of Service', 'Privacy Policy'].indexed) ...[
+            if (index == 1)
+              Text('and', style: Onb.body(12, alpha: .66, height: 1.4)),
+            TextButton(
+                style: TextButton.styleFrom(
+                    padding: EdgeInsets.only(left: index == 0 ? 0 : Onb.s8, right: Onb.s8),
+                    minimumSize: const Size(Onb.s24, Onb.minTarget),
+                    foregroundColor: Onb.ink,
+                    shape: RoundedRectangleBorder(
+                        borderRadius:
+                            BorderRadius.circular(Onb.radiusControl))),
+                onPressed: () => showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                            title: Text(title),
+                            content: const Text(
+                                'This document has not been published yet.'),
+                            actions: [
+                              TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: const Text('Close'))
+                            ])),
+                child: Text(title,
+                    style: Onb.body(12, alpha: .92, weight: FontWeight.w600)
+                        .copyWith(decoration: TextDecoration.underline))),
+          ],
+        ]),
+      ]));
+
+  /// Size change between the chooser and the form. Reduced motion skips the
+  /// animated wrapper entirely (a zero-duration AnimatedSize re-lays itself out).
+  Widget _modeSwitch(BuildContext context, Widget child) =>
+      MediaQuery.disableAnimationsOf(context)
+          ? child
+          : AnimatedSize(
+              duration: AppMotion.control, curve: AppMotion.curve, child: child);
+
+  Widget _entry(BuildContext context, bool short) => Column(
+          mainAxisAlignment: MainAxisAlignment.end,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Image.asset('assets/images/onboarding_logo.png',
+                width: 44, height: 44, semanticLabel: 'WPCC logo'),
+            SizedBox(height: short ? Onb.s20 : Onb.s24),
+            Text('Sign in to\nWPCC Community',
+                style: Onb.heading(short ? 29 : 32)),
+            const SizedBox(height: Onb.s12),
+            Text('Use your membership code or email address to continue.',
+                style: Onb.body(15, alpha: .8)),
+            _modeSwitch(
+                context,
+                selected
+                    ? const SizedBox(width: double.infinity, height: Onb.s24)
+                    : Padding(
+                        padding:
+                            EdgeInsets.only(top: short ? Onb.s24 : Onb.s32),
+                        child: _chooser())),
+            if (selected) _form(context),
+            _terms(context),
+            if (widget.verifying)
+              Padding(
+                  padding: const EdgeInsets.only(top: Onb.s16),
+                  child: Text('Signing you in…', style: Onb.body(14, alpha: 1))),
+          ]);
+
+  @override
+  Widget build(BuildContext context) {
+    final short = MediaQuery.sizeOf(context).height <= 780;
+    final gutter = Onb.gutter(MediaQuery.sizeOf(context).width, short: short);
     final transition = CurvedAnimation(parent: entrance, curve: ease);
     return Scaffold(
-        backgroundColor: Colors.black,
-        body: Center(
-            child: ConstrainedBox(
-                constraints: const BoxConstraints.expand(),
-                child: FadeTransition(
-                    opacity: transition,
-                    child: SlideTransition(
-                        position: Tween(
-                                begin: const Offset(0, .035), end: Offset.zero)
-                            .animate(transition),
-                        child: Stack(fit: StackFit.expand, children: [
-                          AnimatedBuilder(
-                              animation: kenBurns,
-                              builder: (context, background) => Transform.scale(
-                                  scale: 1.015 + .04 * kenBurns.value,
-                                  child: background),
-                              child: RepaintBoundary(
-                                  child: ImageFiltered(
-                                      imageFilter: ui.ImageFilter.blur(
-                                          sigmaX: verification
-                                              ? 10
-                                              : selected
-                                                  ? 2
-                                                  : 0,
-                                          sigmaY: verification
-                                              ? 10
-                                              : selected
-                                                  ? 2
-                                                  : 0),
-                                      child: Image.asset(
-                                          'assets/images/onboarding_${widget.scope.photo}.jpg',
-                                          fit: BoxFit.cover,
-                                          color: Colors.black.withValues(
-                                              alpha: verification ? .38 : .24),
-                                          colorBlendMode: BlendMode.darken,
-                                          excludeFromSemantics: true)))),
-                          const DecoratedBox(
-                              decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                      begin: Alignment.topCenter,
-                                      end: Alignment.bottomCenter,
-                                      colors: [
-                                Color(0x1f070608),
-                                Color(0x2b070608),
-                                Color(0x5c070608),
-                                Color(0xa8070608)
-                              ],
-                                      stops: [
-                                0,
-                                .34,
-                                .68,
-                                1
-                              ]))),
-                          const DecoratedBox(
-                              decoration: BoxDecoration(
-                                  gradient: RadialGradient(
-                                      center: Alignment(0, 1.24),
-                                      radius: 1.15,
-                                      colors: [
-                                Color(0x4d843fff),
-                                Color(0x26843fff),
-                                Color(0x00843fff)
-                              ],
-                                      stops: [
-                                0,
-                                .42,
-                                1
-                              ]))),
-                          SafeArea(
-                              child: Column(children: [
-                            Align(
-                                alignment: Alignment.topLeft,
-                                child: Padding(
-                                    padding: const EdgeInsets.only(
-                                        left: 20, top: 17, bottom: 7),
-                                    child: IconButton.filledTonal(
-                                        tooltip: 'Go back',
-                                        onPressed: widget.loading
-                                            ? null
-                                            : () {
-                                                if (verification) {
-                                                  widget.onBack();
-                                                  return;
-                                                }
-                                                if (selected) {
-                                                  setState(
-                                                      () => selected = false);
-                                                  return;
-                                                }
-                                                widget.scope.onBack();
-                                              },
-                                        style: IconButton.styleFrom(
-                                            backgroundColor: Colors.white
-                                                .withValues(alpha: .08),
-                                            foregroundColor: Colors.white,
-                                            side: const BorderSide(
-                                                color: Colors.white12)),
-                                        icon: const Icon(Icons.chevron_left,
-                                            size: 30)))),
-                            Expanded(
-                                child: LayoutBuilder(
-                                    builder: (context, c) =>
-                                        SingleChildScrollView(
-                                            padding: EdgeInsets.fromLTRB(
-                                                short ? 24 : 28,
-                                                0,
-                                                short ? 24 : 28,
-                                                short ? 26 : 34),
-                                            child: Center(
-                                                child: ConstrainedBox(
-                                                    constraints: BoxConstraints(
-                                                        maxWidth: 520,
-                                                        minHeight: (c
-                                                                    .maxHeight -
-                                                                (short
-                                                                    ? 26
-                                                                    : 34))
-                                                            .clamp(
-                                                                0,
-                                                                double
-                                                                    .infinity)),
-                                                    child: verification
-                                                        ? _verification(short)
-                                                        : Column(
-                                                            mainAxisAlignment:
-                                                                MainAxisAlignment
-                                                                    .end,
-                                                            children: [
-                                                                Image.asset(
-                                                                    'assets/images/onboarding_logo.png',
-                                                                    width: short
-                                                                        ? 46
-                                                                        : 50,
-                                                                    height: short
-                                                                        ? 46
-                                                                        : 50),
-                                                                SizedBox(
-                                                                    height: short
-                                                                        ? 16
-                                                                        : 22),
-                                                                Text(
-                                                                    'Welcome back',
-                                                                    style: body(
-                                                                        12,
-                                                                        color: Colors
-                                                                            .white60,
-                                                                        weight:
-                                                                            FontWeight.w600)),
-                                                                const SizedBox(
-                                                                    height: 9),
-                                                                Text(
-                                                                    'Sign in to\nWPCC Community',
-                                                                    textAlign:
-                                                                        TextAlign
-                                                                            .center,
-                                                                    style: heading(
-                                                                        short
-                                                                            ? 29
-                                                                            : 31)),
-                                                                const SizedBox(
-                                                                    height: 14),
-                                                                Text(
-                                                                    'Use your membership code or email address to continue.',
-                                                                    textAlign:
-                                                                        TextAlign
-                                                                            .center,
-                                                                    style: body(
-                                                                        14,
-                                                                        color: Colors
-                                                                            .white
-                                                                            .withValues(alpha: .76))),
-                                                                AnimatedSize(
-                                                                    duration: MediaQuery.disableAnimationsOf(
-                                                                            context)
-                                                                        ? Duration
-                                                                            .zero
-                                                                        : AppMotion
-                                                                            .control,
-                                                                    curve: AppMotion
-                                                                        .curve,
-                                                                    child: selected
-                                                                        ? const SizedBox(height: 22)
-                                                                        : Padding(
-                                                                            padding: EdgeInsets.only(top: short ? 20 : 26),
-                                                                            child: Column(children: [
-                                                                              button('Sign in with membership code', () => choose(false, false)),
-                                                                              const SizedBox(height: 12),
-                                                                              button('Sign in with email', () => choose(true, false), fill: const Color(0xff8f6cf4)),
-                                                                              TextButton(onPressed: () => choose(true, true), child: Text('Sign in with password', style: body(12, color: Colors.white70))),
-                                                                            ]))),
-                                                                if (selected) ...[
-                                                                  AnimatedBuilder(
-                                                                      animation:
-                                                                          fieldEntrance,
-                                                                      child: field(
-                                                                          widget.useEmail || widget.usePassword
-                                                                              ? 'Email address'
-                                                                              : 'Membership code',
-                                                                          widget.useEmail || widget.usePassword
-                                                                              ? widget
-                                                                                  .email
-                                                                              : widget
-                                                                                  .code,
-                                                                          email: widget.useEmail ||
-                                                                              widget
-                                                                                  .usePassword),
-                                                                      builder:
-                                                                          (context,
-                                                                              child) {
-                                                                        final progress = AppMotion
-                                                                            .curve
-                                                                            .transform(fieldEntrance.value);
-                                                                        return Opacity(
-                                                                            opacity:
-                                                                                progress,
-                                                                            child:
-                                                                                Transform.translate(offset: Offset(0, 8 * (1 - progress)), child: child));
-                                                                      }),
-                                                                  if (widget
-                                                                      .usePassword) ...[
-                                                                    const SizedBox(
-                                                                        height:
-                                                                            14),
-                                                                    field(
-                                                                        'Password',
-                                                                        widget
-                                                                            .password,
-                                                                        secret:
-                                                                            true)
-                                                                  ],
-                                                                  Align(
-                                                                      alignment:
-                                                                          Alignment
-                                                                              .centerRight,
-                                                                      child: TextButton(
-                                                                          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                                                                              content: Text(
-                                                                                  'Contact church admin for help with your account.'))),
-                                                                          child: Text(
-                                                                              widget.useEmail ? 'Forgot email address?' : 'Forgot member code?',
-                                                                              style: body(12, color: Colors.white70)))),
-                                                                  if (widget
-                                                                          .error !=
-                                                                      null)
-                                                                    Semantics(
-                                                                        liveRegion:
-                                                                            true,
-                                                                        child: Text(
-                                                                            widget
-                                                                                .error!,
-                                                                            textAlign:
-                                                                                TextAlign.center,
-                                                                            style: body(12, color: const Color(0xffff8787)))),
-                                                                  const SizedBox(
-                                                                      height:
-                                                                          20),
-                                                                  button(
-                                                                      widget.loading
-                                                                          ? 'Please wait…'
-                                                                          : 'Continue',
-                                                                      canSubmit
-                                                                          ? widget
-                                                                              .onSubmit
-                                                                          : null),
-                                                                  TextButton(
-                                                                      onPressed: widget
-                                                                              .loading
-                                                                          ? null
-                                                                          : () => choose(
-                                                                              !widget
-                                                                                  .useEmail,
-                                                                              false),
-                                                                      child: Text(
-                                                                          widget.useEmail
-                                                                              ? 'Use Membership Code'
-                                                                              : 'Use Email Address',
-                                                                          style: body(
-                                                                              12,
-                                                                              color: Colors.white))),
-                                                                  if (!widget
-                                                                      .usePassword)
-                                                                    TextButton(
-                                                                        onPressed: widget.loading
-                                                                            ? null
-                                                                            : () => choose(true,
-                                                                                true),
-                                                                        child: Text(
-                                                                            'Use password',
-                                                                            style:
-                                                                                body(12, color: Colors.white70))),
-                                                                ],
-                                                                Padding(
-                                                                    padding: const EdgeInsets
-                                                                        .only(
-                                                                        top:
-                                                                            18),
-                                                                    child: Wrap(
-                                                                        alignment:
-                                                                            WrapAlignment
-                                                                                .center,
-                                                                        crossAxisAlignment:
-                                                                            WrapCrossAlignment.center,
-                                                                        children: [
-                                                                          Text(
-                                                                              'By signing in, you agree to our ',
-                                                                              style: body(11, color: Colors.white70)),
-                                                                          for (final title
-                                                                              in [
-                                                                            'Terms of Service',
-                                                                            'Privacy Policy'
-                                                                          ])
-                                                                            TextButton(
-                                                                                style: TextButton.styleFrom(
-                                                                                    padding: const EdgeInsets.symmetric(
-                                                                                        horizontal:
-                                                                                            3),
-                                                                                    minimumSize: Size
-                                                                                        .zero,
-                                                                                    tapTargetSize: MaterialTapTargetSize
-                                                                                        .shrinkWrap),
-                                                                                onPressed: () => showDialog<void>(
-                                                                                    context:
-                                                                                        context,
-                                                                                    builder: (context) => AlertDialog(title: Text(title), content: const Text('Placeholder — this document has not been published yet.'), actions: [
-                                                                                          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))
-                                                                                        ])),
-                                                                                child: Text(title, style: body(11, weight: FontWeight.w600).copyWith(decoration: TextDecoration.underline))),
-                                                                        ])),
-                                                                if (widget
-                                                                    .verifying)
-                                                                  Padding(
-                                                                      padding: const EdgeInsets
-                                                                          .only(
-                                                                          top:
-                                                                              16),
-                                                                      child: Text(
-                                                                          'Signing you in…',
-                                                                          style:
-                                                                              body(14))),
-                                                              ])))))),
-                          ])),
-                        ]))))));
+        backgroundColor: Onb.canvas,
+        body: FadeTransition(
+            opacity: transition,
+            child: SlideTransition(
+                position: Tween(begin: const Offset(0, .035), end: Offset.zero)
+                    .animate(transition),
+                child: Stack(fit: StackFit.expand, children: [
+                  _backdrop(),
+                  const OnbScrim(base: .1, bottom: .9),
+                  SafeArea(
+                      child: Column(children: [
+                    _topBar(gutter),
+                    Expanded(
+                        child: LayoutBuilder(
+                            builder: (context, c) => SingleChildScrollView(
+                                padding: EdgeInsets.fromLTRB(gutter, 0, gutter,
+                                    short ? Onb.s24 : Onb.s32),
+                                child: Center(
+                                    child: ConstrainedBox(
+                                        constraints: BoxConstraints(
+                                            maxWidth: 520,
+                                            minHeight: (c.maxHeight -
+                                                    (short ? Onb.s24 : Onb.s32))
+                                                .clamp(0, double.infinity)),
+                                        child: verification
+                                            ? _verification(short)
+                                            : _entry(context, short)))))),
+                  ])),
+                ]))));
   }
 
   Widget _verification(bool short) =>
-      Column(mainAxisAlignment: MainAxisAlignment.start, children: [
-        SizedBox(height: short ? 40 : 66),
-        Text('Verification',
-            style: body(12, color: Colors.white60, weight: FontWeight.w600)),
-        const SizedBox(height: 9),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        SizedBox(height: short ? Onb.s16 : Onb.s32),
         Text(
             widget.linkSent
                 ? 'Check your email\nfor a sign-in link'
                 : 'Enter your\n6-digit code',
-            textAlign: TextAlign.center,
-            style: heading(short ? 29 : 34)),
-        const SizedBox(height: 16),
+            style: Onb.heading(short ? 29 : 32)),
+        const SizedBox(height: Onb.s12),
         Text(
             widget.linkSent
                 ? 'We sent a sign-in link to ${widget.maskedEmail ?? 'the email associated with your account'}.'
                 : widget.useEmail
                     ? 'We sent a 6-digit verification code to ${_mask(widget.email.text)}.'
                     : 'We sent a 6-digit verification code to the email on your membership account.',
-            textAlign: TextAlign.center,
-            style: body(14, color: Colors.white70)),
+            style: Onb.body(15, alpha: .8)),
         if (!widget.linkSent) ...[
-          SizedBox(height: short ? 28 : 42),
+          SizedBox(height: short ? Onb.s24 : Onb.s32),
           _OtpBoxes(
               controller: widget.otp,
               onSubmit: widget.onVerify,
@@ -558,32 +382,24 @@ class _PrototypeAuthViewState extends State<PrototypeAuthView>
         ],
         if (widget.error != null)
           Padding(
-              padding: const EdgeInsets.only(top: 15),
-              child: Semantics(
-                  liveRegion: true,
-                  child: Text(widget.error!,
-                      textAlign: TextAlign.center,
-                      style: body(12, color: const Color(0xffff8787))))),
-        const SizedBox(height: 20),
-        if (!widget.linkSent)
-          button(widget.loading ? 'Verifying…' : 'Continue',
-              widget.loading ? null : widget.onVerify),
-        const SizedBox(height: 18),
-        OutlinedButton(
-            onPressed: widget.loading || widget.resendSeconds > 0
-                ? null
-                : widget.onResend,
-            style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.white,
-                disabledForegroundColor: Colors.white54,
-                backgroundColor: Colors.white10,
-                side: const BorderSide(color: Colors.white24),
-                shape: const StadiumBorder()),
-            child: Text(widget.resendSeconds > 0
+              padding: const EdgeInsets.only(top: Onb.s16),
+              child: OnbMessage(widget.error!, isError: true)),
+        const SizedBox(height: Onb.s24),
+        if (!widget.linkSent) ...[
+          OnbPrimaryButton(
+              label: widget.loading ? 'Verifying…' : 'Continue',
+              onPressed: widget.loading ? null : widget.onVerify),
+          const SizedBox(height: Onb.s12),
+        ],
+        OnbSecondaryButton(
+            label: widget.resendSeconds > 0
                 ? 'Resend in ${widget.resendSeconds}s'
                 : widget.linkSent
                     ? 'Resend link'
-                    : 'Resend code')),
+                    : 'Resend code',
+            onPressed: widget.loading || widget.resendSeconds > 0
+                ? null
+                : widget.onResend),
       ]);
   String _mask(String value) {
     final parts = value.split('@');
@@ -637,7 +453,7 @@ class _OtpBoxesState extends State<_OtpBoxes> {
   Widget build(BuildContext context) => AutofillGroup(
           child: Row(children: [
         for (var i = 0; i < 6; i++) ...[
-          if (i > 0) const SizedBox(width: 8),
+          if (i > 0) const SizedBox(width: Onb.s8),
           Expanded(
               child: Focus(
                   onKeyEvent: (_, event) {
@@ -674,10 +490,11 @@ class _OtpBoxesState extends State<_OtpBoxes> {
                         LengthLimitingTextInputFormatter(6)
                       ],
                       textAlign: TextAlign.center,
+                      cursorColor: Onb.accentLight,
                       style: GoogleFonts.manrope(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white),
+                          color: Onb.ink),
                       onChanged: (value) => update(i, value),
                       onSubmitted: (_) => widget.onSubmit(),
                       decoration: InputDecoration(
@@ -685,18 +502,20 @@ class _OtpBoxesState extends State<_OtpBoxes> {
                           semanticCounterText: 'Digit ${i + 1}',
                           filled: true,
                           fillColor: boxes[i].text.isEmpty
-                              ? Colors.white10
-                              : Colors.white.withValues(alpha: .16),
-                          contentPadding:
-                              const EdgeInsets.symmetric(vertical: 16),
+                              ? Onb.inkAlpha(.08)
+                              : Onb.inkAlpha(.14),
+                          contentPadding: const EdgeInsets.symmetric(
+                              vertical: Onb.s16 + 2),
                           enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
+                              borderRadius:
+                                  BorderRadius.circular(Onb.radiusControl),
                               borderSide:
-                                  const BorderSide(color: Colors.white24)),
+                                  BorderSide(color: Onb.inkAlpha(.22))),
                           focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(15),
-                              borderSide:
-                                  const BorderSide(color: Colors.white60)))))),
+                              borderRadius:
+                                  BorderRadius.circular(Onb.radiusControl),
+                              borderSide: const BorderSide(
+                                  color: Onb.accentLight, width: 1.5)))))),
         ]
       ]));
 }

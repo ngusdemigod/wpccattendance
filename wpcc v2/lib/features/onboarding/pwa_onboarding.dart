@@ -3,7 +3,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'onboarding_style.dart';
 
 /// Native Flutter rendering of the supplied visible-staggered-entrance prototype.
 class PwaOnboarding extends StatefulWidget {
@@ -173,7 +173,7 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                               child: Center(child: _logo())))),
               ]))
       : Material(
-          color: Colors.black,
+          color: Onb.canvas,
           child: LayoutBuilder(builder: (context, constraints) {
             final width = math.min(430.0, constraints.maxWidth);
             final height = constraints.maxHeight;
@@ -194,11 +194,12 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                             : 420.0) +
                 75;
             final fontSize = canvasHeight <= 720
-                ? 35.0
+                ? 30.0
                 : canvasHeight <= 780
-                    ? 38.0
-                    : 40.0;
+                    ? 32.0
+                    : 36.0;
             final small = canvasHeight <= 780;
+            final gutter = width <= 390 ? Onb.s24 : Onb.s32;
             return Center(
                 child: SizedBox(
                     width: width,
@@ -216,7 +217,7 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                                             fit: StackFit.expand,
                                             children: [
                                           ColoredBox(
-                                              color: const Color(0xff100c0c)),
+                                              color: Onb.canvas),
                                           RepaintBoundary(
                                               child: Transform.scale(
                                                   scale: 1.55,
@@ -238,9 +239,9 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                                                       end: Alignment
                                                           .bottomCenter,
                                                       colors: [
-                                                Color(0x99120e0e),
-                                                Color(0xb8120e0e),
-                                                Color(0xf00c0a0a)
+                                                Color(0x990b0910),
+                                                Color(0xb80b0910),
+                                                Color(0xf00b0910)
                                               ],
                                                       stops: [
                                                 0,
@@ -254,8 +255,8 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                                                           Alignment.bottomRight,
                                                       radius: 1.1,
                                                       colors: [
-                                                Color(0x38843fff),
-                                                Color(0x00843fff)
+                                                Color(0x248b6cf6),
+                                                Color(0x008b6cf6)
                                               ]))),
                                           Positioned(
                                               top: 18,
@@ -275,108 +276,58 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                                                   scale: .965)),
                                           Positioned(
                                               top: copyTop,
-                                              left: width <= 390 ? 24 : 28,
-                                              right: width <= 390 ? 24 : 28,
-                                              child: Column(children: [
+                                              left: gutter,
+                                              right: gutter,
+                                              child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
                                                 appear(
-                                                    Column(children: [
-                                                      Text('Welcome to',
-                                                          style: GoogleFonts
-                                                              .dmSans(
-                                                                  fontSize: 13,
-                                                                  height: 1,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w600,
-                                                                  letterSpacing:
-                                                                      -.195,
-                                                                  color: Colors
-                                                                      .white60)),
-                                                      const SizedBox(height: 8),
-                                                      Text('WPCC\nCommunity',
-                                                          textAlign:
-                                                              TextAlign.center,
-                                                          style: GoogleFonts
-                                                              .manrope(
-                                                                  fontSize:
-                                                                      fontSize,
-                                                                  height: .94,
-                                                                  fontWeight:
-                                                                      FontWeight
-                                                                          .w800,
-                                                                  letterSpacing:
-                                                                      -fontSize *
-                                                                          .055,
-                                                                  color: Colors
-                                                                      .white)),
+                                                    Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                      Text(
+                                                          'Welcome to\nWPCC Community',
+                                                          style: Onb.heading(
+                                                              fontSize,
+                                                              height: 1.08)),
                                                       SizedBox(
-                                                          height:
-                                                              canvasHeight <=
-                                                                      720
-                                                                  ? 13
-                                                                  : small
-                                                                      ? 16
-                                                                      : 20),
+                                                          height: small
+                                                              ? Onb.s12
+                                                              : Onb.s16),
                                                       ConstrainedBox(
                                                           constraints:
                                                               const BoxConstraints(
                                                                   maxWidth:
                                                                       340),
-                                                          child: Text('Connect, grow and stay engaged with everything happening at Wisdom Power Christian Centre.',
-                                                              textAlign:
-                                                                  TextAlign
-                                                                      .center,
-                                                              style: GoogleFonts.dmSans(
-                                                                  fontSize:
-                                                                      small
-                                                                          ? 13
-                                                                          : 14,
-                                                                  height:
-                                                                      canvasHeight <=
-                                                                              720
-                                                                          ? 1.32
-                                                                          : 1.38,
-                                                                  letterSpacing:
-                                                                      -.25,
-                                                                  color: const Color(
-                                                                      0xd1ffffff)))),
+                                                          child: Text(
+                                                              'Connect, grow and stay engaged with everything happening at Wisdom Power Christian Centre.',
+                                                              style: Onb.body(
+                                                                  small
+                                                                      ? 14
+                                                                      : 15,
+                                                                  alpha: .8,
+                                                                  height: small
+                                                                      ? 1.42
+                                                                      : 1.5))),
                                                     ]),
                                                     1950,
                                                     740),
                                                 SizedBox(
                                                     height: canvasHeight <= 720
-                                                        ? 16
-                                                        : small
-                                                            ? 19
-                                                            : 24),
+                                                        ? Onb.s16
+                                                        : Onb.s24),
                                                 appear(
-                                                    Column(children: [
-                                                      _StartButton(
-                                                          onPressed: () =>
-                                                              widget.onContinue(
-                                                                  centre),
-                                                          height:
-                                                              canvasHeight <=
-                                                                      720
-                                                                  ? 46
-                                                                  : 50),
-                                                      if (canvasHeight >
-                                                          820)
-                                                        Padding(
-                                                            padding:
-                                                                const EdgeInsets
-                                                                    .only(
-                                                                    top: 21),
-                                                            child: Text(
-                                                                'Community moments scrolling live',
-                                                                style: GoogleFonts.dmSans(
-                                                                    fontSize:
-                                                                        11,
-                                                                    color: Colors
-                                                                        .white38,
-                                                                    letterSpacing:
-                                                                        -.11))),
-                                                    ]),
+                                                    _StartButton(
+                                                        onPressed: () =>
+                                                            widget.onContinue(
+                                                                centre),
+                                                        height: canvasHeight <=
+                                                                720
+                                                            ? 52
+                                                            : Onb.buttonHeight),
                                                     2130,
                                                     720),
                                               ])),
@@ -462,8 +413,8 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                                             ? const Offset(0, -.025)
                                             : Offset.zero,
                                         child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(24),
+                                            borderRadius: BorderRadius.circular(
+                                                Onb.radiusCard),
                                             child: Stack(
                                                 fit: StackFit.expand,
                                                 children: [
@@ -482,6 +433,19 @@ class _PwaOnboardingState extends State<PwaOnboarding>
                                                         Color(0x05ffffff),
                                                         Color(0x47000000)
                                                       ]))),
+                                                  // Inner edge: keeps the
+                                                  // photograph crisp on the
+                                                  // blurred backdrop.
+                                                  DecoratedBox(
+                                                      decoration: BoxDecoration(
+                                                          borderRadius:
+                                                              BorderRadius
+                                                                  .circular(Onb
+                                                                      .radiusCard),
+                                                          border: Border.all(
+                                                              color: Onb
+                                                                  .inkAlpha(
+                                                                      .14)))),
                                                 ]))))),
                       ])))))));
 }
@@ -499,45 +463,14 @@ class _SplashClip extends CustomClipper<Path> {
       oldClipper.remaining != remaining;
 }
 
-class _StartButton extends StatefulWidget {
+/// Full-width primary action, bounded by the copy column.
+class _StartButton extends StatelessWidget {
   const _StartButton({required this.onPressed, required this.height});
   final VoidCallback onPressed;
   final double height;
   @override
-  State<_StartButton> createState() => _StartButtonState();
-}
-
-class _StartButtonState extends State<_StartButton> {
-  bool pressed = false;
-  bool hover = false;
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-      onEnter: (_) => setState(() => hover = true),
-      onExit: (_) => setState(() => hover = false),
-      child: AnimatedScale(
-          scale: pressed
-              ? .965
-              : hover
-                  ? 1.015
-                  : 1,
-          duration: const Duration(milliseconds: 180),
-          child: SizedBox(
-              width: 188,
-              height: widget.height,
-              child: Material(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(999),
-                  clipBehavior: Clip.antiAlias,
-                  child: InkWell(
-                      onTap: widget.onPressed,
-                      onHighlightChanged: (v) => setState(() => pressed = v),
-                      splashFactory: InkRipple.splashFactory,
-                      splashColor: const Color(0x21000000),
-                      child: Center(
-                          child: Text('Get Started',
-                              style: GoogleFonts.dmSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: -.28,
-                                  color: const Color(0xff161616)))))))));
+  Widget build(BuildContext context) => ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 420),
+      child: OnbPrimaryButton(
+          label: 'Get Started', height: height, onPressed: onPressed));
 }

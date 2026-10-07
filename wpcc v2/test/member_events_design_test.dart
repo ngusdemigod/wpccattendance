@@ -3,17 +3,13 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/core/theme/member_theme.dart';
 import 'package:wpcc_community/core/widgets/member_components.dart';
-import 'package:wpcc_community/core/widgets/member_sheet.dart';
 import 'package:wpcc_community/features/events/event_detail_page.dart';
 import 'package:wpcc_community/features/events/events_page.dart';
-import 'package:wpcc_community/features/search/search_page.dart';
 
 Widget _app(Widget page, Brightness brightness, double scale,
         {GlobalKey? boundary}) =>
@@ -107,7 +103,7 @@ void main() {
         final left = width >= 900 ? (width - 820) / 2 + gutter : gutter;
         expect(tester.getTopLeft(art), Offset(left, 88));
         final title = tester.widget<Text>(find.text('Sunday celebration'));
-        expect(title.style!.fontSize, 30);
+        expect(title.style!.fontSize, 26);
         expect(title.style!.height, 1.2);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
@@ -175,7 +171,12 @@ void main() {
               scale,
               boundary: boundary));
           await tester.pumpAndSettle();
-          await tester.drag(find.byType(ListView).at(1), const Offset(-180, 0));
+          await tester.scrollUntilVisible(find.text('Upcoming'), 100,
+              scrollable: find
+                  .descendant(
+                      of: find.byType(ListView).at(1),
+                      matching: find.byType(Scrollable))
+                  .first);
           await tester.pumpAndSettle();
           await tester.tap(find.text('Upcoming').first);
           await tester.pumpAndSettle();

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/features/media/media_page.dart';
 import 'package:wpcc_community/features/media/media_player_controller.dart';
+import 'package:wpcc_community/features/media/media_shelves.dart';
 
 void main() {
   testWidgets('media page clearly exposes its empty Spotify state',
@@ -11,13 +12,14 @@ void main() {
       MaterialApp(
         theme: buildWpccTheme(),
         home:
-            MediaPage(loadAlbums: () async => [], loadEpisodes: () async => []),
+            MediaPage(loadVideos: () async => [], loadAlbums: () async => [], loadEpisodes: () async => []),
       ),
     );
 
-    expect(find.text('WPCC Messages'), findsOneWidget);
+    // The page title and the Media tab chip.
+    expect(find.text('Media'), findsNWidgets(2));
     await tester.pumpAndSettle();
-    expect(find.text('No episodes yet'), findsOneWidget);
+    expect(find.text('No media yet'), findsOneWidget);
   });
 
   testWidgets('media page renders a synced episode and opens its player',
@@ -25,7 +27,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: buildWpccTheme(),
-        home: MediaPage(
+        home: MediaPage(loadVideos: () async => [], 
           loadAlbums: () async => [],
           loadEpisodes: () async => [
             {
@@ -45,8 +47,11 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(find.text('Sunday message'), findsOneWidget);
-    expect(find.text('Latest message'), findsOneWidget);
+    expect(find.text('Videos'), findsOneWidget);
 
+    // The Audio filter lists messages as rows with a play button.
+    await tester.tap(find.descendant(of: find.byType(MediaFilterChips), matching: find.text('Audio')));
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byTooltip('Play message'));
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Play message'));

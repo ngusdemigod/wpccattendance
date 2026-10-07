@@ -4,7 +4,9 @@ import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
+import '../../announcements/announcement_color_picker.dart';
 import '../department_repository.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentAnnouncementPage extends StatefulWidget {
   const DepartmentAnnouncementPage({super.key, required this.departmentId});
@@ -19,6 +21,7 @@ class _DepartmentAnnouncementPageState extends State<DepartmentAnnouncementPage>
   final title = TextEditingController();
   final body = TextEditingController();
   PlatformFile? image;
+  String? backgroundStyle;
   Map<String, dynamic>? department;
   bool busy = false;
 
@@ -60,6 +63,7 @@ class _DepartmentAnnouncementPageState extends State<DepartmentAnnouncementPage>
         title: title.text.trim(),
         content: body.text.trim(),
         mediaUrl: mediaUrl,
+        backgroundStyle: backgroundStyle,
       );
       if (mounted) context.pop(true);
     } catch (_) {
@@ -72,15 +76,14 @@ class _DepartmentAnnouncementPageState extends State<DepartmentAnnouncementPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(onPressed: () => context.pop(), icon: Icon(PhosphorIcons.caretLeft(), size: 20)),
-        title: const Text('Post announcement', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      appBar: MemberAppBar(
+title: const Text('Post announcement', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
       ),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(18, 18, 18, 28),
           children: [
-            const Text('Audience', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+            const Text('Audience', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             const Align(
               alignment: Alignment.centerLeft,
@@ -95,7 +98,19 @@ class _DepartmentAnnouncementPageState extends State<DepartmentAnnouncementPage>
             TextField(controller: title, decoration: const InputDecoration(labelText: 'Title')),
             const SizedBox(height: 10),
             TextField(controller: body, maxLines: 7, decoration: const InputDecoration(labelText: 'Message')),
+            const SizedBox(height: 16),
+            const Text('Background', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500)),
+            const SizedBox(height: 6),
+            AnnouncementColorPicker(
+              value: backgroundStyle,
+              onChanged: (value) => setState(() => backgroundStyle = value),
+            ),
             const SizedBox(height: 10),
+            ListenableBuilder(
+              listenable: body,
+              builder: (context, _) => AnnouncementStatusPreview(text: body.text, styleKey: backgroundStyle),
+            ),
+            const SizedBox(height: 14),
             OutlinedButton.icon(
               onPressed: () async {
                 try {

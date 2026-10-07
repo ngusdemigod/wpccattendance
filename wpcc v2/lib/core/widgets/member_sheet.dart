@@ -188,10 +188,10 @@ class _MemberSheetState extends State<MemberSheet>
           child: LayoutBuilder(builder: (context, bounds) {
             return Align(
               alignment: tablet ? Alignment.center : Alignment.bottomCenter,
-              child: AppRouteMotion(
+              child: _SheetSlide(
                   animation: widget.animation,
-                  curve: AppMotion.drawer,
-                  offset: const Offset(0, 24),
+                  tablet: tablet,
+                  travel: media.padding.bottom + 48,
                   child: Transform.translate(
                     offset: Offset(0, _offset),
                     child: ConstrainedBox(
@@ -272,6 +272,76 @@ class _MemberSheetState extends State<MemberSheet>
   }
 }
 
+/// Standard sheet motion: slides up from the bottom edge on the drawer curve
+/// (faster exit, reversed curve) and, on tablets where the sheet is centred,
+/// rises a short distance while fading in. Instant under reduced motion.
+class _SheetSlide extends StatefulWidget {
+  const _SheetSlide(
+      {required this.animation,
+      required this.tablet,
+      required this.travel,
+      required this.child});
+  final Animation<double> animation;
+  final bool tablet;
+  final double travel;
+  final Widget child;
+  @override
+  State<_SheetSlide> createState() => _SheetSlideState();
+}
+
+class _SheetSlideState extends State<_SheetSlide> {
+  late CurvedAnimation progress;
+  void _bind() => progress = CurvedAnimation(
+      parent: widget.animation,
+      curve: AppMotion.drawer,
+      reverseCurve: AppMotion.drawer.flipped);
+
+  @override
+  void initState() {
+    super.initState();
+    _bind();
+  }
+
+  @override
+  void didUpdateWidget(_SheetSlide oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.animation != widget.animation) {
+      progress.dispose();
+      _bind();
+    }
+  }
+
+  @override
+  void dispose() {
+    progress.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (MediaQuery.disableAnimationsOf(context)) return widget.child;
+    return AnimatedBuilder(
+        animation: progress,
+        child: widget.child,
+        builder: (context, child) {
+          final hidden = 1 - progress.value;
+          final reverse = widget.animation.status == AnimationStatus.reverse;
+          final moving = widget.tablet
+              ? Opacity(
+                  opacity: progress.value.clamp(0.0, 1.0),
+                  child: Transform.translate(
+                      offset: Offset(0, 48 * hidden), child: child))
+              : FractionalTranslation(
+                  translation: Offset(0, hidden),
+                  child: Transform.translate(
+                      offset: Offset(0, widget.travel * hidden), child: child));
+          return ExcludeSemantics(
+              excluding: reverse,
+              child: IgnorePointer(ignoring: reverse, child: moving));
+        });
+  }
+}
+
 class _FlexibleSheetContent extends StatelessWidget {
   const _FlexibleSheetContent({
     required this.title,
@@ -317,7 +387,7 @@ class _FlexibleSheetContent extends StatelessWidget {
                         style: Theme.of(context)
                             .textTheme
                             .headlineSmall
-                            ?.copyWith(fontSize: 26, height: 33 / 26)),
+                            ?.copyWith(fontSize: 20, height: 33 / 26)),
                   )),
                   const SizedBox(width: 12),
                   MemberIconButton(

@@ -176,6 +176,12 @@ void main() {
           expect(tester.widget<MemberFilterChip>(chip).selected, isTrue);
         }
 
+        // Home has no filter button; its search bar opens Search at All.
+        expect(find.byTooltip('Search filters'), findsNothing);
+        await tester.tap(find.byType(MemberSearchBar));
+        await tester.pumpAndSettle();
+        expect(find.byType(SearchPage), findsOneWidget);
+        await expectChipChoice('All');
         await expectSheetChoice('All');
         await tester.tap(find.descendant(
             of: find.byType(MemberSheet), matching: find.text('Events')));
@@ -183,25 +189,30 @@ void main() {
         await expectChipChoice('Events');
         await tester.tap(find.widgetWithText(MemberFilterChip, 'Departments'));
         await tester.pumpAndSettle();
+        await expectSheetChoice('Departments');
+        await tester.tap(find.byTooltip('Close'));
+        await tester.pumpAndSettle();
         await tester.tap(find.byTooltip('Back'));
         await tester.pumpAndSettle();
-        await expectSheetChoice('Departments');
-        await tester.tap(find.byTooltip('Close'));
-        await tester.pumpAndSettle();
+        expect(find.byType(SearchPage), findsNothing);
+        expect(find.byTooltip('Search filters'), findsNothing);
 
+        // The Events search bar has no filter button either and opens Search
+        // at Events. The Events page keeps its own local chip meanwhile.
         await tester.tap(find.byTooltip('Events'));
         await tester.pumpAndSettle();
+        expect(find.byTooltip('Search filters'), findsNothing);
         await tester.tap(find.widgetWithText(MemberFilterChip, 'Church'));
-        await tester.pumpAndSettle();
-        await expectSheetChoice('Departments');
-        await tester.tap(find.byTooltip('Close'));
         await tester.pumpAndSettle();
         await tester.tap(find.byType(MemberSearchBar));
         await tester.pumpAndSettle();
-        await expectChipChoice('Departments');
-        await expectSheetChoice('Departments');
-        await tester.tap(find.descendant(
-            of: find.byType(MemberSheet), matching: find.text('People')));
+        await expectChipChoice('Events');
+        await expectSheetChoice('Events');
+        final people = find.descendant(
+            of: find.byType(MemberSheet), matching: find.text('People'));
+        await tester.ensureVisible(people);
+        await tester.pumpAndSettle();
+        await tester.tap(people);
         await tester.pumpAndSettle();
         await expectChipChoice('People');
         tester.view.physicalSize =
@@ -211,13 +222,14 @@ void main() {
         await tester.tap(find.byTooltip('Back'));
         await tester.pumpAndSettle();
         await expectChipChoice('Church');
-        await expectSheetChoice('People');
-        await tester.tap(find.byTooltip('Close'));
-        await tester.pumpAndSettle();
 
+        // A search opened without an explicit filter keeps the last section.
         router.push('/search');
         await tester.pumpAndSettle();
         await expectChipChoice('People');
+        await expectSheetChoice('People');
+        await tester.tap(find.byTooltip('Close'));
+        await tester.pumpAndSettle();
         router.pop();
         await tester.pumpAndSettle();
         router.push('/search?filter=Announcements');
@@ -225,8 +237,13 @@ void main() {
         await expectChipChoice('Announcements');
         router.pop();
         await tester.pumpAndSettle();
+        router.push('/search');
+        await tester.pumpAndSettle();
+        await expectChipChoice('Announcements');
         await expectSheetChoice('Announcements');
         await tester.tap(find.byTooltip('Close'));
+        await tester.pumpAndSettle();
+        router.pop();
         await tester.pumpAndSettle();
         router.push('/search?filter=Messages');
         await tester.pumpAndSettle();
@@ -235,11 +252,15 @@ void main() {
         await tester.tap(find.widgetWithText(MemberFilterChip, 'Events'));
         await tester.pumpAndSettle();
 
+        // Leaving the member shell discards the selection.
         router.go('/outside');
         await tester.pumpAndSettle();
         expect(find.byType(MemberSearchScope), findsNothing);
         router.go('/home');
         await tester.pumpAndSettle();
+        router.push('/search');
+        await tester.pumpAndSettle();
+        await expectChipChoice('All');
         await expectSheetChoice('All');
         await tester.tap(find.byTooltip('Close'));
         await tester.pumpAndSettle();
@@ -286,7 +307,17 @@ void main() {
     final rows = find.descendant(
         of: find.byType(MemberSheet), matching: find.byType(MemberListRow));
     expect(tester.widgetList<MemberListRow>(rows).map((row) => row.title),
-        ['All', 'Events', 'Departments', 'Announcements', 'People']);
+        [
+          'All',
+          'Events',
+          'Departments',
+          'Announcements',
+          'Media',
+          'Audio',
+          'Devotional',
+          'Classes',
+          'People'
+        ]);
     expect(tester.widgetList<MemberListRow>(rows).first.selected, isTrue);
     expect(find.text('Messages'), findsNothing);
     await tester.tap(find.descendant(

@@ -49,7 +49,14 @@ class _SearchPageState extends State<SearchPage> {
     super.didChangeDependencies();
     if (_filterInitialized) return;
     final selection = MemberSearchScope.maybeOf(context);
-    filter = 'All';
+    final requested = widget.initialFilter;
+    // An explicit, supported filter wins. Otherwise keep the section chosen
+    // elsewhere in the app; anything unsupported falls back to All.
+    filter = isSearchSection(requested)
+        ? requested!
+        : (requested == null && isSearchSection(selection?.value)
+            ? selection!.value
+            : 'All');
     selection?.value = filter;
     _filterInitialized = true;
   }
@@ -132,17 +139,45 @@ class _SearchPageState extends State<SearchPage> {
           )
           .toList();
 
+  /// Rows shown per section while All is selected; the rest sit behind a
+  /// "See all" action that switches to that section's filter.
+  static const _allPreview = 5;
+
+  void _setFilter(String value) {
+    if (value == filter) return;
+    setState(() => filter = value);
+    MemberSearchScope.maybeOf(context)?.value = value;
+  }
+
+  Future<void> _chooseFilter() async {
+    final chosen = await showSearchFilterSheet(context, selected: filter);
+    if (chosen != null && mounted) _setFilter(chosen);
+  }
+
+  Widget _filterChips() => SizedBox(
+      height: 48,
+      child: ListView(scrollDirection: Axis.horizontal, children: [
+        for (final section in searchSections)
+          Padding(
+              padding: const EdgeInsets.only(right: 7),
+              child: MemberFilterChip(
+                  label: section.$1,
+                  icon: section.$2,
+                  selected: filter == section.$1,
+                  onPressed: () => _setFilter(section.$1))),
+      ]));
+
   Widget _heading(String title) => Padding(
       padding: const EdgeInsets.only(bottom: 13),
       child: Text(title,
           style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontSize: 17, height: 24 / 17, fontWeight: FontWeight.w600)));
+              fontSize: 15, height: 24 / 17, fontWeight: FontWeight.w600)));
 
   @override
   Widget build(BuildContext context) {
     final hasQuery = controller.text.trim().isNotEmpty;
     final groups = <String, List<Map<String, dynamic>>>{};
-    for (final row in visible) {
+    for (final row in orderSearchResults(visible)) {
       groups
           .putIfAbsent(
               _sectionLabel(row['section']?.toString() ?? ''), () => [])
@@ -169,6 +204,8 @@ class _SearchPageState extends State<SearchPage> {
                 child: MemberSearchBar(
                     controller: controller,
                     autofocus: true,
+                    hint: 'Search',
+                    onFilter: _chooseFilter,
                     onChanged: _changed,
                     onSubmitted: (value) => _search(value, remember: true),
                     onClear: controller.text.isEmpty
@@ -179,7 +216,9 @@ class _SearchPageState extends State<SearchPage> {
                           }),
               ),
             ),
-            const SizedBox(height: 25),
+            const SizedBox(height: 12),
+            _filterChips(),
+            const SizedBox(height: 13),
             if (hasQuery) ...[
               if (loading)
                 const MemberSkeleton(label: 'Searching')
@@ -189,8 +228,10 @@ class _SearchPageState extends State<SearchPage> {
                     icon: PhosphorIconsRegular.warningCircle,
                     onRetry: () => _search(controller.text))
               else if (visible.isEmpty)
-                const MemberStatus(
-                    message: 'No results',
+                MemberStatus(
+                    message: filter == 'All'
+                        ? 'No results'
+                        : 'No results in $filter',
                     icon: PhosphorIconsRegular.magnifyingGlass)
               else
                 for (final group in groups.entries) ...[
@@ -199,7 +240,18 @@ class _SearchPageState extends State<SearchPage> {
                       minimumWidth: 420,
                       maximumColumns: 2,
                       gap: 7,
-                      children: group.value.map(_result).toList()),
+                      children: (filter == 'All'
+                              ? group.value.take(_allPreview)
+                              : group.value)
+                          .map(_result)
+                          .toList()),
+                  if (filter == 'All' && group.value.length > _allPreview)
+                    Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                            onPressed: () => _setFilter(group.key),
+                            child: Text(
+                                'See all ${group.value.length} in ${group.key}'))),
                   const SizedBox(height: 22),
                 ],
             ] else ...[
@@ -281,11 +333,38 @@ class _SearchPageState extends State<SearchPage> {
       await _openMember(id);
       return;
     }
+    if (section == 'audio') {
+      await context.push('/media/$id', extra: _rowOf(row));
+      return;
+    }
+    if (section == 'media') {
+      // Videos, livestreams and shorts all open the video detail route.
+      await context.push('/media/video/${Uri.encodeComponent(id)}',
+          extra: _rowOf(row));
+      return;
+    }
+    if (section == 'devotional') {
+      await context.push('/devotional/$id');
+      return;
+    }
+    if (section == 'classes') {
+      // Classes stay disabled until they are implemented.
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Classes are coming soon.')));
+      return;
+    }
     if (section == 'announcements' && mounted) {
       // v76 approves announcement cards on Home but no standalone detail page.
       // Deep-link to the approved announcement surface instead of inventing one.
       context.go('/home');
     }
+  }
+
+  /// The source row a media result was built from, used to seed the detail
+  /// page so it opens without a second request.
+  Map<String, dynamic>? _rowOf(Map<String, dynamic> row) {
+    final source = row['row'];
+    return source is Map ? Map<String, dynamic>.from(source) : null;
   }
 
   Future<void> _openMember(String id) async {
@@ -309,18 +388,16 @@ class _SearchPageState extends State<SearchPage> {
     }
   }
 
-  String _sectionLabel(String section) => switch (section) {
-        'events' => 'Events',
-        'departments' => 'Departments',
-        'announcements' => 'Announcements',
-        'people' => 'People',
-        _ => 'All',
-      };
+  String _sectionLabel(String section) => searchSectionLabel(section);
 
   IconData _icon(String section) => switch (section) {
         'events' => PhosphorIcons.calendarDots(),
         'departments' => PhosphorIcons.usersThree(),
         'announcements' => PhosphorIcons.megaphone(),
+        'media' => PhosphorIcons.playCircle(),
+        'audio' => PhosphorIcons.headphones(),
+        'devotional' => PhosphorIcons.bookOpen(),
+        'classes' => PhosphorIcons.graduationCap(),
         _ => PhosphorIcons.fileText(),
       };
 
@@ -422,7 +499,7 @@ class _PublicMemberSheet extends StatelessWidget {
               name,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0,
               ),
@@ -532,7 +609,7 @@ class _PublicMemberSheet extends StatelessWidget {
                   Text(
                     value,
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),

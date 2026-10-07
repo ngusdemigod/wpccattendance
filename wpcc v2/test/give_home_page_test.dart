@@ -87,7 +87,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Scheduled'));
     await tester.pumpAndSettle();
-    expect(find.text('Thursday'), findsOneWidget);
+    expect(find.textContaining('Every Thursday'), findsOneWidget);
     expect(find.text('Active'), findsOneWidget);
     expect(tester.takeException(), isNull);
     await tester.tap(find.text('History'));

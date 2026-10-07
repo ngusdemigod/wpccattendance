@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/theme/app_theme.dart';
 import '../department_repository.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentWalletPage extends StatefulWidget {
   const DepartmentWalletPage({super.key, required this.departmentId});
@@ -84,7 +84,7 @@ class _DepartmentWalletPageState extends State<DepartmentWalletPage> {
         Text(
           'Add a wallet profile for offerings, dues or internal department funding.',
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            fontSize: 12,
+            fontSize: 11,
             color: WpccColors.inkSoft,
           ),
         ),
@@ -142,14 +142,10 @@ class _AdminScaffold extends StatelessWidget {
   final VoidCallback? onSave;
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      leading: IconButton(
-        onPressed: () => context.pop(),
-        icon: Icon(PhosphorIcons.caretLeft(), size: 20),
-      ),
-      title: Text(
+    appBar: MemberAppBar(
+title: Text(
         title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
       ),
       centerTitle: true,
       actions: [
@@ -157,7 +153,7 @@ class _AdminScaffold extends StatelessWidget {
           onPressed: onSave,
           child: const Text(
             'Save',
-            style: TextStyle(fontSize: 12, color: WpccColors.primaryDeep),
+            style: TextStyle(fontSize: 11, color: WpccColors.primaryDeep),
           ),
         ),
       ],
@@ -201,7 +197,7 @@ class _GroupedField extends StatelessWidget {
           vertical: 16,
         ),
       ),
-      style: const TextStyle(fontSize: 14),
+      style: const TextStyle(fontSize: 12),
     ),
   );
 }

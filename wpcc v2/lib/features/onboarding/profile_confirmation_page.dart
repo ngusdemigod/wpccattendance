@@ -4,12 +4,12 @@ import 'dart:math' as math;
 import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/widgets/initials_avatar.dart';
 import '../profile/profile_repository.dart';
+import 'onboarding_style.dart';
 import 'prototype_auth_view.dart';
 import 'profile_reward_screen.dart';
 
@@ -43,6 +43,8 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
   List<Map<String, dynamic>> directory = [], linked = [];
   final selected = <String>{};
   Timer? polling;
+  final errorKey = GlobalKey();
+  bool errorRevealed = false;
   bool get reduced => MediaQuery.disableAnimationsOf(context);
   static const titles = [
     'Confirm your profile photo',
@@ -64,20 +66,6 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
     'Check the trusted contact details we have for you, or update them if needed.',
     'Check the departments linked to your record and add any that are missing.',
   ];
-  TextStyle body(double size,
-          {double alpha = 1, FontWeight weight = FontWeight.w400}) =>
-      GoogleFonts.dmSans(
-          fontSize: size,
-          height: 1.42,
-          letterSpacing: -size * .015,
-          color: Colors.white.withValues(alpha: alpha),
-          fontWeight: weight);
-  TextStyle title(double size) => GoogleFonts.manrope(
-      fontSize: size,
-      height: .99,
-      letterSpacing: -size * .055,
-      fontWeight: FontWeight.w800,
-      color: Colors.white);
   @override
   void initState() {
     super.initState();
@@ -287,101 +275,78 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
     }
   }
 
-  Widget action(String text, VoidCallback? onTap) => SizedBox(
-      width: double.infinity,
-      height: 54,
-      child: FilledButton(
-          onPressed: onTap,
-          style: FilledButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: const Color(0xff151515),
-              disabledBackgroundColor: Colors.white.withValues(alpha: .16),
-              disabledForegroundColor: Colors.white.withValues(alpha: .38),
-              textStyle: body(14, weight: FontWeight.w700)),
-          child: Text(text)));
-  Widget input(int index, String label,
+  // ---- Presentation -------------------------------------------------------
+
+  /// Staggered entrance for one block of a step. Every block fades once and
+  /// moves 16 logical pixels in the direction of travel; nothing is nested.
+  Widget enter(Widget child, double begin, double end) => AnimatedBuilder(
+      animation: entrance,
+      child: child,
+      builder: (context, child) {
+        final t = ease.transform(Interval(begin, end).transform(entrance.value));
+        return Opacity(
+            opacity: t,
+            child: Transform.translate(
+                offset: Offset((backwards ? -16 : 16) * (1 - t), 0),
+                child: child));
+      });
+
+  Widget profilePhoto(double size) => Container(
+      padding: const EdgeInsets.all(Onb.s4),
+      decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: Onb.inkAlpha(.22), width: 1.5)),
+      child: avatar?.isNotEmpty == true
+          ? InitialsAvatar(initials: 'WP', imageUrl: avatar, size: size)
+          : Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                  shape: BoxShape.circle, color: Onb.inkAlpha(.08)),
+              padding: EdgeInsets.all(size * .26),
+              child: Image.asset('assets/images/onboarding_logo.png',
+                  semanticLabel: 'WPCC logo')));
+
+  Widget field(int index, String label,
           {String? hint,
+          String? helper,
           TextInputType? keyboard,
           int lines = 1,
           bool readOnly = false,
           VoidCallback? onTap}) =>
-      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Padding(
-            padding: const EdgeInsets.only(left: 3, bottom: 9),
-            child: Text(label,
-                style: body(12, alpha: .7, weight: FontWeight.w600))),
-        TextField(
-            controller: fields[index],
-            onChanged: (_) => setState(() {}),
-            readOnly: readOnly,
-            onTap: onTap,
-            keyboardType: keyboard,
-            maxLines: lines,
-            style: body(15, weight: FontWeight.w500),
-            cursorColor: Colors.white,
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: body(15, alpha: .38),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: .105),
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
-              enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: .15))),
-              focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(18),
-                  borderSide:
-                      BorderSide(color: Colors.white.withValues(alpha: .34))),
-            )),
-      ]);
-  Widget profilePhoto(double size) => avatar?.isNotEmpty == true
-      ? InitialsAvatar(initials: 'WP', imageUrl: avatar, size: size)
-      : Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: .08),
-              border: Border.all(color: Colors.white.withValues(alpha: .18))),
-          padding: EdgeInsets.all(size * .24),
-          child: Image.asset('assets/images/onboarding_logo.png'));
+      OnbField(
+          label: label,
+          controller: fields[index],
+          hint: hint,
+          helper: helper,
+          keyboard: keyboard,
+          lines: lines,
+          readOnly: readOnly,
+          onTap: onTap,
+          onChanged: (_) => setState(() {}));
 
   Widget form(bool short) {
     switch (step) {
       case 0:
-        return Center(
-            child: Column(children: [
-          Stack(clipBehavior: Clip.none, children: [
-            profilePhoto(short ? 108 : 126),
-            Positioned(
-                right: -5,
-                bottom: 8,
-                child: SizedBox(
-                    width: 31,
-                    height: 31,
-                    child: IconButton.filled(
-                        onPressed: busy ? null : upload,
-                        tooltip: 'Choose photo',
-                        style: IconButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: const Color(0xff151515)),
-                        padding: EdgeInsets.zero,
-                        icon: Icon(PhosphorIcons.plus(), size: 18))))
-          ]),
-          const SizedBox(height: 18),
-          TextButton(
-              onPressed: busy ? null : upload,
-              child: Text(busy ? 'Uploading…' : 'Choose photo',
-                  style: body(13, weight: FontWeight.w600))),
-        ]));
+        return Column(children: [
+          Center(child: profilePhoto(short ? 112 : 136)),
+          const SizedBox(height: Onb.s24),
+          Center(
+              child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 320),
+                  child: OnbSecondaryButton(
+                      label: busy ? 'Uploading…' : 'Choose photo',
+                      icon: PhosphorIcons.camera(),
+                      onPressed: busy ? null : upload))),
+        ]);
       case 1:
-        return input(1, 'Full name',
+        return field(1, 'Full name',
             hint: 'Enter your full name', keyboard: TextInputType.name);
       case 2:
-        return input(2, 'Date of birth',
-            hint: 'Select your date of birth', readOnly: true, onTap: () async {
+        return field(2, 'Date of birth',
+            hint: 'Select your date of birth',
+            helper: 'Tap to choose a date.',
+            readOnly: true, onTap: () async {
           final now = DateTime.now();
           final date = DateTime.tryParse(fields[2].text);
           final picked = await showDatePicker(
@@ -397,20 +362,22 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
           }
         });
       case 3:
-        return input(3, 'Phone number',
+        return field(3, 'Phone number',
             hint: '+234 801 234 5678', keyboard: TextInputType.phone);
       case 4:
-        return input(4, 'Address',
+        return field(4, 'Address',
             hint: 'Enter your address',
             keyboard: TextInputType.streetAddress,
             lines: 4);
       case 5:
         return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          input(5, 'Occupation', hint: 'Enter your occupation'),
-          const SizedBox(height: 12),
+          field(5, 'Occupation',
+              hint: 'Enter your occupation',
+              helper: 'Separate several with commas.'),
+          const SizedBox(height: Onb.s16),
           Wrap(
-              spacing: 6,
-              runSpacing: 6,
+              spacing: Onb.s8,
+              runSpacing: Onb.s8,
               children: [
                 'Entrepreneur',
                 'Engineer',
@@ -424,23 +391,21 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
                     .where((e) => e.isNotEmpty)
                     .toSet();
                 final active = parts.contains(value);
-                return FilterChip(
-                    label: Text(value, style: body(11)),
+                return OnbChip(
+                    label: value,
                     selected: active,
-                    selectedColor: const Color(0xff7439ab),
-                    backgroundColor: Colors.white.withValues(alpha: .08),
-                    onSelected: (select) => setState(() {
-                          select ? parts.add(value) : parts.remove(value);
+                    onTap: () => setState(() {
+                          active ? parts.remove(value) : parts.add(value);
                           fields[5].text = parts.join(', ');
                         }));
               }).toList())
         ]);
       case 6:
         return Column(children: [
-          input(6, 'Contact name',
+          field(6, 'Contact name',
               hint: 'Enter contact name', keyboard: TextInputType.name),
-          const SizedBox(height: 18),
-          input(7, 'Phone number',
+          const SizedBox(height: Onb.s20),
+          field(7, 'Contact phone number',
               hint: '+234 801 234 5678', keyboard: TextInputType.phone)
         ]);
       case 7:
@@ -449,6 +414,26 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
         return const SizedBox.shrink();
     }
   }
+
+  Widget departmentChip(String name,
+          {bool pending = false, VoidCallback? onRemove}) =>
+      OnbChip(
+          label: name,
+          selected: onRemove != null,
+          onTap: onRemove,
+          semanticLabel: onRemove != null
+              ? 'Remove $name'
+              : pending
+                  ? '$name, pending approval'
+                  : name,
+          trailing: onRemove != null
+              ? Icon(PhosphorIcons.x(), size: 16, color: Onb.ink)
+              : pending
+                  ? Text('Pending',
+                      style: Onb.body(12,
+                              alpha: 1, weight: FontWeight.w600, height: 1.2)
+                          .copyWith(color: Onb.accentLight))
+                  : null);
 
   Widget departments() {
     final linkedIds = linked.map((d) => d['id']).toSet();
@@ -462,69 +447,70 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
                 .contains(search.text.toLowerCase()))
         .toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      TextField(
+      OnbField(
+          label: 'Search departments',
           controller: search,
+          hint: 'Type a department name',
           onChanged: (_) => setState(() {}),
-          style: body(14),
-          decoration: InputDecoration(
-              hintText: 'Search departments',
-              hintStyle: body(14, alpha: .38),
-              prefixIcon:
-                  Icon(PhosphorIcons.magnifyingGlass(), color: Colors.white54),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: .105),
-              border:
-                  OutlineInputBorder(borderRadius: BorderRadius.circular(18)))),
-      const SizedBox(height: 16),
-      Wrap(spacing: 8, runSpacing: 8, children: [
-        for (final d in linked)
-          Chip(
-              label: Text(
-                  '${d['name']}${d['status'] == 'pending' ? ' · Pending' : ''}',
-                  style: body(12)),
-              backgroundColor: const Color(0xff7439ab)),
-        for (final id in selected)
-          InputChip(
-              label: Text(
-                  directory
-                      .firstWhere((d) => d['department_id'] == id)['name']
-                      .toString(),
-                  style: body(12)),
-              backgroundColor: const Color(0xff7439ab),
-              deleteIconColor: Colors.white,
-              onDeleted: () => setState(() => selected.remove(id))),
-      ]),
-      const SizedBox(height: 16),
+          prefix: Icon(PhosphorIcons.magnifyingGlass(),
+              size: 20, color: Onb.inkAlpha(.6))),
+      if (linked.isNotEmpty || selected.isNotEmpty) ...[
+        const SizedBox(height: Onb.s24),
+        Text('Your departments', style: Onb.label()),
+        const SizedBox(height: Onb.s12),
+        Wrap(spacing: Onb.s8, runSpacing: Onb.s8, children: [
+          for (final d in linked)
+            departmentChip('${d['name']}', pending: d['status'] == 'pending'),
+          for (final id in selected)
+            departmentChip(
+                directory
+                    .firstWhere((d) => d['department_id'] == id)['name']
+                    .toString(),
+                onRemove: () => setState(() => selected.remove(id))),
+        ]),
+      ],
+      const SizedBox(height: Onb.s24),
+      Text('Available departments', style: Onb.label()),
+      const SizedBox(height: Onb.s12),
       if (options.isEmpty)
-        Text('No matching departments', style: body(13, alpha: .6)),
-      LayoutBuilder(
-          builder: (context, c) => Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children: options
-                  .map((d) => SizedBox(
-                      width: (c.maxWidth - 10) / 2,
-                      child: OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 14),
-                              side: BorderSide(
-                                  color: Colors.white.withValues(alpha: .15)),
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15))),
-                          onPressed: () => setState(
-                              () => selected.add(d['department_id'] as String)),
-                          child: Row(children: [
-                            Expanded(
-                                child: Text(d['name'].toString(),
-                                    style: body(12))),
-                            Icon(PhosphorIcons.plus(),
-                                size: 16, color: Colors.white70)
-                          ]))))
-                  .toList())),
-      const SizedBox(height: 10),
-      Text('New departments are submitted for approval.',
-          style: body(11, alpha: .6)),
+        Text('No matching departments',
+            style: Onb.body(13, alpha: .64))
+      else
+        LayoutBuilder(
+            builder: (context, c) => Wrap(
+                spacing: Onb.s12,
+                runSpacing: Onb.s12,
+                children: options
+                    .map((d) => SizedBox(
+                        width: (c.maxWidth - Onb.s12) / 2,
+                        child: OutlinedButton(
+                            style: OutlinedButton.styleFrom(
+                                minimumSize:
+                                    const Size.fromHeight(Onb.minTarget + 4),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: Onb.s12, vertical: Onb.s12),
+                                backgroundColor: Onb.inkAlpha(.05),
+                                foregroundColor: Onb.ink,
+                                side: BorderSide(color: Onb.inkAlpha(.2)),
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        Onb.radiusControl))),
+                            onPressed: () => setState(() =>
+                                selected.add(d['department_id'] as String)),
+                            child: Row(children: [
+                              Expanded(
+                                  child: Text(d['name'].toString(),
+                                      style: Onb.body(13,
+                                          alpha: 1,
+                                          weight: FontWeight.w500,
+                                          height: 1.25))),
+                              const SizedBox(width: Onb.s8),
+                              Icon(PhosphorIcons.plus(),
+                                  size: 16, color: Onb.inkAlpha(.7))
+                            ]))))
+                    .toList())),
+      const SizedBox(height: Onb.s16),
+      const OnbMessage('New departments are submitted for approval.'),
     ]);
   }
 
@@ -535,32 +521,10 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
                 imageFilter: ui.ImageFilter.blur(sigmaX: 7, sigmaY: 7),
                 child: Image.asset('assets/images/onboarding_$photo.jpg',
                     fit: BoxFit.cover))),
-        ColoredBox(color: Colors.black.withValues(alpha: .42)),
-        const DecoratedBox(
-            decoration: BoxDecoration(
-                gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-              Color(0x33000000),
-              Color(0x5c000000),
-              Color(0xad000000),
-              Color(0xe6000000)
-            ],
-                    stops: [
-              0,
-              .35,
-              .7,
-              1
-            ]))),
-        const DecoratedBox(
-            decoration: BoxDecoration(
-                gradient: RadialGradient(
-                    center: Alignment(0, 1.24),
-                    radius: .9,
-                    colors: [Color(0x4d843fff), Colors.transparent]))),
+        const OnbScrim(base: .38, bottom: .9),
       ]);
-  Widget backButton() => IconButton.filledTonal(
+
+  Widget backButton() => OnbBackButton(
       tooltip: step == 0 ? 'Back to sign in' : 'Back',
       onPressed: busy
           ? null
@@ -570,24 +534,87 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
               } else {
                 move(step - 1);
               }
-            },
-      style: IconButton.styleFrom(
-          backgroundColor: Colors.white.withValues(alpha: .08),
-          foregroundColor: Colors.white,
-          side: BorderSide(color: Colors.white.withValues(alpha: .14))),
-      icon: Icon(PhosphorIcons.arrowLeft(), size: 20));
+            });
+
+  /// Placeholder shapes while the member record loads. No spinner.
+  Widget skeleton(double side) {
+    Widget bar(double? width, double height, [double radius = 8]) => Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+            color: Onb.inkAlpha(.09),
+            borderRadius: BorderRadius.circular(radius)));
+    return Semantics(
+        label: 'Loading your details',
+        child: Padding(
+            padding: EdgeInsets.fromLTRB(side, 92, side, 0),
+            child: ExcludeSemantics(
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                  bar(260, 32),
+                  const SizedBox(height: Onb.s12),
+                  bar(180, 32),
+                  const SizedBox(height: Onb.s20),
+                  bar(null, 14),
+                  const SizedBox(height: Onb.s8),
+                  bar(220, 14),
+                  const SizedBox(height: Onb.s32),
+                  bar(96, 12),
+                  const SizedBox(height: Onb.s8),
+                  bar(null, 56, Onb.radiusControl),
+                ]))));
+  }
+
+  Widget topBar(double side) => Padding(
+      padding: EdgeInsets.fromLTRB(side, Onb.s12, side, Onb.s12),
+      child: Row(children: [
+        backButton(),
+        Expanded(
+            child: Center(
+                child: step < 8
+                    ? Text(Onb.stepLabel(step + 1, 8),
+                        style: Onb.label(alpha: .78))
+                    : const SizedBox.shrink())),
+        step < 8
+            ? OnbTextAction(
+                label: 'Skip', onPressed: busy ? null : () => advance(skip: true))
+            : const SizedBox(width: Onb.minTarget),
+      ]));
+
   @override
   Widget build(BuildContext context) {
-    final side = math.max(24.0, (MediaQuery.sizeOf(context).width - 600) / 2);
-    final short = MediaQuery.sizeOf(context).height <= 780;
+    final size = MediaQuery.sizeOf(context);
+    final short = size.height <= 780;
+    final side = size.width >= 600
+        ? math.max(32.0, (size.width - 600) / 2)
+        : Onb.gutter(size.width, short: short);
     final photo = PrototypeAuthScope.of(context)?.photo ?? 0;
+    final headingSize = size.width <= 370
+        ? 28.0
+        : short
+            ? 30.0
+            : 32.0;
+    if (error == null) {
+      errorRevealed = false;
+    } else if (!errorRevealed) {
+      errorRevealed = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final target = errorKey.currentContext;
+        if (mounted && target != null) {
+          Scrollable.ensureVisible(target,
+              duration: AppMotion.duration(context, AppMotion.control),
+              curve: AppMotion.curve);
+        }
+      });
+    }
     return PopScope(
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
           if (!didPop && !busy && step > 0 && step < 9) move(step - 1);
         },
         child: Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor: Onb.canvas,
             body: Stack(fit: StackFit.expand, children: [
               if (step < 9) background(photo),
               if (step == 9)
@@ -595,169 +622,89 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
               else
                 SafeArea(
                     child: loading
-                        ? const Center(
-                            child:
-                                CircularProgressIndicator(color: Colors.white))
+                        ? skeleton(side)
                         : Column(children: [
-                            Padding(
-                                padding:
-                                    const EdgeInsets.fromLTRB(20, 18, 20, 3),
-                                child: Row(children: [
-                                  backButton(),
-                                  const Spacer(),
-                                  if (step < 8)
-                                    TextButton(
-                                        onPressed: busy
-                                            ? null
-                                            : () => advance(skip: true),
-                                        child: Text('Skip', style: body(13)))
-                                ])),
+                            topBar(side),
                             if (step < 8)
                               Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24),
-                                  child: LinearProgressIndicator(
-                                      value: (step + 1) / 8,
-                                      minHeight: 3,
-                                      color: Colors.white,
-                                      backgroundColor: Colors.white24)),
+                                  padding:
+                                      EdgeInsets.symmetric(horizontal: side),
+                                  child:
+                                      OnbStepSegments(current: step + 1, total: 8)),
                             Expanded(
-                                child: LayoutBuilder(
-                                    builder: (context, c) =>
-                                        SingleChildScrollView(
-                                            padding: EdgeInsets.fromLTRB(
-                                                MediaQuery.sizeOf(context)
-                                                            .width >=
-                                                        600
-                                                    ? side
-                                                    : (short ? 24 : 28),
-                                                step == 7
-                                                    ? (short ? 24 : 38)
-                                                    : (short ? 34 : 56),
-                                                MediaQuery.sizeOf(context)
-                                                            .width >=
-                                                        600
-                                                    ? side
-                                                    : (short ? 24 : 28),
-                                                20),
-                                            child: AnimatedBuilder(
-                                                animation: entrance,
-                                                builder: (context, child) {
-                                                  final t = ease.transform(
-                                                      entrance.value);
-                                                  return Opacity(
-                                                      opacity: t,
-                                                      child: Transform.translate(
-                                                          offset: Offset(
-                                                              (backwards
-                                                                      ? -16
-                                                                      : 16) *
-                                                                  (1 - t),
-                                                              0),
-                                                          child: child));
-                                                },
-                                                child: step == 8
-                                                    ? done(short)
-                                                    : Column(
-                                                        crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                            Text(
-                                                                'Verify your details',
-                                                                style: body(12,
-                                                                        alpha:
-                                                                            .58,
-                                                                        weight: FontWeight
-                                                                            .w600)
-                                                                    .copyWith(
-                                                                        height:
-                                                                            1,
-                                                                        letterSpacing:
-                                                                            .18)),
-                                                            const SizedBox(
-                                                                height: 9),
-                                                            ConstrainedBox(
-                                                                constraints:
-                                                                    const BoxConstraints(
-                                                                        maxWidth:
-                                                                            330),
-                                                                child: Text(
-                                                                    titles[
-                                                                        step],
-                                                                    textAlign:
-                                                                        TextAlign
-                                                                            .center,
-                                                                    style: title(MediaQuery.sizeOf(context).width <=
-                                                                            370
-                                                                        ? 29
-                                                                        : short
-                                                                            ? 30
-                                                                            : 34))),
-                                                            const SizedBox(
-                                                                height: 16),
-                                                            Text(
-                                                                descriptions[
-                                                                    step],
-                                                                textAlign:
-                                                                    TextAlign
-                                                                        .center,
-                                                                style: body(
-                                                                    short
-                                                                        ? 13
-                                                                        : 14,
-                                                                    alpha:
-                                                                        .68)),
-                                                            SizedBox(
-                                                                height: short
-                                                                    ? 28
-                                                                    : 42),
-                                                            form(short),
-                                                          ]))))),
-                            if (error != null)
-                              Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 24, vertical: 8),
-                                  child: Semantics(
-                                      liveRegion: true,
-                                      child: Text(error!,
-                                          style: body(13),
-                                          textAlign: TextAlign.center))),
+                                child: SingleChildScrollView(
+                                    padding: EdgeInsets.fromLTRB(side,
+                                        short ? Onb.s20 : Onb.s32, side, Onb.s24),
+                                    child: step == 8
+                                        ? enter(done(short), 0, 1)
+                                        : Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                                enter(
+                                                    Text(titles[step],
+                                                        style: Onb.heading(
+                                                            headingSize)),
+                                                    0,
+                                                    .7),
+                                                const SizedBox(height: Onb.s12),
+                                                enter(
+                                                    ConstrainedBox(
+                                                        constraints:
+                                                            const BoxConstraints(
+                                                                maxWidth: 480),
+                                                        child: Text(
+                                                            descriptions[step],
+                                                            style: Onb.body(
+                                                                short ? 14 : 15))),
+                                                    .1,
+                                                    .85),
+                                                SizedBox(
+                                                    height: short
+                                                        ? Onb.s24
+                                                        : Onb.s32),
+                                                enter(form(short), .2, 1),
+                                                if (error != null)
+                                                  Padding(
+                                                      key: errorKey,
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                              top: Onb.s16),
+                                                      child: OnbMessage(error!,
+                                                          isError: true)),
+                                              ]))),
                             Padding(
-                                padding: EdgeInsets.fromLTRB(
-                                    MediaQuery.sizeOf(context).width >= 600
-                                        ? side
-                                        : (short ? 24 : 28),
-                                    8,
-                                    MediaQuery.sizeOf(context).width >= 600
-                                        ? side
-                                        : (short ? 24 : 28),
-                                    short ? 26 : 34),
-                                child: action(
-                                    busy
-                                        ? 'Saving…'
-                                        : step == 8
-                                            ? 'Continue to WPCC Community'
-                                            : 'Continue',
-                                    busy
-                                        ? null
-                                        : step == 8
-                                            ? openReward
-                                            : valid
-                                                ? () => advance()
-                                                : null)),
-                            if (error != null &&
-                                avatar == null &&
-                                fields[1].text.isEmpty)
-                              TextButton(
-                                  onPressed: load,
-                                  child: const Text('Retry loading details')),
+                                padding: EdgeInsets.fromLTRB(side, Onb.s8, side,
+                                    short ? Onb.s12 : Onb.s16),
+                                child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      OnbPrimaryButton(
+                                          label: busy
+                                              ? 'Saving…'
+                                              : step == 8
+                                                  ? 'Continue to WPCC Community'
+                                                  : 'Continue',
+                                          onPressed: busy
+                                              ? null
+                                              : step == 8
+                                                  ? openReward
+                                                  : valid
+                                                      ? () => advance()
+                                                      : null),
+                                      if (error != null &&
+                                          avatar == null &&
+                                          fields[1].text.isEmpty)
+                                        OnbTextAction(
+                                            label: 'Retry loading details',
+                                            onPressed: load),
+                                    ])),
                           ])),
             ])));
   }
 
   Widget done(bool short) => Column(children: [
-        SizedBox(height: short ? 14 : 40),
+        SizedBox(height: short ? Onb.s8 : Onb.s32),
         AnimatedBuilder(
             animation: celebration,
             builder: (context, child) {
@@ -776,29 +723,24 @@ class _ProfileConfirmationPageState extends State<ProfileConfirmationPage>
                           painter: _CelebrationPainter(celebration.value,
                               burst: true))),
                   Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(Onb.s8),
                       decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: .1),
-                          border: Border.all(color: Colors.white24),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.white.withValues(alpha: .045),
-                                spreadRadius: 12)
-                          ]),
+                          color: Onb.inkAlpha(.08),
+                          border: Border.all(color: Onb.inkAlpha(.22))),
                       child: InitialsAvatar(
-                          initials: 'WP', imageUrl: avatar, size: 92)),
+                          initials: 'WP', imageUrl: avatar, size: 96)),
                 ]))),
-        SizedBox(height: short ? 28 : 38),
-        Text('All good', style: body(12, alpha: .58, weight: FontWeight.w600)),
-        const SizedBox(height: 13),
+        SizedBox(height: short ? Onb.s24 : Onb.s32),
         Text('Details Verified',
-            textAlign: TextAlign.center, style: title(short ? 33 : 38)),
-        const SizedBox(height: 16),
-        Text(
-            'Thank you for verifying your details. This helps us reach out and serve you better.',
-            textAlign: TextAlign.center,
-            style: body(14, alpha: .68)),
+            textAlign: TextAlign.center, style: Onb.heading(short ? 32 : 36)),
+        const SizedBox(height: Onb.s12),
+        ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Text(
+                'Thank you for verifying your details. This helps us reach out and serve you better.',
+                textAlign: TextAlign.center,
+                style: Onb.body(15))),
       ]);
   Widget reward(bool short) =>
       ProfileRewardScreen(awarded: awarded, onClose: widget.onFinish);

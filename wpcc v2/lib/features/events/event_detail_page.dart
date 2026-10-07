@@ -301,7 +301,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
           children: [
             Text(event['title']?.toString() ?? 'Event',
                 style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontSize: 30,
+                    fontSize: 26,
                     height: 1.2,
                     fontWeight: FontWeight.w600,
                     letterSpacing: 0)),
@@ -541,7 +541,7 @@ class _EventDetailPageState extends State<EventDetailPage> {
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(value,
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontSize: 16, fontWeight: FontWeight.w600, height: 1.4)),
+                  fontSize: 14, fontWeight: FontWeight.w600, height: 1.4)),
           if (subtitle != null && subtitle.isNotEmpty) ...[
             const SizedBox(height: 4),
             Text(subtitle,

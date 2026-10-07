@@ -64,19 +64,19 @@ ThemeData buildMemberTheme(ThemeData base) {
         color: color ?? ink,
       );
   final text = base.textTheme.apply(fontFamily: 'DM Sans').copyWith(
-    headlineLarge: style(40, 49, FontWeight.w600),
-    headlineMedium: style(38, 46, FontWeight.w600),
-    headlineSmall: style(28, 35, FontWeight.w600),
-    titleLarge: style(19, 25, FontWeight.w600),
-    titleMedium: style(15, 21, FontWeight.w500),
-    titleSmall: style(14, 20, FontWeight.w600),
-    bodyLarge: style(16, 27, FontWeight.w400),
-    bodyMedium: style(14, 21, FontWeight.w400),
-    bodySmall: style(12, 18, FontWeight.w400, color: secondary),
-    labelLarge: style(14, 20, FontWeight.w600),
-    labelMedium: style(13, 18, FontWeight.w400),
-    labelSmall: style(11, 16, FontWeight.w400),
-  );
+    headlineLarge: style(32, 40, FontWeight.w600),
+    headlineMedium: style(30, 38, FontWeight.w600),
+    headlineSmall: style(24, 30, FontWeight.w600),
+    titleLarge: style(17, 23, FontWeight.w600),
+    titleMedium: style(14, 20, FontWeight.w500),
+    titleSmall: style(13, 18, FontWeight.w600),
+    bodyLarge: style(14, 22, FontWeight.w400),
+    bodyMedium: style(12, 18, FontWeight.w400),
+    bodySmall: style(11, 16, FontWeight.w400, color: secondary),
+    labelLarge: style(13, 18, FontWeight.w600),
+    labelMedium: style(12, 17, FontWeight.w400),
+    labelSmall: style(10, 14, FontWeight.w400),
+      );
   final buttonShape =
       RoundedRectangleBorder(borderRadius: BorderRadius.circular(26));
   return base.copyWith(
@@ -91,7 +91,7 @@ ThemeData buildMemberTheme(ThemeData base) {
             const Icon(PhosphorIconsRegular.caretLeft, size: 20)),
     appBarTheme: base.appBarTheme.copyWith(
       backgroundColor: Colors.transparent,
-      titleTextStyle: text.titleSmall?.copyWith(fontSize: 20, height: 26 / 20),
+      titleTextStyle: text.titleSmall?.copyWith(fontSize: 17, height: 23 / 17),
       foregroundColor: ink,
     ),
     iconButtonTheme: IconButtonThemeData(

@@ -11,7 +11,7 @@ class FeatureGapPage extends StatelessWidget {
         appBar: AppBar(
             title: Text(title,
                 style: const TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w500))),
+                    fontSize: 12, fontWeight: FontWeight.w500))),
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(28),

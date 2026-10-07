@@ -5,6 +5,13 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="WPCC Community">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="WPCC Community">
+  <meta property="og:title" content="WPCC Community">
+  <meta property="og:description" content="Messages, videos, photos and more from Wisdom Power Christian Centre.">
+  <meta property="og:image" content="https://my.wisdompowercc.org/icons/Icon-512.png">
+  <meta property="og:url" content="https://my.wisdompowercc.org/">
+  <meta name="twitter:card" content="summary">
   <meta name="theme-color" content="#f8f9fc">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -29,30 +36,38 @@
       document.querySelector('meta[name="theme-color"]').content = dark ? '#17131f' : '#f6f7fa';
     })();
   </script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&display=swap" rel="stylesheet">
+  <!-- Start the connections the app needs on first load while the HTML is still
+       parsing: CanvasKit (gstatic), Supabase, the media catalog API and media
+       storage. All are fetched in CORS mode, hence crossorigin. No render-blocking
+       third-party stylesheets: the splash uses the system font stack. -->
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://api.wisdompowercc.org" crossorigin>
+  <link rel="preconnect" href="https://media-api.wisdompowercc.org" crossorigin>
+  <link rel="preconnect" href="https://storage.wisdompowercc.org" crossorigin>
+  <link rel="preload" href="splash-logo.png" as="image" fetchpriority="high">
   <style>
     :root {
       --startup-background: #f6f7fa;
-      --startup-ink: #1c1e24;
-      --startup-muted: #8b8c93;
-      --startup-accent: #7c4ea6;
-      --startup-track: #e9dfef;
+      --startup-ink: #17131f;
+      --startup-muted: #5f6475;
+      --startup-accent: #8b6cf6;
+      --startup-track: #e6e2f1;
+      --startup-line: rgba(23, 19, 31, .1);
       --startup-glow: #f1e6fa;
       --startup-surface: #ffffff;
-      --startup-backdrop: linear-gradient(135deg, #f4f6fc 0%, #fbfcff 42%, #f2f4fa 100%);
+      --startup-backdrop: #f6f5fa;
       color-scheme: light;
     }
     :root[data-startup-theme="dark"] {
       --startup-background: #17131f;
       --startup-ink: #f3edf7;
       --startup-muted: #b9afc6;
-      --startup-accent: #7c4ea6;
-      --startup-track: #382c45;
+      --startup-accent: #8b6cf6;
+      --startup-track: #332b40;
+      --startup-line: rgba(255, 255, 255, .1);
       --startup-glow: #21172c;
-      --startup-surface: #22202b;
-      --startup-backdrop: linear-gradient(135deg, #17131f 0%, #191720 42%, #21172c 100%);
+      --startup-surface: #1d1926;
+      --startup-backdrop: #131019;
       color-scheme: dark;
     }
     html, body { margin: 0; background: var(--startup-background); }
@@ -67,7 +82,7 @@
       padding: max(24px, env(safe-area-inset-top)) 24px max(24px, env(safe-area-inset-bottom));
       background: var(--startup-backdrop);
       color: var(--startup-ink);
-      font-family: 'Instrument Sans', sans-serif;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       text-align: center;
       transition: opacity 180ms cubic-bezier(.23, 1, .32, 1);
     }
@@ -88,30 +103,30 @@
     .startup-logo {
       display: grid;
       place-items: center;
-      width: 54px;
-      height: 54px;
-      margin: 0 auto 28px;
-      padding: 5.4px;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 24px;
+      padding: 8px;
       box-sizing: border-box;
-      border-radius: 15.12px;
+      border-radius: 20px;
       background: #fff;
-      box-shadow: 0 5px 16px #35394a0a;
+      box-shadow: inset 0 0 0 1px var(--startup-line), 0 8px 24px rgba(60, 40, 120, .08);
     }
     .startup-logo img { width: 100%; height: 100%; object-fit: contain; }
     .startup-content h1 {
       margin: 0;
-      font-family: 'Instrument Sans', sans-serif;
-      font-size: 28px;
-      font-weight: 600;
-      letter-spacing: -1.1px;
-      line-height: 1.286;
+      font-family: inherit;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -.9px;
+      line-height: 1.2;
     }
-    #wpcc-startup-status { margin: 15px 0 0; color: var(--startup-muted); font-size: 14px; line-height: 1.6; }
+    #wpcc-startup-status { margin: 12px 0 0; color: var(--startup-muted); font-size: 15px; line-height: 1.5; }
     .startup-progress {
-      width: 100px;
-      height: 3px;
-      margin: 30px auto 0;
-      border-radius: 8px;
+      width: 120px;
+      height: 4px;
+      margin: 32px auto 0;
+      border-radius: 2px;
       overflow: hidden;
       background: var(--startup-track);
     }
@@ -129,23 +144,28 @@
       to { transform: translateX(330%); }
     }
     #wpcc-startup-retry {
-      margin-top: 22px;
-      padding: 12px 22px;
+      margin-top: 24px;
+      min-height: 48px;
+      padding: 12px 28px;
       border: 1px solid var(--startup-ink);
-      border-radius: 18px;
+      border-radius: 999px;
       background: var(--startup-ink);
       color: var(--startup-surface);
-      font: 500 14px 'Instrument Sans', sans-serif;
+      font: 600 15px system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
       cursor: pointer;
+      transition: transform 140ms cubic-bezier(.23, 1, .32, 1);
     }
+    #wpcc-startup-retry:active { transform: scale(.97); transition-duration: 100ms; }
     #wpcc-startup-retry:focus-visible { outline: 3px solid var(--startup-accent); outline-offset: 4px; }
     #wpcc-splash[data-error] .startup-progress { display: none; }
     @media (prefers-reduced-motion: reduce) {
       #wpcc-splash { transition: none; }
       .startup-progress::after { animation: none; width: 100%; }
+      #wpcc-startup-retry { transition: none; }
+      #wpcc-startup-retry:active { transform: none; }
     }
     @media (max-height: 360px) {
-      .startup-logo { width: 68px; height: 68px; margin-bottom: 12px; border-radius: 20px; }
+      .startup-logo { width: 56px; height: 56px; margin-bottom: 12px; border-radius: 16px; }
       .startup-progress { margin-top: 15px; }
     }
   </style>
@@ -155,7 +175,7 @@
 <body>
   <main id="wpcc-splash" aria-busy="true" aria-label="WPCC Community startup">
     <div class="startup-content">
-      <div class="startup-logo"><img src="assets/assets/images/wpcc_logo.png" alt="WPCC church logo" fetchpriority="high"></div>
+      <div class="startup-logo"><img src="splash-logo.png" width="144" height="144" alt="WPCC church logo" fetchpriority="high" decoding="async"></div>
       <h1>WPCC Community</h1>
       <p id="wpcc-startup-status" role="status" aria-live="polite">Loading your community…</p>
       <div class="startup-progress" aria-hidden="true"></div>
@@ -194,74 +214,39 @@
   </script>
 
   <div id="wpcc-spotify-player" aria-hidden="true" style="position:fixed;left:-10000px;top:0;width:300px;height:80px;overflow:hidden;pointer-events:none"></div>
+  <script src="wpcc-spotify.js"></script>
   <script>
-    (() => {
-      let controller = null;
-      let controllerReady = false;
-      let pendingEntity = null;
-      let wantsPlayback = false;
-      let playback = { isPaused: true, position: 0, duration: 0 };
-      const playLoadedEntity = (entity) => {
-        if (!controller) return;
-        pendingEntity = null;
-        controller.loadEntity(entity, false, 0);
-        // The SDK queues this single command until the new embed is ready.
-        controller.play();
+    // The Spotify embed SDK is not needed to paint anything. Load it once the app
+    // has shown its first frame and the browser is idle, so it never competes
+    // with the app download. wpcc-spotify.js queues any play request until the
+    // SDK reports ready, exactly as it did when the SDK loaded at startup.
+    window.addEventListener('flutter-first-frame', () => {
+      const load = () => {
+        const sdk = document.createElement('script');
+        sdk.src = 'https://open.spotify.com/embed/iframe-api/v1';
+        sdk.async = true;
+        document.head.append(sdk);
       };
-
-      window.wpccSpotifyLoadAndPlay = (entity) => {
-        if (!entity) return;
-        pendingEntity = entity;
-        wantsPlayback = true;
-        if (!controller) return;
-        playLoadedEntity(entity);
-      };
-      window.wpccSpotifyTogglePlay = () => {
-        wantsPlayback = controller ? playback.isPaused : !wantsPlayback;
-        if (!controller) return;
-        if (wantsPlayback) {
-          if (pendingEntity) playLoadedEntity(pendingEntity);
-          else controller.resume();
-        } else controller.pause();
-      };
-      window.wpccSpotifyPause = () => {
-        wantsPlayback = false;
-        pendingEntity = null;
-        if (controller) controller.pause();
-      };
-      window.wpccSpotifySeek = (seconds) => controller && controller.seek(Math.max(0, Math.floor(seconds)));
-      window.wpccSpotifyIsReady = () => controller !== null && controllerReady;
-      window.wpccSpotifyIsPaused = () => playback.isPaused;
-      window.wpccSpotifyPosition = () => playback.position;
-      window.wpccSpotifyDuration = () => playback.duration;
-
-      window.onSpotifyIframeApiReady = (IFrameAPI) => {
-        const element = document.getElementById('wpcc-spotify-player');
-        IFrameAPI.createController(element, {
-          width: 300,
-          height: 80,
-          uri: 'spotify:episode:7A2cF7XaQ72nQ4StEbtZKK'
-        }, (embedController) => {
-          controller = embedController;
-          controller.addListener('ready', () => {
-            controllerReady = true;
-          });
-          controller.addListener('playback_update', (event) => {
-            playback = event.data || playback;
-            // Ignore the initial paused update while a requested episode loads.
-            if (!playback.isPaused || playback.position > 0) {
-              wantsPlayback = !playback.isPaused;
-            }
-          });
-          if (pendingEntity && wantsPlayback) playLoadedEntity(pendingEntity);
-        });
-      };
-    })();
+      if ('requestIdleCallback' in window) requestIdleCallback(load, { timeout: 3000 });
+      else setTimeout(load, 1500);
+    }, { once: true });
   </script>
-  <script src="https://open.spotify.com/embed/iframe-api/v1" async></script>
   <script src="wpcc-push.js"></script>
   <script src="wpcc-device.js"></script>
   <script src="wpcc-install.js"></script>
+  <script>
+    // Installed launches only (wpcc-install.js sets this synchronously after the
+    // device and installation checks pass): begin downloading the app now rather
+    // than after flutter_bootstrap.js has been fetched and executed. Browser tabs
+    // and desktops never reach this, so the installation gate still decides first.
+    if (document.documentElement.dataset.installedLaunch === 'true') {
+      const app = document.createElement('link');
+      app.rel = 'preload';
+      app.as = 'script';
+      app.href = 'main.dart.js';
+      document.head.append(app);
+    }
+  </script>
   <script src="flutter_bootstrap.js" async onerror="window.wpccShowStartupError?.()"></script>
 </body>
 </html>

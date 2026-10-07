@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../department_repository.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentCreateEventPage extends StatefulWidget {
   const DepartmentCreateEventPage({super.key, required this.departmentId});
@@ -95,14 +95,10 @@ class _DepartmentCreateEventPageState extends State<DepartmentCreateEventPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          onPressed: () => context.pop(),
-          icon: Icon(PhosphorIcons.caretLeft(), size: 20),
-        ),
-        title: const Text(
+      appBar: MemberAppBar(
+title: const Text(
           'Create event',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
         centerTitle: true,
         actions: [
@@ -110,7 +106,7 @@ class _DepartmentCreateEventPageState extends State<DepartmentCreateEventPage> {
             onPressed: busy ? null : _save,
             child: const Text(
               'Publish',
-              style: TextStyle(fontSize: 12, color: WpccColors.primaryDeep),
+              style: TextStyle(fontSize: 11, color: WpccColors.primaryDeep),
             ),
           ),
         ],
@@ -260,7 +256,7 @@ class _EventPicker extends StatelessWidget {
                       ),
                 ),
                 const SizedBox(height: 5),
-                Text(value, style: const TextStyle(fontSize: 14)),
+                Text(value, style: const TextStyle(fontSize: 12)),
               ],
             ),
           ),
@@ -300,7 +296,7 @@ class _EventField extends StatelessWidget {
               vertical: 16,
             ),
           ),
-          style: const TextStyle(fontSize: 14),
+          style: const TextStyle(fontSize: 12),
         ),
       );
 }

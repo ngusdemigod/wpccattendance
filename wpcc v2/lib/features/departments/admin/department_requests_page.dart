@@ -5,6 +5,7 @@ import '../../../core/theme/app_motion.dart';
 import '../../../core/widgets/member_components.dart';
 import '../../../core/widgets/member_skeleton.dart';
 import '../department_repository.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentRequestsPage extends StatefulWidget {
   const DepartmentRequestsPage(
@@ -66,16 +67,18 @@ class _DepartmentRequestsPageState extends State<DepartmentRequestsPage> {
     }
   }
 
+  void _back() => context.canPop()
+      ? context.pop(changed)
+      : context.go('/departments/${widget.departmentId}');
+
   @override
-  Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
+  Widget build(BuildContext context) => MemberBackOverride(
+      // Joining/declining reports back to the department page on exit.
+      onBack: _back,
+      child: Scaffold(
+        appBar: MemberAppBar(
             title: const Text('Join requests'),
-            leading: MemberIconButton(
-                label: 'Back',
-                icon: PhosphorIconsRegular.caretLeft,
-                onPressed: () => context.canPop()
-                    ? context.pop(changed)
-                    : context.go('/departments/${widget.departmentId}')),
+            onBack: _back,
             actions: [
               IconButton(
                   tooltip: 'Refresh requests',
@@ -143,6 +146,5 @@ class _DepartmentRequestsPageState extends State<DepartmentRequestsPage> {
                                   ]);
                             });
                       }),
-                ))),
-      );
+                )))));
 }

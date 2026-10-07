@@ -3,6 +3,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../core/widgets/initials_avatar.dart';
 import 'devotional_repository.dart';
+import '../../core/widgets/member_back.dart';
 
 class DevotionalPostPage extends StatefulWidget {
   const DevotionalPostPage({super.key, required this.postId, this.seed});
@@ -101,11 +102,11 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: const MemberAppBar(
         backgroundColor: Colors.transparent,
-        title: const Text(
+        title: Text(
           'Devotional',
-          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
         ),
       ),
       body: FutureBuilder<Map<String, dynamic>?>(
@@ -129,7 +130,7 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                 Text(
                   'Wisdom Devotional',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontSize: 27,
+                        fontSize: 20,
                         fontWeight: FontWeight.w600,
                         letterSpacing: -1,
                       ),
@@ -157,7 +158,7 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                       Text(
                         current['title']?.toString() ?? '',
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -222,7 +223,7 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                       child: Text(
                         'Comments',
                         style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                              fontSize: 14,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                       ),
@@ -338,7 +339,7 @@ class _DevotionalPostPageState extends State<DevotionalPostPage> {
                 Text(
                   resolvedName,
                   style: const TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

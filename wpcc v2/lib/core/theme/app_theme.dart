@@ -31,6 +31,9 @@ class WpccColors {
   static const lineSubtle = Color(0xFFECEEF0);
   static const primary = Color(0xFF7C4EA6);
   static const primaryDeep = Color(0xFF683793);
+
+  /// The brand purple's dark-theme counterpart (the theme accent).
+  static const primaryOnDark = Color(0xFFCAA9E8);
   static const primarySoft = Color(0xFFF1EAF7);
   static const lavender = Color(0xFFE5D9EF);
   static const coolBlue = Color(0xFFE5E9EF);
@@ -62,7 +65,7 @@ ThemeData buildWpccTheme({Brightness brightness = Brightness.light}) {
   final surface = dark ? const Color(0xFF212325) : WpccColors.surface;
   final line = dark ? const Color(0xFF3A3D41) : WpccColors.line;
   final low = dark ? const Color(0xFF292C2F) : WpccColors.subtle;
-  final accent = dark ? const Color(0xFFCAA9E8) : WpccColors.primaryDeep;
+  final accent = dark ? WpccColors.primaryOnDark : WpccColors.primaryDeep;
   final base = ThemeData(
     useMaterial3: true,
     brightness: brightness,

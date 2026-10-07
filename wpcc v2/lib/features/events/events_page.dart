@@ -216,7 +216,7 @@ class _EventsPageState extends State<EventsPage> {
                   style: Theme.of(context)
                       .textTheme
                       .headlineSmall
-                      ?.copyWith(fontSize: 27, height: 34 / 27)),
+                      ?.copyWith(fontSize: 20, height: 34 / 27)),
             const SizedBox(height: 14),
             if (loading)
               const SizedBox(height: 220, child: MemberSkeleton())
@@ -384,7 +384,7 @@ class _EventResultRow extends StatelessWidget {
                     children: [
                   Text(event['title']?.toString() ?? 'Event',
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 15,
+                          fontSize: 13,
                           height: 21 / 15,
                           fontWeight: FontWeight.w500)),
                   const SizedBox(height: 4),
@@ -425,7 +425,7 @@ class _Metadata extends StatelessWidget {
                 style: Theme.of(context)
                     .textTheme
                     .bodySmall
-                    ?.copyWith(fontSize: 12, height: 1.5))),
+                    ?.copyWith(fontSize: 11, height: 1.5))),
       ]);
 }
 

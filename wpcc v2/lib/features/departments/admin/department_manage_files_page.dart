@@ -1,12 +1,12 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_motion.dart';
-import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/widgets/section_empty_state.dart';
 import '../department_repository.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentManageFilesPage extends StatefulWidget {
   const DepartmentManageFilesPage({super.key, required this.departmentId});
@@ -63,12 +63,9 @@ class _DepartmentManageFilesPageState extends State<DepartmentManageFilesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-            onPressed: () => context.pop(),
-            icon: Icon(PhosphorIcons.caretLeft(), size: 20)),
-        title: const Text('Manage files',
-            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+      appBar: MemberAppBar(
+title: const Text('Manage files',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
       ),
       body: SafeArea(
         child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -212,7 +209,7 @@ class _FileManageCardState extends State<_FileManageCard> {
             widget.row['file_name']?.toString() ?? '',
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500),
           ),
           const SizedBox(height: 6),
           TextButton.icon(

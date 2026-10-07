@@ -5,6 +5,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../core/widgets/member_components.dart';
 import '../../../core/widgets/member_skeleton.dart';
 import '../department_repository.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentProfileEditPage extends StatefulWidget {
   const DepartmentProfileEditPage(
@@ -79,14 +80,11 @@ class _DepartmentProfileEditPageState extends State<DepartmentProfileEditPage> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(
+        appBar: MemberAppBar(
             title: const Text('Department images'),
-            leading: MemberIconButton(
-                label: 'Back',
-                icon: PhosphorIconsRegular.caretLeft,
-                onPressed: () => context.canPop()
-                    ? context.pop()
-                    : context.go('/departments/${widget.departmentId}'))),
+            onBack: () => context.canPop()
+                ? context.pop()
+                : context.go('/departments/${widget.departmentId}')),
         body: FutureBuilder<Map<String, dynamic>?>(
             future: department,
             builder: (context, snapshot) {

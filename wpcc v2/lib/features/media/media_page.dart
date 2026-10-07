@@ -1,17 +1,22 @@
-import 'package:flutter/material.dart';
-import '../../core/theme/app_motion.dart';
-import '../../core/widgets/member_skeleton.dart';
-import 'package:flutter/services.dart';
-import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'dart:math';
 
-import '../../core/widgets/adaptive_layout.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import '../../core/theme/app_motion.dart';
 import '../../core/theme/member_theme.dart';
 import '../../core/widgets/member_components.dart';
+import 'media_feed.dart';
+import 'media_gallery_tab.dart';
+import 'media_links.dart';
+import 'media_motion.dart';
 import 'media_player_controller.dart';
+import 'media_share.dart';
 import 'media_repository.dart';
+import 'media_shelves.dart';
+import 'media_skeletons.dart';
+import 'media_shorts_page.dart';
 
 typedef EpisodeLoader = Future<List<Map<String, dynamic>>> Function();
 typedef AlbumTracksLoader = Future<List<Map<String, dynamic>>> Function(
@@ -19,192 +24,399 @@ typedef AlbumTracksLoader = Future<List<Map<String, dynamic>>> Function(
 
 class MediaPage extends StatefulWidget {
   const MediaPage(
-      {super.key, this.loadEpisodes, this.loadAlbums, this.loadAlbumTracks});
-  final EpisodeLoader? loadEpisodes, loadAlbums;
-  final AlbumTracksLoader? loadAlbumTracks;
+      {super.key,
+      this.loadEpisodes,
+      this.loadAlbums,
+      this.loadVideos,
+      this.loadGalleryPhotos,
+      this.shelfSeed});
+  final EpisodeLoader? loadEpisodes, loadAlbums, loadVideos;
+  final GalleryLoader? loadGalleryPhotos;
+
+  /// Fixes the shelf order, for tests. Left out, every load is different.
+  final int? shelfSeed;
   @override
   State<MediaPage> createState() => _MediaPageState();
 }
 
+/// Everything the Media tab shows, loaded together. Each source can fail on
+/// its own without hiding the others.
+class _MediaData {
+  _MediaData(
+      {required this.episodes,
+      required this.albums,
+      required this.videos,
+      required this.episodesFailed,
+      required this.albumsFailed,
+      required this.videosFailed,
+      required Random random})
+      : items = mergeMediaFeed(episodes, videos) {
+    shelves = buildMediaShelves(items, random: random);
+  }
+  final List<Map<String, dynamic>> episodes, albums, videos;
+  final bool episodesFailed, albumsFailed, videosFailed;
+  final List<MediaFeedItem> items;
+  late final List<MediaShelf> shelves;
+
+  String get providerUrl =>
+      episodes.isEmpty ? '' : episodes.first['provider_url']?.toString() ?? '';
+}
+
 class _MediaPageState extends State<MediaPage> {
-  late Future<List<Map<String, dynamic>>> episodes, albums;
-  final trackFutures = <String, Future<List<Map<String, dynamic>>>>{};
+  late final Random random = Random(widget.shelfSeed);
+  late Future<_MediaData> data;
+  int tab = 0, filter = 0;
+  bool galleryVisited = false;
+
+  /// True for a moment while the feed fades out before a filter change.
+  bool fading = false;
+
   @override
   void initState() {
     super.initState();
-    episodes = _episodes();
-    albums = _albums();
+    data = _load();
   }
 
   Future<List<Map<String, dynamic>>> _episodes() =>
       (widget.loadEpisodes ?? MediaRepository().episodes)();
   Future<List<Map<String, dynamic>>> _albums() =>
       (widget.loadAlbums ?? MediaRepository().albums)();
-  Future<List<Map<String, dynamic>>> _tracks(String id) =>
-      trackFutures.putIfAbsent(id, () => _loadTracks(id));
-  Future<List<Map<String, dynamic>>> _loadTracks(String id) =>
-      (widget.loadAlbumTracks ?? MediaRepository().albumTracks)(id);
-  Future<void> _refreshMessages() async {
-    final next = _episodes(), nextAlbums = _albums();
-    setState(() {
-      episodes = next;
-      albums = nextAlbums;
-      trackFutures.clear();
-    });
-    try {
-      await Future.wait([next, nextAlbums]);
-    } catch (_) {}
+  Future<List<Map<String, dynamic>>> _videos() =>
+      (widget.loadVideos ?? MediaRepository().videos)();
+
+  Future<_MediaData> _load() async {
+    Future<(List<Map<String, dynamic>>, bool)> settle(
+            Future<List<Map<String, dynamic>>> source) =>
+        source.then((rows) => (rows, false),
+            onError: (Object _) => (const <Map<String, dynamic>>[], true));
+    final results = await Future.wait(
+        [settle(_episodes()), settle(_albums()), settle(_videos())]);
+    return _MediaData(
+        episodes: results[0].$1,
+        albums: results[1].$1,
+        videos: results[2].$1,
+        episodesFailed: results[0].$2,
+        albumsFailed: results[1].$2,
+        videosFailed: results[2].$2,
+        random: random);
   }
+
+  Future<void> _refresh() async {
+    final next = _load();
+    setState(() {
+      data = next;
+    });
+    await next;
+  }
+
+  void _setTab(int value) => setState(() {
+        tab = value;
+        if (value == 1) galleryVisited = true;
+      });
+
+  /// The feed leaves quickly, then the new filter's content eases in.
+  Future<void> _setFilter(int value) async {
+    if (value == filter) return;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      setState(() => filter = value);
+      return;
+    }
+    setState(() => fading = true);
+    await Future<void>.delayed(AppMotion.exit ~/ 2);
+    if (!mounted) return;
+    setState(() {
+      filter = value;
+      fading = false;
+    });
+  }
+
+  void _open(MediaFeedItem item, List<MediaFeedItem> all) {
+    if (item.isAudio) {
+      context.push('/media/${item.row['id']}', extra: item.row);
+    } else if (item.isVertical) {
+      final shorts = [
+        for (final entry in all)
+          if (entry.isVertical && !entry.isLiveNow) entry
+      ];
+      final start = shorts.indexWhere((entry) => entry.id == item.id);
+      openShortsViewer(context, items: shorts, index: max(0, start));
+    } else {
+      context.push('/media/video/${Uri.encodeComponent(item.id)}',
+          extra: item.row);
+    }
+  }
+
+  /// Title, then the Media | Gallery switch in the same filter-chip style the
+  /// Events page uses.
+  Widget _header(String providerUrl) =>
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        _Utility(onShare: _share),
+        SizedBox(
+            height: 48,
+            child: ListView(scrollDirection: Axis.horizontal, children: [
+              for (final entry in [
+                ('Media', PhosphorIconsRegular.playCircle),
+                ('Gallery', PhosphorIconsRegular.images),
+              ].indexed) ...[
+                if (entry.$1 > 0) const SizedBox(width: 7),
+                MemberFilterChip(
+                    label: entry.$2.$1,
+                    icon: entry.$2.$2,
+                    selected: tab == entry.$1,
+                    onPressed: () => _setTab(entry.$1)),
+              ],
+            ])),
+      ]);
+
+  Future<void> _share() => shareMedia(context,
+      title: 'WPCC Community',
+      text: 'Messages, videos and photos from Wisdom Power Christian Centre',
+      path: '');
 
   @override
   Widget build(BuildContext context) => Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
           bottom: false,
-          child: RefreshIndicator(
-              onRefresh: _refreshMessages,
-              child: ListView(
-                key: const PageStorageKey('media-messages'),
-                primary: false,
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: memberPagePadding(context,
-                    phone: 20,
-                    top: 20,
-                    bottom: MediaQuery.paddingOf(context).bottom + 112),
-                children: [
-                  FutureBuilder<List<Map<String, dynamic>>>(
-                      future: episodes,
-                      builder: (context, snapshot) {
-                        final rows = snapshot.data ?? const [];
-                        final provider = rows.isEmpty
-                            ? ''
-                            : rows.first['provider_url']?.toString() ?? '';
-                        return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              _Utility(providerUrl: provider),
-                              if (provider.isNotEmpty)
-                                MediaProviderLink(url: provider),
-                              _Bio(
-                                  'The Word for everyday life. Teachings from Wisdom Power Christian Centre.'),
-                              FutureBuilder<List<Map<String, dynamic>>>(
-                                  future: albums,
-                                  builder: (context, albumSnapshot) {
-                                    if (albumSnapshot.connectionState !=
-                                        ConnectionState.done) {
-                                      return const _Loading();
-                                    }
-                                    if (albumSnapshot.hasError) {
-                                      return MemberStatus(
-                                          message: 'Albums are unavailable',
-                                          icon: PhosphorIconsRegular.disc,
-                                          onRetry: _refreshMessages);
-                                    }
-                                    final collections =
-                                        albumSnapshot.data ?? const [];
-                                    if (collections.isEmpty) {
-                                      return const SizedBox.shrink();
-                                    }
-                                    return LayoutBuilder(
-                                        builder: (context, box) =>
-                                            AdaptiveSections(
-                                                gap: box.maxWidth >= 900
-                                                    ? 36
-                                                    : 5,
-                                                children: [
-                                                  Padding(
-                                                      padding:
-                                                          const EdgeInsets.only(
-                                                              top: 20),
-                                                      child:
-                                                          _FeaturedCollection(
-                                                        album:
-                                                            collections.first,
-                                                        tracks: _tracks(
-                                                            collections
-                                                                .first['id']
-                                                                .toString()),
-                                                        onOpen: () =>
-                                                            _openAlbum(
-                                                                context,
-                                                                collections
-                                                                    .first),
-                                                        onRetry: () =>
-                                                            setState(() {
-                                                          trackFutures.remove(
-                                                              collections
-                                                                  .first['id']
-                                                                  .toString());
-                                                        }),
-                                                      )),
-                                                  if (collections.length > 1)
-                                                    _CollectionsRail(
-                                                        albums: collections
-                                                            .skip(1)
-                                                            .toList(),
-                                                        onOpen: (album) =>
-                                                            _openAlbum(context,
-                                                                album)),
-                                                ]));
-                                  }),
-                              const SizedBox(height: 25),
-                              if (snapshot.connectionState !=
-                                  ConnectionState.done)
-                                const _Loading()
-                              else if (snapshot.hasError)
-                                MemberStatus(
-                                    message: 'Unable to load Spotify',
-                                    icon: PhosphorIconsRegular.warningCircle,
-                                    onRetry: _refreshMessages)
-                              else if (rows.isEmpty)
-                                MemberStatus(
-                                    message: 'No episodes yet',
-                                    icon: PhosphorIconsRegular.microphoneStage,
-                                    onRetry: _refreshMessages)
-                              else ...[
-                                const MemberSectionHeader(
-                                    title: 'Latest message'),
-                                _EpisodeRow(episode: rows.first),
-                                if (rows.length > 1) ...[
-                                  const SizedBox(height: 32),
-                                  const MemberSectionHeader(title: 'Messages'),
-                                  for (final row in rows.skip(1))
-                                    Padding(
-                                        padding:
-                                            const EdgeInsets.only(bottom: 8),
-                                        child: _EpisodeRow(episode: row)),
-                                ],
-                              ],
-                            ]);
-                      })
-                ],
-              ))));
+          // Both tabs stay mounted so each keeps its scroll position; the
+          // gallery is only built the first time it is opened. Switching
+          // cross-fades with the app's standard timing.
+          child: Stack(children: [
+            _TabLayer(visible: tab == 0, child: _mediaTab(context)),
+            if (galleryVisited)
+              _TabLayer(
+                  visible: tab == 1,
+                  child: FutureBuilder<_MediaData>(
+                      future: data,
+                      builder: (context, snapshot) => MediaGalleryTab(
+                          loadPhotos: widget.loadGalleryPhotos,
+                          header: _header(snapshot.data?.providerUrl ?? '')))),
+          ])));
+
+  Widget _mediaTab(BuildContext context) => RefreshIndicator(
+      onRefresh: _refresh,
+      child: FutureBuilder<_MediaData>(
+          future: data,
+          builder: (context, snapshot) {
+            final loaded = snapshot.data;
+            return ListView(
+              key: const PageStorageKey('media-messages'),
+              primary: false,
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: memberPagePadding(context,
+                  phone: 20,
+                  top: 20,
+                  bottom: MediaQuery.paddingOf(context).bottom + 112),
+              children: [
+                _header(loaded?.providerUrl ?? ''),
+                const SizedBox(height: 20),
+                if (loaded == null)
+                  const MediaStoriesSkeleton()
+                else
+                  ..._stories(loaded),
+                const SizedBox(height: 14),
+                MediaFilterChips(
+                    labels: const ['All', 'Audio'],
+                    index: filter,
+                    onChanged: _setFilter),
+                const SizedBox(height: 18),
+                if (loaded == null)
+                  const MediaFeedSkeleton()
+                else
+                  ..._feed(loaded),
+              ],
+            );
+          }));
+
+  List<Widget> _stories(_MediaData loaded) {
+    final live = liveNowItem(loaded.items);
+    // The latest livestream only has a place when nothing is on air.
+    final latest = live == null ? latestLivestreamItem(loaded.items) : null;
+    final stories = <MediaStory>[
+      if (live != null)
+        MediaStory(
+            id: live.id,
+            kind: MediaStoryKind.live,
+            label: 'Live now',
+            semanticLabel: 'Live now, ${live.title}',
+            imageUrl: mediaThumbnailUrl(live, width: 320),
+            onTap: () => _open(live, loaded.items)),
+      if (latest != null)
+        MediaStory(
+            id: latest.id,
+            kind: MediaStoryKind.latest,
+            label: 'Latest livestream',
+            semanticLabel: 'Latest livestream, ${latest.title}',
+            imageUrl: mediaThumbnailUrl(latest, width: 320),
+            onTap: () => _open(latest, loaded.items)),
+      for (final album in loaded.albums)
+        MediaStory(
+            id: album['id']?.toString() ?? '',
+            kind: MediaStoryKind.album,
+            label: album['title']?.toString() ?? 'Album',
+            semanticLabel: 'Album, ${album['title'] ?? 'Album'}',
+            imageUrl: album['featured_image']?.toString() ?? '',
+            onTap: () => _openAlbum(context, album)),
+    ];
+    return stories.isEmpty ? const [] : [MediaStoryRail(stories: stories)];
+  }
+
+  /// Makes a feed row leave fast and enter smoothly when the filter changes.
+  Widget _fade(Widget child) => AnimatedOpacity(
+      duration: AppMotion.duration(
+          context, fading ? AppMotion.exit ~/ 2 : AppMotion.control),
+      curve: fading ? AppMotion.curve.flipped : AppMotion.curve,
+      opacity: fading ? 0 : 1,
+      child: child);
+
+  List<Widget> _feed(_MediaData loaded) {
+    final items = loaded.items;
+    if (items.isEmpty) {
+      if (loaded.episodesFailed && loaded.videosFailed) {
+        return [
+          MemberStatus(
+              message: 'Unable to load media',
+              icon: PhosphorIconsRegular.warningCircle,
+              onRetry: _refresh)
+        ];
+      }
+      if (loaded.episodesFailed) {
+        return [
+          MemberStatus(
+              message: 'Unable to load Spotify',
+              icon: PhosphorIconsRegular.warningCircle,
+              onRetry: _refresh)
+        ];
+      }
+      return [
+        MemberStatus(
+            message: 'No media yet',
+            icon: PhosphorIconsRegular.microphoneStage,
+            onRetry: _refresh)
+      ];
+    }
+    final audioItems = [for (final item in items) if (item.isAudio) item];
+    final rows = <Widget>[];
+    if (filter == 1) {
+      rows.add(_fade(const MemberSectionHeader(title: 'Audio')));
+      if (audioItems.isEmpty) {
+        rows.add(const MemberStatus(
+            message: 'No audio yet', icon: PhosphorIconsRegular.headphones));
+      }
+      for (var i = 0; i < audioItems.length; i++) {
+        rows.add(_fade(Padding(
+            key: ValueKey('audio-$i'),
+            padding: const EdgeInsets.only(bottom: 8),
+            child: MediaListRow(
+                item: audioItems[i],
+                onOpen: () => _open(audioItems[i], items)))));
+      }
+    } else {
+      rows.add(_fade(const MemberSectionHeader(title: 'Videos')));
+      for (var i = 0; i < loaded.shelves.length; i++) {
+        final shelf = loaded.shelves[i];
+        // The first screenful eases in with a stagger; later shelves are
+        // already in place by the time they are scrolled to.
+        rows.add(_fade(MediaReveal(
+            key: ValueKey('shelf-$i'),
+            enabled: i < 4,
+            delay: Duration(milliseconds: 50 * i),
+            child: Padding(
+                padding: const EdgeInsets.only(bottom: 28),
+                child: MediaShelfView(
+                    shelf: shelf, onOpen: (item) => _open(item, items))))));
+      }
+    }
+    return [
+      ...rows,
+      if (loaded.episodesFailed)
+        MemberStatus(
+            message: 'Spotify messages are unavailable',
+            icon: PhosphorIconsRegular.warningCircle,
+            onRetry: _refresh),
+      if (loaded.videosFailed)
+        MemberStatus(
+            message: 'Videos are unavailable',
+            icon: PhosphorIconsRegular.warningCircle,
+            onRetry: _refresh),
+      if (loaded.albumsFailed)
+        MemberStatus(
+            message: 'Albums are unavailable',
+            icon: PhosphorIconsRegular.disc,
+            onRetry: _refresh),
+      if (loaded.providerUrl.isNotEmpty)
+        MediaProviderLink(url: loaded.providerUrl),
+    ];
+  }
+}
+
+/// One of the two top-level tabs. Stays mounted when hidden (so it keeps its
+/// scroll position) and fades with the app's standard timing. Once the fade
+/// out has finished it goes off stage, so it is not painted and is invisible
+/// to touch and screen readers.
+class _TabLayer extends StatefulWidget {
+  const _TabLayer({required this.visible, required this.child});
+  final bool visible;
+  final Widget child;
+
+  @override
+  State<_TabLayer> createState() => _TabLayerState();
+}
+
+class _TabLayerState extends State<_TabLayer> {
+  late bool settledHidden = !widget.visible;
+
+  @override
+  void didUpdateWidget(_TabLayer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.visible) {
+      settledHidden = false;
+    } else if (MediaQuery.disableAnimationsOf(context)) {
+      settledHidden = true;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final visible = widget.visible;
+    return Positioned.fill(
+        child: Offstage(
+            offstage: !visible && settledHidden,
+            child: IgnorePointer(
+                ignoring: !visible,
+                child: ExcludeSemantics(
+                    excluding: !visible,
+                    child: TickerMode(
+                        enabled: visible || !settledHidden,
+                        child: AnimatedOpacity(
+                            duration: AppMotion.duration(context,
+                                visible ? AppMotion.control : AppMotion.exit),
+                            curve: visible
+                                ? AppMotion.curve
+                                : AppMotion.curve.flipped,
+                            opacity: visible ? 1 : 0,
+                            onEnd: () {
+                              if (!widget.visible && !settledHidden) {
+                                setState(() => settledHidden = true);
+                              }
+                            },
+                            child: widget.child))))));
+  }
 }
 
 class _Utility extends StatelessWidget {
-  const _Utility({required this.providerUrl});
-  final String providerUrl;
+  const _Utility({required this.onShare});
+  final VoidCallback onShare;
   @override
   Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(bottom: 26),
+      padding: const EdgeInsets.only(bottom: 18),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
         Expanded(
-            child: Text('WPCC Messages',
-                style: Theme.of(context).textTheme.titleSmall)),
+            child: Text('Media', style: Theme.of(context).textTheme.titleLarge)),
         MemberIconButton(
-            icon: providerUrl.isEmpty
-                ? PhosphorIconsRegular.magnifyingGlass
-                : PhosphorIconsRegular.export,
-            label: providerUrl.isEmpty ? 'Search media' : 'Share messages',
-            onPressed: providerUrl.isEmpty
-                ? () => context.push('/search')
-                : () async {
-                    await Clipboard.setData(ClipboardData(text: providerUrl));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Message link copied')));
-                    }
-                  }),
+            icon: PhosphorIconsRegular.export,
+            label: 'Share',
+            onPressed: onShare),
       ]));
 }
 
@@ -254,113 +466,13 @@ class MediaProviderLink extends StatelessWidget {
                                         .textTheme
                                         .bodyMedium
                                         ?.copyWith(
-                                            fontSize: 13, height: 18 / 13))),
+                                            fontSize: 12, height: 18 / 13))),
                             if (showChevron) ...[
                               const SizedBox(width: 5),
                               const Icon(PhosphorIconsRegular.caretRight,
                                   size: 20),
                             ],
                           ])))))));
-}
-
-class _Bio extends StatelessWidget {
-  const _Bio(this.text);
-  final String text;
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(top: 17),
-      child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 640),
-          child: Text(text,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  height: 1.5,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant))));
-}
-
-class _FeaturedCollection extends StatelessWidget {
-  const _FeaturedCollection(
-      {required this.album,
-      required this.tracks,
-      required this.onOpen,
-      required this.onRetry});
-  final Map<String, dynamic> album;
-  final Future<List<Map<String, dynamic>>> tracks;
-  final VoidCallback onOpen, onRetry;
-  @override
-  Widget build(BuildContext context) => Material(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(26),
-          side:
-              BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
-      child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Column(children: [
-            InkWell(
-                onTapDown: (_) => ComponentOrigin.capture(context),
-                onTap: onOpen,
-                borderRadius: BorderRadius.circular(15),
-                child: Row(children: [
-                  SizedBox.square(
-                      dimension: 89,
-                      child: _Cover(
-                          url: album['featured_image']?.toString() ?? '',
-                          radius: 15)),
-                  const SizedBox(width: 14),
-                  Expanded(
-                      child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                        Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(12),
-                                gradient: const LinearGradient(colors: [
-                                  Color(0xFF9E74F5),
-                                  Color(0xFFD79A61)
-                                ])),
-                            child: Text('Featured collection',
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodySmall
-                                    ?.copyWith(
-                                        fontSize: 11,
-                                        color: const Color(0xFF211923)))),
-                        const SizedBox(height: 9),
-                        Text(album['title']?.toString() ?? 'Album',
-                            style: Theme.of(context).textTheme.titleSmall),
-                        const SizedBox(height: 5),
-                        Text(
-                            'Album${_albumCount(album) == null ? '' : ' · ${_albumCount(album)} messages'}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(fontSize: 13, height: 19 / 13)),
-                      ])),
-                ])),
-            const SizedBox(height: 13),
-            FutureBuilder<List<Map<String, dynamic>>>(
-                future: tracks,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState != ConnectionState.done) {
-                    return const _Loading();
-                  }
-                  if (snapshot.hasError) {
-                    return MemberStatus(
-                        message: 'Messages are unavailable',
-                        icon: PhosphorIconsRegular.warningCircle,
-                        onRetry: onRetry);
-                  }
-                  final rows = snapshot.data ?? const [];
-                  if (rows.isEmpty) {
-                    return const MemberStatus(
-                        message: 'No messages in this album');
-                  }
-                  return MediaCollectionTracks(
-                      album: album, tracks: rows, maximum: 3);
-                }),
-          ])));
 }
 
 class MediaCollectionTracks extends StatelessWidget {
@@ -460,8 +572,8 @@ class _Track extends StatelessWidget {
                                             .textTheme
                                             .bodyMedium?.copyWith(
                                         fontFamily: 'DM Sans',
-                                        fontSize: 13,
-                                        height: 18 / 13,
+                                        fontSize: 12,
+                                        height: 18 / 12,
                                         fontWeight: FontWeight.w500)),
                                   if (row['track_number'] != null) ...[
                                     const SizedBox(height: 4),
@@ -493,69 +605,6 @@ class _Track extends StatelessWidget {
   }
 }
 
-class _CollectionsRail extends StatelessWidget {
-  const _CollectionsRail({required this.albums, required this.onOpen});
-  final List<Map<String, dynamic>> albums;
-  final ValueChanged<Map<String, dynamic>> onOpen;
-  @override
-  Widget build(BuildContext context) => Padding(
-      padding: const EdgeInsets.only(top: 20),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('More collections',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontSize: 27,
-                height: 34 / 27,
-                color: Theme.of(context).colorScheme.onSurfaceVariant)),
-        const SizedBox(height: 14),
-        SizedBox(
-            height: 172 +
-                9 +
-                (40 * (MediaQuery.textScalerOf(context).scale(14) / 14))
-                    .ceilToDouble() +
-                (18 * (MediaQuery.textScalerOf(context).scale(12) / 12))
-                    .ceilToDouble(),
-            child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: albums.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 12),
-                itemBuilder: (itemContext, index) {
-                  final album = albums[index];
-                  return SizedBox(
-                      width: 172,
-                      child: InkWell(
-                          onTapDown: (_) =>
-                              ComponentOrigin.capture(itemContext),
-                          onTap: () => onOpen(album),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox.square(
-                                    dimension: 172,
-                                    child: _Cover(
-                                        url: album['featured_image']
-                                                ?.toString() ??
-                                            '',
-                                        radius: 20)),
-                                const SizedBox(height: 9),
-                                Text(album['title']?.toString() ?? 'Album',
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(height: 20 / 14)),
-                                if (_albumCount(album) != null)
-                                  Text('${_albumCount(album)} messages',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(height: 18 / 12)),
-                              ])));
-                })),
-      ]));
-}
-
 void _openAlbum(BuildContext context, Map<String, dynamic> album) {
   final id = album['id']?.toString() ?? '';
   if (id.isNotEmpty) {
@@ -563,91 +612,4 @@ void _openAlbum(BuildContext context, Map<String, dynamic> album) {
   }
 }
 
-class _EpisodeRow extends StatelessWidget {
-  const _EpisodeRow({required this.episode});
-  final Map<String, dynamic> episode;
-  @override
-  Widget build(BuildContext context) => MemberListRow(
-      title: episode['title']?.toString() ?? 'Message',
-      subtitle: _metadata(episode),
-      leading: MemberArtwork(
-          imageUrl: episode['artwork_url']?.toString() ?? '',
-          size: 64,
-          height: 66,
-          icon: PhosphorIconsRegular.microphoneStage),
-      trailing: ValueListenableBuilder<MediaPlayerState>(
-          valueListenable: MediaPlayerController.instance,
-          builder: (context, state, _) {
-            final active = state.episode?.id == episode['id']?.toString() &&
-                state.isPlaying;
-            return IconButton(
-                tooltip: active ? 'Pause message' : 'Play message',
-                icon: Icon(
-                    active
-                        ? PhosphorIconsRegular.pause
-                        : PhosphorIconsRegular.play,
-                    size: 18),
-                onPressed: () {
-                  if (state.episode?.id == episode['id']?.toString()) {
-                    MediaPlayerController.instance.togglePlayback();
-                  } else {
-                    MediaPlayerController.instance.play(episode);
-                  }
-                });
-          }),
-      onTap: () => context.push('/media/${episode['id']}', extra: episode));
-}
-
-class _Cover extends StatelessWidget {
-  const _Cover({required this.url, required this.radius});
-  final String url;
-  final double radius;
-  @override
-  Widget build(BuildContext context) {
-    final fallback = ColoredBox(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        child: Center(
-            child: Icon(PhosphorIconsRegular.disc,
-                size: 32,
-                color: Theme.of(context).colorScheme.onSurfaceVariant)));
-    return ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: url.isEmpty
-            ? fallback
-            : Image.network(url,
-                fit: BoxFit.cover, errorBuilder: (_, __, ___) => fallback));
-  }
-}
-
-class _Loading extends StatelessWidget {
-  const _Loading();
-  @override
-  Widget build(BuildContext context) =>
-      const Padding(padding: EdgeInsets.all(28), child: MemberSkeleton());
-}
-
-int? _albumCount(Map<String, dynamic> album) {
-  final rows = album['media_album_tracks'];
-  return rows is List && rows.isNotEmpty
-      ? int.tryParse((rows.first as Map)['count']?.toString() ?? '')
-      : null;
-}
-
-String _metadata(Map<String, dynamic> episode) {
-  final date =
-      DateTime.tryParse(episode['source_published_at']?.toString() ?? '');
-  final ms = int.tryParse(episode['duration_ms']?.toString() ?? '') ?? 0;
-  final min = Duration(milliseconds: ms).inMinutes;
-  return [
-    if (date != null) DateFormat('d MMM yyyy').format(date.toLocal()),
-    if (ms > 0) min >= 60 ? '${min ~/ 60}h ${min % 60}m' : '$min min'
-  ].join(' · ');
-}
-
-Future<void> _openProvider(String url) async {
-  final uri = Uri.tryParse(url);
-  if (uri != null && uri.scheme == 'https') {
-    await launchUrl(uri,
-        mode: LaunchMode.externalApplication, webOnlyWindowName: '_blank');
-  }
-}
+Future<void> _openProvider(String url) => openMediaLink(url);

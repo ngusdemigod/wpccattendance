@@ -7,9 +7,11 @@ import '../../core/widgets/member_skeleton.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/widgets/member_components.dart';
 import '../../core/widgets/member_glass.dart';
+import '../../core/widgets/member_reveal.dart';
 import 'give_repository.dart';
 import 'giving_history_page.dart';
 import 'giving_backdrop.dart';
+import 'schedule_widgets.dart';
 
 typedef GiveListLoader = Future<List<Map<String, dynamic>>> Function();
 
@@ -112,28 +114,31 @@ class _GiveHomePageState extends State<GiveHomePage>
                   child: Column(children: [
                     Padding(
                         padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                        child: const MemberPageHeader(title: 'Giving')),
+                        child: const MemberReveal(
+                            child: MemberPageHeader(title: 'Giving'))),
                     Padding(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
-                        child: Row(children: [
-                          Expanded(
-                              child: _GivingType(
-                                  title: 'Give',
-                                  selected: selectedTab == 0,
-                                  onTap: () => _selectTab(0))),
-                          const SizedBox(width: 8),
-                          Expanded(
-                              child: _GivingType(
-                                  title: 'Scheduled',
-                                  selected: selectedTab == 1,
-                                  onTap: () => _selectTab(1))),
-                          const SizedBox(width: 8),
-                          Expanded(
-                              child: _GivingType(
-                                  title: 'History',
-                                  selected: selectedTab == 2,
-                                  onTap: () => _selectTab(2))),
-                        ])),
+                        child: MemberReveal(
+                            index: 1,
+                            child: Row(children: [
+                              Expanded(
+                                  child: _GivingType(
+                                      title: 'Give',
+                                      selected: selectedTab == 0,
+                                      onTap: () => _selectTab(0))),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: _GivingType(
+                                      title: 'Scheduled',
+                                      selected: selectedTab == 1,
+                                      onTap: () => _selectTab(1))),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: _GivingType(
+                                      title: 'History',
+                                      selected: selectedTab == 2,
+                                      onTap: () => _selectTab(2))),
+                            ]))),
                     Expanded(
                         child: FadeTransition(
                             opacity: tabAnimation
@@ -166,15 +171,19 @@ class _GiveHomePageState extends State<GiveHomePage>
           padding: memberPagePadding(context, bottom: 124),
           children: [
             Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              FilledButton.icon(
-                  onPressed: () => _pay('offering', 'Offering'),
-                  icon: Icon(PhosphorIcons.arrowUpRight(), size: 20),
-                  iconAlignment: IconAlignment.end,
-                  style: FilledButton.styleFrom(
-                      minimumSize: const Size.fromHeight(56)),
-                  label: const Text('Give now')),
+              MemberReveal(
+                  child: AppPressMotion(
+                      child: FilledButton.icon(
+                          onPressed: () => _pay('offering', 'Offering'),
+                          icon: Icon(PhosphorIcons.arrowUpRight(), size: 20),
+                          iconAlignment: IconAlignment.end,
+                          style: FilledButton.styleFrom(
+                              minimumSize: const Size.fromHeight(56)),
+                          label: const Text('Give now')))),
               const SizedBox(height: 28),
-              const MemberSectionHeader(title: 'Church accounts'),
+              const MemberReveal(
+                  index: 1,
+                  child: MemberSectionHeader(title: 'Church accounts')),
               _section(
                   accounts,
                   'Unable to load church accounts',
@@ -196,7 +205,9 @@ class _GiveHomePageState extends State<GiveHomePage>
                                 ]
                               ])))),
               const SizedBox(height: 28),
-              const MemberSectionHeader(title: 'Church projects'),
+              const MemberReveal(
+                  index: 3,
+                  child: MemberSectionHeader(title: 'Church projects')),
               _section(
                   projects,
                   'Unable to load church projects',
@@ -219,6 +230,14 @@ class _GiveHomePageState extends State<GiveHomePage>
             ])
           ]));
 
+  Future<void> _manageSchedules() async {
+    await context.push('/give/auto');
+    if (mounted) {
+      setState(() => mandates = widget.loadMandates?.call() ??
+          (repo ??= GiveRepository()).mandates());
+    }
+  }
+
   Widget _scheduledContent(BuildContext context) => RefreshIndicator(
       onRefresh: _refresh,
       child: ListView(
@@ -226,20 +245,16 @@ class _GiveHomePageState extends State<GiveHomePage>
           physics: const AlwaysScrollableScrollPhysics(),
           padding: memberPagePadding(context, bottom: 124),
           children: [
-            _PlainGivingAction(onTap: () async {
-              await context.push('/give/auto');
-              if (mounted) {
-                setState(() =>
-                    mandates = widget.loadMandates?.call() ?? repo!.mandates());
-              }
-            }),
-            _section(
-                mandates,
-                'Unable to load scheduled givings',
-                'No scheduled gifts',
-                (rows) => Column(children: [
-                      for (final row in rows) _ScheduledGivingRow(row: row),
-                    ])),
+            MemberReveal(child: _PlainGivingAction(onTap: _manageSchedules)),
+            MemberReveal(
+                index: 1,
+                child: _section(
+                    mandates,
+                    'Unable to load scheduled givings',
+                    'No scheduled gifts',
+                    (rows) => _ScheduleList(
+                        schedules: rows.map(GiveSchedule.new).toList(),
+                        onOpen: _manageSchedules))),
           ]));
 
   Widget _section(Future<List<Map<String, dynamic>>> future, String error,
@@ -248,30 +263,39 @@ class _GiveHomePageState extends State<GiveHomePage>
           future: future,
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
-              return const MemberSkeleton(rows: 2);
+              return const MemberSwap(
+                  child: MemberSkeleton(key: ValueKey('loading'), rows: 2));
             }
             if (snapshot.hasError) {
-              return MemberStatus(
-                  icon: PhosphorIcons.warningCircle(),
-                  message: error,
-                  onRetry: () => setState(() {
-                        if (identical(future, accounts)) {
-                          accounts =
-                              widget.loadAccounts?.call() ?? repo!.accounts();
-                        } else if (identical(future, projects)) {
-                          projects =
-                              widget.loadProjects?.call() ?? repo!.projects();
-                        } else {
-                          mandates =
-                              widget.loadMandates?.call() ?? repo!.mandates();
-                        }
-                      }));
+              return MemberSwap(
+                  child: MemberStatus(
+                      key: const ValueKey('error'),
+                      icon: PhosphorIcons.warningCircle(),
+                      message: error,
+                      onRetry: () => setState(() {
+                            if (identical(future, accounts)) {
+                              accounts = widget.loadAccounts?.call() ??
+                                  repo!.accounts();
+                            } else if (identical(future, projects)) {
+                              projects = widget.loadProjects?.call() ??
+                                  repo!.projects();
+                            } else {
+                              mandates = widget.loadMandates?.call() ??
+                                  repo!.mandates();
+                            }
+                          })));
             }
             final rows = snapshot.data ?? [];
             if (rows.isEmpty) {
-              return MemberStatus(icon: PhosphorIcons.gift(), message: empty);
+              return MemberSwap(
+                  child: MemberStatus(
+                      key: const ValueKey('empty'),
+                      icon: PhosphorIcons.gift(),
+                      message: empty));
             }
-            return content(rows);
+            return MemberSwap(
+                child: KeyedSubtree(
+                    key: const ValueKey('content'), child: content(rows)));
           });
 
   Widget _project(BuildContext context, Map<String, dynamic> project) {
@@ -280,50 +304,58 @@ class _GiveHomePageState extends State<GiveHomePage>
     final image = project['image_url']?.toString() ?? '';
     final target =
         num.tryParse(project['target_amount_kobo']?.toString() ?? '');
-    return Material(
-        color: Theme.of(context).colorScheme.surface,
-        clipBehavior: Clip.antiAlias,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-            onTap: project['id'] == null
-                ? null
-                : () => context.push('/give/payment', extra: {
-                      'giving_type': 'project',
-                      'project_id': project['id'],
-                      'title': title
-                    }),
-            child:
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              AspectRatio(
-                  aspectRatio: 1.6,
-                  child: image.isEmpty
-                      ? Center(child: Icon(PhosphorIcons.church(), size: 36))
-                      : Image.network(image,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => Center(
-                              child: Icon(PhosphorIcons.church(), size: 36)))),
-              Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(title,
-                            style: Theme.of(context).textTheme.titleMedium),
-                        if (description.isNotEmpty) ...[
-                          const SizedBox(height: 6),
-                          Text(description,
-                              maxLines: 3,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodySmall)
-                        ],
-                        if (target != null && target > 0) ...[
-                          const SizedBox(height: 10),
-                          Text(
-                              'Target: ${NumberFormat.currency(locale: 'en_NG', symbol: 'NGN ', decimalDigits: 0).format(target / 100)}',
-                              style: Theme.of(context).textTheme.bodySmall)
-                        ],
-                      ])),
-            ])));
+    return AppPressMotion(
+        child: Material(
+            color: Theme.of(context).colorScheme.surface,
+            clipBehavior: Clip.antiAlias,
+            borderRadius: BorderRadius.circular(20),
+            child: InkWell(
+                onTap: project['id'] == null
+                    ? null
+                    : () => context.push('/give/payment', extra: {
+                          'giving_type': 'project',
+                          'project_id': project['id'],
+                          'title': title
+                        }),
+                child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      AspectRatio(
+                          aspectRatio: 1.6,
+                          child: image.isEmpty
+                              ? Center(
+                                  child: Icon(PhosphorIcons.church(), size: 36))
+                              : Image.network(image,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => Center(
+                                      child: Icon(PhosphorIcons.church(),
+                                          size: 36)))),
+                      Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(title,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleMedium),
+                                if (description.isNotEmpty) ...[
+                                  const SizedBox(height: 6),
+                                  Text(description,
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall)
+                                ],
+                                if (target != null && target > 0) ...[
+                                  const SizedBox(height: 10),
+                                  Text(
+                                      'Target: ${NumberFormat.currency(locale: 'en_NG', symbol: 'NGN ', decimalDigits: 0).format(target / 100)}',
+                                      style:
+                                          Theme.of(context).textTheme.bodySmall)
+                                ],
+                              ])),
+                    ]))));
   }
 
   void _pay(String type, String title) => context
@@ -340,7 +372,8 @@ class _GivingType extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         button: true,
         selected: selected,
-        child: Material(
+        child: AppPressMotion(
+            child: Material(
           color: Colors.transparent,
           borderRadius: BorderRadius.circular(24),
           child: InkWell(
@@ -388,13 +421,31 @@ class _GivingType extends StatelessWidget {
                   )),
             ),
           ),
-        ),
+        )),
       );
 }
 
-class _ChurchAccountRow extends StatelessWidget {
+class _ChurchAccountRow extends StatefulWidget {
   const _ChurchAccountRow({required this.row});
   final Map<String, dynamic> row;
+  @override
+  State<_ChurchAccountRow> createState() => _ChurchAccountRowState();
+}
+
+class _ChurchAccountRowState extends State<_ChurchAccountRow> {
+  bool copied = false;
+  Map<String, dynamic> get row => widget.row;
+
+  Future<void> _copy(String number) async {
+    await Clipboard.setData(ClipboardData(text: number));
+    if (!mounted) return;
+    setState(() => copied = true);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(const SnackBar(content: Text('Account number copied')));
+    await Future<void>.delayed(const Duration(milliseconds: 1600));
+    if (mounted) setState(() => copied = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final number = row['account_number']?.toString() ?? '';
@@ -409,54 +460,61 @@ class _ChurchAccountRow extends StatelessWidget {
       radius: 28,
       outlined: false,
       child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          _BankLogo(url: row['bank_logo_url']?.toString() ?? ''),
-          const SizedBox(width: 12),
-          Expanded(
-              child: Text(bank.isEmpty ? 'Church account' : bank,
-                  style: theme.textTheme.titleMedium
-                      ?.copyWith(fontWeight: FontWeight.w600))),
-        ]),
-        const SizedBox(height: 30),
-        Text('Account number', style: theme.textTheme.bodySmall),
-        const SizedBox(height: 4),
-        Row(children: [
-          Expanded(
-              child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(number.isEmpty ? 'Account unavailable' : number,
-                      style: theme.textTheme.titleLarge?.copyWith(
-                          fontSize: number.isEmpty ? 16 : 26,
-                          height: 1.25,
-                          fontWeight: FontWeight.w500,
-                          letterSpacing: 0)))),
-          IconButton(
-            tooltip: 'Copy account number',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            icon: Icon(PhosphorIcons.copy(), size: 22),
-            onPressed: number.isEmpty
-                ? null
-                : () async {
-                    await Clipboard.setData(ClipboardData(text: number));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                          content: Text('Account number copied')));
-                    }
-                  },
-          ),
-        ]),
-        const SizedBox(height: 24),
-        if (purpose.isNotEmpty) ...[
-          Text(purpose, style: theme.textTheme.bodyMedium),
-          const SizedBox(height: 8),
-        ],
-        Text(name,
-            style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
-      ])),
+          padding: const EdgeInsets.all(24),
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              _BankLogo(url: row['bank_logo_url']?.toString() ?? ''),
+              const SizedBox(width: 12),
+              Expanded(
+                  child: Text(bank.isEmpty ? 'Church account' : bank,
+                      style: theme.textTheme.titleMedium
+                          ?.copyWith(fontWeight: FontWeight.w600))),
+            ]),
+            const SizedBox(height: 30),
+            Text('Account number', style: theme.textTheme.bodySmall),
+            const SizedBox(height: 4),
+            Row(children: [
+              Expanded(
+                  child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                          number.isEmpty ? 'Account unavailable' : number,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                              fontSize: number.isEmpty ? 16 : 26,
+                              height: 1.25,
+                              fontWeight: FontWeight.w500,
+                              letterSpacing: 0)))),
+              IconButton(
+                tooltip: 'Copy account number',
+                constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                icon: AnimatedSwitcher(
+                    duration: AppMotion.duration(context, AppMotion.tab),
+                    switchInCurve: AppMotion.curve,
+                    switchOutCurve: AppMotion.curve.flipped,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: ScaleTransition(
+                            scale: Tween<double>(begin: .8, end: 1)
+                                .animate(animation),
+                            child: child)),
+                    child: Icon(
+                        copied ? PhosphorIcons.check() : PhosphorIcons.copy(),
+                        key: ValueKey(copied),
+                        size: 22)),
+                onPressed: number.isEmpty ? null : () => _copy(number),
+              ),
+            ]),
+            const SizedBox(height: 24),
+            if (purpose.isNotEmpty) ...[
+              Text(purpose, style: theme.textTheme.bodyMedium),
+              const SizedBox(height: 8),
+            ],
+            Text(name,
+                style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant, height: 1.5)),
+          ])),
     );
   }
 }
@@ -501,111 +559,28 @@ class _PlainGivingAction extends StatelessWidget {
       ]);
 }
 
-class _ScheduledGivingRow extends StatelessWidget {
-  const _ScheduledGivingRow({required this.row});
-  final Map<String, dynamic> row;
+class _ScheduleList extends StatelessWidget {
+  const _ScheduleList({required this.schedules, required this.onOpen});
+  final List<GiveSchedule> schedules;
+  final VoidCallback onOpen;
   @override
   Widget build(BuildContext context) {
-    final amount =
-        (int.tryParse(row['amount_kobo']?.toString() ?? '') ?? 0) / 100;
-    final rules = ((row['rule_keys'] as List?) ?? const [])
-        .map((rule) {
-          final parts = rule.toString().split(':');
-          final day = parts.length > 1 ? int.tryParse(parts[1]) : null;
-          if (parts.first == 'weekday' && day != null && day >= 1 && day <= 7) {
-            return const [
-              'Monday',
-              'Tuesday',
-              'Wednesday',
-              'Thursday',
-              'Friday',
-              'Saturday',
-              'Sunday'
-            ][day - 1];
-          }
-          return 'Service day';
-        })
-        .toSet()
-        .join(' · ');
-    final rawType = row['giving_type']?.toString().replaceAll('_', ' ') ??
-        'Scheduled giving';
-    final type = rawType.isEmpty
-        ? rawType
-        : '${rawType[0].toUpperCase()}${rawType.substring(1)}';
     final theme = Theme.of(context);
-    final active = row['status'] == 'active';
-    final rawStatus = row['status']?.toString() ?? 'Unknown';
-    final statusLabel = rawStatus.isEmpty
-        ? 'Unknown'
-        : '${rawStatus[0].toUpperCase()}${rawStatus.substring(1)}';
-    final statusColor = active
-        ? (theme.brightness == Brightness.dark
-            ? const Color(0xFF91DDB5)
-            : const Color(0xFF246747))
-        : theme.colorScheme.onSurfaceVariant;
-    return Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: MemberGlass(
-        radius: 20,
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child:
-              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Row(children: [
-              Icon(PhosphorIcons.repeat(),
-                  size: 18, color: theme.colorScheme.onSurfaceVariant),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: Text('Auto give', style: theme.textTheme.bodySmall)),
-              const SizedBox(width: 12),
-              Flexible(
-                  child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                          color: statusColor.withValues(alpha: .10),
-                          borderRadius: BorderRadius.circular(20)),
-                      child: Text(statusLabel,
-                          style: theme.textTheme.labelMedium
-                              ?.copyWith(color: statusColor)))),
-            ]),
-            const SizedBox(height: 24),
-            Text(
-                NumberFormat.currency(
-                        locale: 'en_NG', symbol: '₦', decimalDigits: 0)
-                    .format(amount),
-                style: theme.textTheme.headlineMedium?.copyWith(
-                    fontSize: 36, height: 1.15, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 5),
-            Text(type,
-                style: theme.textTheme.bodyMedium
-                    ?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
-            const SizedBox(height: 24),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                  color: theme.colorScheme.onSurface.withValues(alpha: .04),
-                  borderRadius: BorderRadius.circular(12)),
-              child:
-                  Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Icon(PhosphorIcons.calendarCheck(),
-                    size: 20, color: theme.colorScheme.onSurfaceVariant),
-                const SizedBox(width: 12),
-                Expanded(
-                    child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                      Text('Repeats', style: theme.textTheme.bodySmall),
-                      const SizedBox(height: 4),
-                      Text(rules.isEmpty ? 'Schedule not available' : rules,
-                          style: theme.textTheme.bodyMedium),
-                    ])),
-              ]),
-            ),
-          ]),
-        ),
-      ),
-    );
+    return DecoratedBox(
+        decoration: BoxDecoration(
+            color: theme.colorScheme.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: theme.colorScheme.outlineVariant)),
+        child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(children: [
+                  for (var i = 0; i < schedules.length; i++)
+                    ScheduleRow(
+                        schedule: schedules[i],
+                        divider: i < schedules.length - 1,
+                        onTap: onOpen),
+                ]))));
   }
 }

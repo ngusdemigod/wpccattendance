@@ -7,6 +7,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/widgets/member_components.dart';
 import 'media_page.dart';
 import 'media_repository.dart';
+import '../../core/widgets/member_back.dart';
 
 class MediaAlbumDetailPage extends StatefulWidget {
   const MediaAlbumDetailPage({
@@ -294,19 +295,12 @@ class _AlbumHero extends StatelessWidget {
                     errorBuilder: (_, __, ___) => fallback),
           ),
         ),
-        Positioned(
-            top: 16,
-            left: gutter,
-            child: Material(
-              color: const Color(0x66000000),
-              shape: const CircleBorder(),
-              child: IconButton(
-                  tooltip: 'Back',
-                  onPressed: onBack,
-                  color: Colors.white,
-                  style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
-                  icon: const Icon(PhosphorIconsRegular.caretLeft, size: 20)),
-            )),
+        // Under the router's sticky top-left button this draws nothing.
+        if (!MemberBackScope.active(context))
+          Positioned(
+              top: 16,
+              left: gutter,
+              child: MemberBackButton(onPressed: onBack)),
       ]),
     );
   }

@@ -77,8 +77,42 @@ class SupabaseRepository {
             .select()
             .order('created_at', ascending: false)
             .limit(limit);
-        return (rows as List)
+        final result = (rows as List)
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
+        return _withBackgroundStyles(result);
       });
+
+  /// `my_announcements` predates `background_style`, so read the colour key
+  /// straight from the table. Any failure (for example the column not being
+  /// migrated yet) just leaves the default card look.
+  Future<List<Map<String, dynamic>>> _withBackgroundStyles(
+      List<Map<String, dynamic>> rows) async {
+    String? idOf(Map<String, dynamic> row) =>
+        (row['id'] ?? row['announcement_id'])?.toString();
+    final ids = <String>[
+      for (final row in rows)
+        if (row['background_style'] == null && idOf(row) != null) idOf(row)!
+    ];
+    if (ids.isEmpty) return rows;
+    try {
+      final styles = await client
+          .from('announcements')
+          .select('id,background_style')
+          .inFilter('id', ids);
+      final byId = {
+        for (final e in styles as List)
+          if ((e as Map)['background_style'] != null)
+            e['id'].toString(): e['background_style']
+      };
+      return [
+        for (final row in rows)
+          byId.containsKey(idOf(row))
+              ? {...row, 'background_style': byId[idOf(row)]}
+              : row
+      ];
+    } catch (_) {
+      return rows;
+    }
+  }
 }

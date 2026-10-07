@@ -8,6 +8,7 @@ import '../../../core/widgets/member_skeleton.dart';
 import '../../data/supabase_repository.dart';
 import 'department_tool_card.dart';
 import 'department_tool_catalog.dart';
+import '../../../core/widgets/member_back.dart';
 
 class DepartmentToolsPage extends StatefulWidget {
   const DepartmentToolsPage(
@@ -32,12 +33,27 @@ class _DepartmentToolsPageState extends State<DepartmentToolsPage> {
         widget.loadDepartments?.call() ?? SupabaseRepository().myDepartments();
   }
 
+  void _back() {
+    if (selected != null && widget.departmentId == null) {
+      setState(() => selected = null);
+    } else if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final tablet = MediaQuery.sizeOf(context).width >= 600;
     final fallbackTint = MemberPagePalette.colors('/resources/department-tools',
         Theme.of(context).brightness == Brightness.dark).first;
-    return Scaffold(
+    return MemberBackOverride(
+        // Clears the chosen department before leaving the page.
+        onBack: selected != null && widget.departmentId == null
+            ? () => setState(() => selected = null)
+            : null,
+        child: Scaffold(
       backgroundColor: DepartmentToolStyle.page(context),
       body: SafeArea(
           child: Align(
@@ -69,21 +85,10 @@ class _DepartmentToolsPageState extends State<DepartmentToolsPage> {
                       SizedBox(
                           height: 48,
                           child: Row(children: [
-                            IconButton(
-                                tooltip: 'Back',
-                                icon:
-                                    const Icon(PhosphorIconsRegular.arrowLeft),
-                                color: DepartmentToolStyle.ink(context),
-                                onPressed: () {
-                                  if (selected != null &&
-                                      widget.departmentId == null) {
-                                    setState(() => selected = null);
-                                  } else if (context.canPop()) {
-                                    context.pop();
-                                  } else {
-                                    context.go('/home');
-                                  }
-                                }),
+                            MemberIconButton(
+                                label: 'Back',
+                                icon: PhosphorIconsRegular.caretLeft,
+                                onPressed: _back),
                             const SizedBox(width: 12),
                             Expanded(
                                 child: Text('Service tools',
@@ -141,7 +146,7 @@ class _DepartmentToolsPageState extends State<DepartmentToolsPage> {
           ),
         ),
       )),
-    );
+    ));
   }
 
   Widget _heading(String title, String description) =>

@@ -4,12 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../core/services/receipt_export_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/member_components.dart';
 import '../../core/widgets/member_glass.dart';
 import 'giving_backdrop.dart';
 import 'give_repository.dart';
+import 'receipt_actions.dart';
 
 class GiveResultPage extends StatefulWidget {
   const GiveResultPage({super.key, required this.reference, this.repository});
@@ -22,7 +22,6 @@ class GiveResultPage extends StatefulWidget {
 
 class _GiveResultPageState extends State<GiveResultPage> {
   late final repo = widget.repository ?? GiveRepository();
-  final exporter = const ReceiptExportService();
   late Future<_PaymentLookup> future;
 
   @override
@@ -149,7 +148,7 @@ class _GiveResultPageState extends State<GiveResultPage> {
                                     'Thank you for your generosity.',
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
-                                        fontSize: 12,
+                                        fontSize: 11,
                                         color: Theme.of(context)
                                             .colorScheme
                                             .onSurfaceVariant),
@@ -164,7 +163,7 @@ class _GiveResultPageState extends State<GiveResultPage> {
                                           .textTheme
                                           .headlineMedium
                                           ?.copyWith(
-                                            fontSize: 46,
+                                            fontSize: 34,
                                             fontWeight: FontWeight.w600,
                                           ),
                                     )),
@@ -249,29 +248,7 @@ class _GiveResultPageState extends State<GiveResultPage> {
                                           .textTheme
                                           .bodySmall),
                                   const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () =>
-                                              exporter.downloadPdf(tx),
-                                          icon: Icon(PhosphorIcons.filePdf(),
-                                              size: 17),
-                                          label: const Text('PDF'),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: OutlinedButton.icon(
-                                          onPressed: () =>
-                                              exporter.downloadImage(tx),
-                                          icon: Icon(PhosphorIcons.image(),
-                                              size: 17),
-                                          label: const Text('Image'),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                  ReceiptActions(transaction: tx),
                                 ],
                                 if (pending) ...[
                                   const SizedBox(height: 16),
@@ -342,7 +319,7 @@ class _GiveResultPageState extends State<GiveResultPage> {
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
@@ -351,7 +328,7 @@ class _GiveResultPageState extends State<GiveResultPage> {
                 value,
                 textAlign: TextAlign.end,
                 style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ),
           ],

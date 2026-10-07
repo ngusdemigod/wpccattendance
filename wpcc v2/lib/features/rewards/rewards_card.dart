@@ -4,6 +4,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/widgets/member_components.dart';
 import '../../core/theme/member_theme.dart';
 import 'rewards_repository.dart';
+import '../../core/theme/app_motion.dart';
 
 class RewardsCard extends StatefulWidget {
   const RewardsCard({super.key, this.compact = false, this.loadSummary});
@@ -185,6 +186,7 @@ class _RewardsCardState extends State<RewardsCard> with WidgetsBindingObserver {
           : () async {
               await showModalBottomSheet<void>(
                 context: context,
+                sheetAnimationStyle: AppMotion.sheetStyle(context),
                 useSafeArea: true,
                 showDragHandle: true,
                 isScrollControlled: true,

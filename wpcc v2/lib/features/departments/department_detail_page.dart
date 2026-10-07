@@ -17,6 +17,7 @@ import '../../core/widgets/initials_avatar.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'department_repository.dart';
 import 'tools/department_tool_card.dart';
+import '../../core/widgets/member_back.dart';
 
 class DepartmentDetailPage extends StatefulWidget {
   const DepartmentDetailPage(
@@ -107,16 +108,22 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
               ? Theme.of(context).colorScheme.onSurface
               : Colors.white,
           surfaceTintColor: Colors.transparent,
-          leading: MemberIconButton(
-              icon: PhosphorIcons.caretLeft(),
-              label: 'Back',
-              plain: true,
-              onPressed: () => context.canPop()
-                  ? context.pop()
-                  : context.go('/departments')),
+          automaticallyImplyLeading: false,
+          leadingWidth: MemberBackScope.active(context)
+              ? MemberBackScope.gutter(context) + 56
+              : null,
+          leading: MemberBackScope.active(context)
+              ? const SizedBox.shrink()
+              : MemberIconButton(
+                  icon: PhosphorIcons.caretLeft(),
+                  label: 'Back',
+                  plain: true,
+                  onPressed: () => context.canPop()
+                      ? context.pop()
+                      : context.go('/departments')),
           title: Text('Department',
               style: TextStyle(
-                  fontSize: 20,
+                  fontSize: 17,
                   fontWeight: FontWeight.w500,
                   color: headerFrosted
                       ? Theme.of(context).colorScheme.onSurface
@@ -143,25 +150,25 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                             const PopupMenuItem(
                                 value: 'announcement',
                                 child: Text('Post announcement',
-                                    style: TextStyle(fontSize: 12))),
+                                    style: TextStyle(fontSize: 11))),
                             const PopupMenuItem(
                                 value: 'event',
                                 child: Text('Create event',
-                                    style: TextStyle(fontSize: 12))),
+                                    style: TextStyle(fontSize: 11))),
                             const PopupMenuItem(
                                 value: 'files',
                                 child: Text('Manage files',
-                                    style: TextStyle(fontSize: 12))),
+                                    style: TextStyle(fontSize: 11))),
                             const PopupMenuItem(
                                 value: 'profile',
                                 child: Text('Department images',
-                                    style: TextStyle(fontSize: 12))),
+                                    style: TextStyle(fontSize: 11))),
                             const PopupMenuItem(
                                 value: 'wallet',
                                 child: Text('New wallet',
-                                    style: TextStyle(fontSize: 12))),
+                                    style: TextStyle(fontSize: 11))),
                           ]);
-                })
+                }),
           ],
           flexibleSpace: FlexibleSpaceBar(
             background: Stack(fit: StackFit.expand, children: [
@@ -236,7 +243,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                         .textTheme
                         .labelSmall
                         ?.copyWith(
-                            fontSize: 12,
+                            fontSize: 11,
                             color: tab == i
                                 ? Theme.of(context)
                                     .colorScheme
@@ -357,7 +364,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                       .textTheme
                                       .labelSmall
                                       ?.copyWith(
-                                          fontSize: 9,
+                                          fontSize: 10,
                                           color: Theme.of(context)
                                               .colorScheme
                                               .onSurfaceVariant)),
@@ -372,7 +379,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
             style: Theme.of(context)
                 .textTheme
                 .titleSmall
-                ?.copyWith(fontSize: 14, fontWeight: FontWeight.w500)),
+                ?.copyWith(fontSize: 12, fontWeight: FontWeight.w500)),
         const SizedBox(height: 8),
         FutureBuilder<List<Map<String, dynamic>>>(
             future: wallets,
@@ -412,7 +419,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                   const Spacer(),
                                   Text(w['account_number']?.toString() ?? '',
                                       style: const TextStyle(
-                                          fontSize: 20,
+                                          fontSize: 17,
                                           fontWeight: FontWeight.w600,
                                           color: Colors.white)),
                                   const SizedBox(height: 4),
@@ -449,7 +456,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                               .textTheme
                               .titleSmall
                               ?.copyWith(
-                                  fontSize: 14, fontWeight: FontWeight.w500))),
+                                  fontSize: 12, fontWeight: FontWeight.w500))),
                   AnimatedSearchFilter(
                       hint: 'Search members',
                       onSearch: (v) => setState(() => memberSearch = v),
@@ -700,7 +707,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
               Expanded(
                   child: Text('Attendance',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontSize: 14, fontWeight: FontWeight.w500))),
+                          fontSize: 12, fontWeight: FontWeight.w500))),
               AnimatedSearchFilter(
                   hint: 'Search events',
                   onSearch: (v) => setState(() => attendanceSearch = v),
@@ -773,7 +780,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                                   .textTheme
                                                   .titleSmall
                                                   ?.copyWith(
-                                                      fontSize: 14,
+                                                      fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w500)),
                                           const SizedBox(height: 4),
@@ -786,7 +793,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                                   .textTheme
                                                   .bodySmall
                                                   ?.copyWith(
-                                                      fontSize: 12,
+                                                      fontSize: 11,
                                                       color: Theme.of(context)
                                                           .colorScheme
                                                           .onSurfaceVariant)),
@@ -797,7 +804,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                         children: [
                                           Text('${e['present_count'] ?? 0}',
                                               style: const TextStyle(
-                                                  fontSize: 14,
+                                                  fontSize: 12,
                                                   fontWeight: FontWeight.w600)),
                                           Text('Present',
                                               style: Theme.of(context)
@@ -876,7 +883,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                   .textTheme
                                   .titleSmall
                                   ?.copyWith(
-                                      fontSize: 14,
+                                      fontSize: 12,
                                       fontWeight: FontWeight.w500)),
                           Text('Ranked by check-in time',
                               style: Theme.of(context)
@@ -930,7 +937,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                                       .textTheme
                                                       .titleSmall
                                                       ?.copyWith(
-                                                          fontSize: 14,
+                                                          fontSize: 12,
                                                           fontWeight:
                                                               FontWeight.w500)),
                                               Text(relative,
@@ -955,7 +962,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                                               .toIso8601String(),
                                                           null),
                                                   style: const TextStyle(
-                                                      fontSize: 13,
+                                                      fontSize: 12,
                                                       fontWeight:
                                                           FontWeight.w600)),
                                               Text('Check-in',
@@ -996,7 +1003,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
               Expanded(
                   child: Text('Files',
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontSize: 14, fontWeight: FontWeight.w500))),
+                          fontSize: 12, fontWeight: FontWeight.w500))),
               AnimatedSearchFilter(
                   hint: 'Search files',
                   onSearch: (v) => setState(() => fileSearch = v),
@@ -1097,7 +1104,7 @@ class _DepartmentDetailPageState extends State<DepartmentDetailPage> {
                                               .textTheme
                                               .titleSmall
                                               ?.copyWith(
-                                                  fontSize: 12,
+                                                  fontSize: 11,
                                                   fontWeight: FontWeight.w500)),
                                     ]),
                               ),
@@ -1191,7 +1198,7 @@ class _DetailCard extends StatelessWidget {
               style: Theme.of(context)
                   .textTheme
                   .titleSmall
-                  ?.copyWith(fontSize: 14, fontWeight: FontWeight.w500))
+                  ?.copyWith(fontSize: 12, fontWeight: FontWeight.w500))
         ]))
       ]));
 }

@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../core/config/app_config.dart';
 import 'prayer_repository.dart';
-import 'prayer_alerts_content.dart';
+import 'prayer_alerts_view.dart';
 import 'prayer_calendar_service.dart';
 import 'push_subscription_service.dart';
 
@@ -18,12 +18,9 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
   late final repo = PrayerRepository();
   final pushService = PushSubscriptionService();
   final calendarService = const PrayerCalendarService();
-  late Future<List<Map<String, dynamic>>> future =
-      (widget.loadAlerts ?? repo.alerts)();
   bool enablingPush = false;
   bool pushEnabledThisSession = false;
   bool snoozeHandled = false;
-  final Set<String> updatingAlerts = {};
   final Set<String> startingAlerts = {};
 
   @override
@@ -57,54 +54,31 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
     }
   }
 
-  void reload() => setState(() {
-        future = (widget.loadAlerts ?? repo.alerts)();
-      });
-
   @override
   Widget build(BuildContext context) => Scaffold(
-        body: FutureBuilder<List<Map<String, dynamic>>>(
-          future: future,
-          builder: (context, snapshot) {
-            return PrayerAlertsContent(
-              onBack: () =>
-                  context.canPop() ? context.pop() : context.go('/home'),
-              loading: snapshot.connectionState != ConnectionState.done,
-              onAdd: () async {
-                await context.push('/prayer-alerts/new');
-                if (mounted) reload();
-              },
-              alerts: snapshot.data ?? const [],
-              error: snapshot.hasError ? 'Unable to load prayer alerts' : null,
-              onRefresh: () async {
-                reload();
-                try {
-                  await future;
-                } catch (_) {}
-              },
-              onTap: (alert) {
-                if (alert['scope'] != 'personal') {
-                  _start(context, alert);
-                } else {
-                  context
-                      .push('/prayer-alerts/${alert['id']}/edit', extra: alert)
-                      .then((_) {
-                    if (mounted) reload();
-                  });
-                }
-              },
-              onStart: (alert) => _start(context, alert),
-              onCalendar: calendarService.downloadAlert,
-              onToggle: _setActive,
-              updating: updatingAlerts,
-              starting: startingAlerts,
-              onEnablePush:
-                  AppConfig.vapidPublicKey.isNotEmpty && !pushEnabledThisSession
-                      ? _enablePush
-                      : null,
-              enablingPush: enablingPush,
-            );
+        body: PrayerAlertsView(
+          onBack: () => context.canPop() ? context.pop() : context.go('/home'),
+          loadAlerts: widget.loadAlerts ?? repo.alerts,
+          setActive: repo.setActive,
+          onAdd: () async {
+            await context.push('/prayer-alerts/new');
           },
+          onTap: (alert) async {
+            if (alert['scope'] != 'personal') {
+              await _start(context, alert);
+            } else {
+              await context.push('/prayer-alerts/${alert['id']}/edit',
+                  extra: alert);
+            }
+          },
+          onStart: (alert) => _start(context, alert),
+          onCalendar: calendarService.downloadAlert,
+          starting: startingAlerts,
+          onEnablePush:
+              AppConfig.vapidPublicKey.isNotEmpty && !pushEnabledThisSession
+                  ? _enablePush
+                  : null,
+          enablingPush: enablingPush,
         ),
       );
 
@@ -152,26 +126,6 @@ class _PrayerAlertsPageState extends State<PrayerAlertsPage> {
       }
     } finally {
       if (mounted) setState(() => startingAlerts.remove(id));
-    }
-  }
-
-  Future<void> _setActive(Map<String, dynamic> alert, bool value) async {
-    final id = alert['id'].toString();
-    if (updatingAlerts.contains(id)) return;
-    setState(() => updatingAlerts.add(id));
-    try {
-      await repo.setActive(id, value, alert);
-      reload();
-    } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Unable to update prayer alert. Please try again.'),
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => updatingAlerts.remove(id));
     }
   }
 }

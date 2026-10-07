@@ -67,7 +67,7 @@ void main() {
         tester.view.physicalSize = Size(width, 900);
         await tester.pumpWidget(MaterialApp(
             theme: ThemeData(brightness: brightness),
-            home: MediaPage(
+            home: MediaPage(loadVideos: () async => [], 
               loadAlbums: () async => [],
               loadEpisodes: () async => [
                 {

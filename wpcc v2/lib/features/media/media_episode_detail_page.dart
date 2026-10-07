@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/member_photo_backdrop.dart';
 import '../../core/widgets/member_skeleton.dart';
-import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -9,6 +8,7 @@ import '../../core/widgets/member_components.dart';
 import 'media_page.dart';
 import 'media_player_controller.dart';
 import 'media_repository.dart';
+import 'media_share.dart';
 
 class MediaEpisodeDetailPage extends StatefulWidget {
   const MediaEpisodeDetailPage(
@@ -31,6 +31,18 @@ class _MediaEpisodeDetailPageState extends State<MediaEpisodeDetailPage> {
   void initState() {
     super.initState();
     episode = _load();
+    _autoPlay();
+  }
+
+  /// Opening a message from the list starts it playing, as the tap that opened
+  /// it is the user's permission. A message that is already the current one
+  /// is left as it is, and a page opened from a link (no tap) never autoplays.
+  Future<void> _autoPlay() async {
+    if (widget.seed == null) return;
+    final row = await episode;
+    if (row == null || !mounted) return;
+    final player = MediaPlayerController.instance;
+    if (player.value.episode?.id != row['id']?.toString()) player.play(row);
   }
 
   Future<Map<String, dynamic>?> _load() => widget.seed == null
@@ -155,7 +167,11 @@ class _EpisodeBodyState extends State<_EpisodeBody> {
                                 bottom:
                                     MediaQuery.paddingOf(context).bottom + 112),
                             children: [
-                              _DetailHeader(provider: provider),
+                              _DetailHeader(
+                                  provider: provider,
+                                  episodeId: episode['id']?.toString(),
+                                  title: episode['title']?.toString(),
+                                  artwork: episode['artwork_url']?.toString()),
                               Align(
                                   alignment: Alignment.centerLeft,
                                   child: ConstrainedBox(
@@ -260,7 +276,7 @@ class _EpisodeBodyState extends State<_EpisodeBody> {
                                             .textTheme
                                             .titleSmall
                                             ?.copyWith(
-                                                fontSize: 17,
+                                                fontSize: 15,
                                                 height: 24 / 17))),
                                 const SizedBox(height: 13),
                                 MediaCollectionTracks(
@@ -272,8 +288,10 @@ class _EpisodeBodyState extends State<_EpisodeBody> {
 }
 
 class _DetailHeader extends StatelessWidget {
-  const _DetailHeader({required this.provider});
+  const _DetailHeader(
+      {required this.provider, this.episodeId, this.title, this.artwork});
   final String provider;
+  final String? episodeId, title, artwork;
   @override
   Widget build(BuildContext context) => Padding(
       padding: const EdgeInsets.only(bottom: 20),
@@ -290,15 +308,13 @@ class _DetailHeader extends StatelessWidget {
         MemberIconButton(
             icon: PhosphorIconsRegular.export,
             label: 'Share message',
-            onPressed: provider.isEmpty
+            onPressed: episodeId == null || episodeId!.isEmpty
                 ? null
-                : () async {
-                    await Clipboard.setData(ClipboardData(text: provider));
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Message link copied')));
-                    }
-                  }),
+                : () => shareMedia(context,
+                    title: title ?? 'WPCC message',
+                    text: 'Listen on WPCC Community',
+                    url: mediaShareLink('a', episodeId!,
+                        title: title, image: artwork))),
       ]));
 }
 

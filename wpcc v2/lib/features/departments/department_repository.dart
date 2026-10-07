@@ -187,13 +187,17 @@ class DepartmentRepository {
       {required String departmentId,
       required String title,
       required String content,
-      String? mediaUrl}) async {
+      String? mediaUrl,
+      String? backgroundStyle}) async {
     final result =
         await client.rpc('community_post_department_announcement', params: {
       'p_department_id': departmentId,
       'p_title': title,
       'p_content': content,
-      'p_media_url': mediaUrl
+      'p_media_url': mediaUrl,
+      // Only sent when the admin picked a colour so posting keeps working
+      // before the background_style migration is applied.
+      if (backgroundStyle != null) 'p_background_style': backgroundStyle,
     });
     cache.invalidate('department:$departmentId:');
     cache.invalidate('announcements:');

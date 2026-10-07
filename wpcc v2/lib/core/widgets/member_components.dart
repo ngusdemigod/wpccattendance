@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../theme/member_theme.dart';
 import '../theme/app_motion.dart';
+import 'member_back.dart';
 import 'member_glass.dart';
 import '../theme/member_material.dart';
 
@@ -48,10 +49,12 @@ class MemberPageHeader extends StatelessWidget {
               const SizedBox(width: 10),
             ],
             Expanded(
-                child:
-                    Text(title, style: Theme.of(context).textTheme.titleSmall
-                        ?.copyWith(fontSize: 20, height: 26 / 20,
-                            fontWeight: FontWeight.w600, letterSpacing: 0))),
+                child: Text(title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontSize: 17,
+                        height: 26 / 20,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0))),
             if (actions.isNotEmpty) const SizedBox(width: 8),
             ...actions,
           ]),
@@ -95,35 +98,39 @@ class MemberIconButton extends StatelessWidget {
   final bool plain, surface, autofocus;
   final double iconSize;
   @override
-  Widget build(BuildContext context) => AppPressMotion(
-      child: SizedBox.square(
-          dimension: 48,
-          child: Stack(alignment: Alignment.center, children: [
-            if (!plain &&
-                surface &&
-                label != 'Back' &&
-                !label.startsWith('Back to '))
-              SizedBox(
-                  width: 40,
-                  height: 40,
-                  child:
-                      const MemberGlass(radius: 20, child: SizedBox.expand())),
-            IconButton(
-              autofocus: autofocus,
-              tooltip: label,
-              onPressed: onPressed,
-              style: IconButton.styleFrom(
-                backgroundColor: Colors.transparent,
-                minimumSize: const Size(48, 48),
-                shape: const CircleBorder(),
-              ),
-              icon: Icon(
-                  label == 'Back' || label.startsWith('Back to ')
-                      ? PhosphorIconsRegular.caretLeft
-                      : icon,
-                  size: iconSize),
-            )
-          ])));
+  Widget build(BuildContext context) {
+    if (label == 'Back' || label.startsWith('Back to ')) {
+      // The route's sticky top-left button replaces any in-page back control;
+      // the empty 48px square keeps the page's layout exactly as it was.
+      if (MemberBackScope.active(context)) {
+        return const SizedBox(width: 48, height: 48);
+      }
+      return MemberBackButton(
+          onPressed: onPressed, label: label, plain: plain);
+    }
+    return AppPressMotion(
+        child: SizedBox.square(
+            dimension: 48,
+            child: Stack(alignment: Alignment.center, children: [
+              if (!plain && surface)
+                SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: const MemberGlass(
+                        radius: 20, child: SizedBox.expand())),
+              IconButton(
+                autofocus: autofocus,
+                tooltip: label,
+                onPressed: onPressed,
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.transparent,
+                  minimumSize: const Size(48, 48),
+                  shape: const CircleBorder(),
+                ),
+                icon: Icon(icon, size: iconSize),
+              )
+            ])));
+  }
 }
 
 class MemberArtwork extends StatelessWidget {
@@ -269,7 +276,7 @@ class MemberPosterCard extends StatelessWidget {
                                   ?.copyWith(
                                     color: Colors.white,
                                     fontWeight: FontWeight.w500,
-                                    fontSize: 17,
+                                    fontSize: 15,
                                     height: 23 / 17,
                                   )),
                           if (metadata.isNotEmpty) ...[
@@ -386,7 +393,7 @@ class MemberSearchBar extends StatelessWidget {
   final ValueChanged<String>? onChanged;
   @override
   Widget build(BuildContext context) => MemberGlass(
-        outlined: false,
+      outlined: false,
       frosted: true,
       radius: 26,
       weight: MemberMaterialWeight.navigation,
@@ -491,7 +498,8 @@ class MemberFilterChip extends StatelessWidget {
                           size: 16,
                           color: selected
                               ? (Theme.of(context).brightness == Brightness.dark
-                                  ? const Color(0xFF151517) : Colors.white)
+                                  ? const Color(0xFF151517)
+                                  : Colors.white)
                               : Theme.of(context).colorScheme.onSurfaceVariant),
                       const SizedBox(width: 6),
                       Text(label,
@@ -503,8 +511,10 @@ class MemberFilterChip extends StatelessWidget {
                                       ? FontWeight.w600
                                       : FontWeight.w400,
                                   color: selected
-                                      ? (Theme.of(context).brightness == Brightness.dark
-                                          ? const Color(0xFF151517) : Colors.white)
+                                      ? (Theme.of(context).brightness ==
+                                              Brightness.dark
+                                          ? const Color(0xFF151517)
+                                          : Colors.white)
                                       : Theme.of(context)
                                           .colorScheme
                                           .onSurfaceVariant)),
@@ -540,4 +550,122 @@ class MemberStatus extends StatelessWidget {
           ],
         ]),
       );
+}
+
+/// Two-or-more segment switch for top-level page tabs (for example
+/// Media | Gallery). Built as a plain [Row] so it never adds a horizontal
+/// scrollable to the page. Segments are at least 48 logical pixels tall.
+class MemberTabSwitch extends StatelessWidget {
+  const MemberTabSwitch(
+      {super.key,
+      required this.labels,
+      required this.index,
+      required this.onChanged,
+      this.icons});
+  final List<String> labels;
+  final List<IconData>? icons;
+  final int index;
+  final ValueChanged<int> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      child: Row(children: [
+        for (var i = 0; i < labels.length; i++)
+          Expanded(
+              child: Semantics(
+            button: true,
+            selected: i == index,
+            label: labels[i],
+            excludeSemantics: true,
+            onTap: () => onChanged(i),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () => onChanged(i),
+                borderRadius: BorderRadius.circular(24),
+                child: SizedBox(
+                  height: 48,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5),
+                    child: AnimatedContainer(
+                      duration: AppMotion.duration(context, AppMotion.tab),
+                      curve: AppMotion.curve,
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          color: i == index
+                              ? colors.primaryContainer
+                              : Colors.transparent),
+                      child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (icons != null) ...[
+                              Icon(icons![i],
+                                  size: 18,
+                                  color: i == index
+                                      ? colors.onSurface
+                                      : colors.onSurfaceVariant),
+                              const SizedBox(width: 7),
+                            ],
+                            Flexible(
+                                child: Text(labels[i],
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                            fontWeight: i == index
+                                                ? FontWeight.w600
+                                                : FontWeight.w400,
+                                            color: i == index
+                                                ? colors.onSurface
+                                                : colors.onSurfaceVariant))),
+                          ]),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )),
+      ]),
+    );
+  }
+}
+
+/// Small neutral label that says what kind of media a row is. It lives in the
+/// row's metadata line (never over artwork), and its label is read with the row.
+class MediaTypeBadge extends StatelessWidget {
+  const MediaTypeBadge({super.key, required this.label, required this.icon});
+  final String label;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+    return DecoratedBox(
+      decoration: BoxDecoration(
+          color: colors.primaryContainer,
+          borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Icon(icon, size: 12, color: colors.onSurfaceVariant),
+          const SizedBox(width: 4),
+          Flexible(
+              child: Text(label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context)
+                      .textTheme
+                      .labelSmall
+                      ?.copyWith(color: colors.onSurfaceVariant))),
+        ]),
+      ),
+    );
+  }
 }

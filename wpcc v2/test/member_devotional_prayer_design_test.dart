@@ -10,6 +10,7 @@ import 'package:go_router/go_router.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/core/theme/member_theme.dart';
 import 'package:wpcc_community/core/widgets/member_components.dart';
+import 'package:wpcc_community/core/widgets/member_shimmer.dart';
 import 'package:wpcc_community/core/widgets/member_skeleton.dart';
 import 'package:wpcc_community/features/devotional/devotional_page.dart';
 import 'package:wpcc_community/features/prayer/prayer_alerts_content.dart';
@@ -242,7 +243,7 @@ void main() {
   });
 
   testWidgets(
-      'single personal reminder aligns with the reference without empty group sections',
+      'a personal-only screen starts with the summary and own alerts, with no church sections',
       (tester) async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -251,28 +252,23 @@ void main() {
       for (final size in [const Size(390, 844), const Size(834, 1194)]) {
         tester.view.physicalSize = size;
         await tester.pumpWidget(app(
-            Scaffold(body: content(alerts: const [personal], onBack: () {})),
+            Scaffold(
+                body: content(
+                    alerts: const [personal], onBack: () {}, onAdd: () {})),
             brightness: brightness));
         await tester.pumpAndSettle();
+        final summary = tester.getRect(find.text('Next alert'));
+        final header = tester.getRect(find.text('Prayer alerts'));
         final row = tester.getRect(find.byType(PrayerAlertRow));
-        final bio = tester.getRect(find.text('A quiet moment, every day.'));
-        expect(row.top - bio.bottom, 25);
-        expect(row.height, 78);
-        final start = tester.getRect(find
-            .descendant(
-                of: find.widgetWithText(FilledButton, 'Start prayer'),
-                matching: find.byType(Material))
-            .first);
-        final calendar = tester.getRect(find
-            .descendant(
-                of: find.widgetWithText(TextButton, 'Calendar'),
-                matching: find.byType(Material))
-            .first);
-        expect(start.top - row.bottom, 22);
-        expect(calendar.top - start.bottom, 10);
-        expect(find.text('No church prayer alerts'), findsNothing);
-        expect(find.text('My prayer alerts'), findsNothing);
-        expect(find.text('Church prayer alerts'), findsNothing);
+        expect(header.top, lessThan(summary.top));
+        expect(summary.bottom, lessThan(row.top));
+        expect(row.height, greaterThanOrEqualTo(76));
+        expect(find.text('My alerts'), findsOneWidget);
+        expect(find.text('From your church'), findsNothing);
+        expect(find.text('Whole church'), findsNothing);
+        expect(find.byType(PrayerFeaturedCard), findsNothing);
+        expect(find.text('Pray now'), findsNothing);
+        expect(find.text('New alert'), findsOneWidget);
         expect(tester.takeException(), isNull);
         await tester.pumpWidget(const SizedBox());
       }
@@ -324,8 +320,8 @@ void main() {
               brightness: brightness, scale: scale));
           await tester.pumpAndSettle();
           expect(find.byType(PrayerReminderSwitch), findsOneWidget);
-          expect(find.text('06:00'), findsOneWidget);
-          expect(find.text('20:30'), findsOneWidget);
+          expect(find.textContaining('6:00'), findsWidgets);
+          expect(find.textContaining('8:30'), findsOneWidget);
           expect(tester.takeException(), isNull,
               reason: 'Prayer $brightness/$width/$scale');
           if (Platform.environment['CAPTURE_MEMBER_UI'] == 'true' &&
@@ -361,22 +357,32 @@ void main() {
       onToggle: (a, value) => toggled.add('${a['id']}:$value'),
     ))));
     await tester.pumpAndSettle();
+    // Only personal alerts have a switch; the church alert is read only.
     expect(find.byType(PrayerReminderSwitch), findsOneWidget);
     await tester.tap(find.byType(PrayerReminderSwitch));
-    await tester.tap(find.byTooltip('Edit Evening prayer'));
-    await tester.tap(find.text('Church family prayer'));
+    await tester.tap(find.text('Evening prayer'));
+    await tester.tap(find.descendant(
+        of: find.byType(PrayerFeaturedCard),
+        matching: find.text('Church family prayer')));
     expect(toggled, ['personal:true']);
     expect(tapped, ['personal', 'church']);
+    // The featured card starts the church alert and exports it to a calendar.
+    await tester.tap(find.text('Pray now'));
+    await tester.tap(find.byTooltip('Add Church family prayer to calendar'));
+    expect(started, ['church']);
+    expect(exported, ['church']);
+    // Footer actions ask which alert when there is more than one.
+    await tester.scrollUntilVisible(find.text('Start prayer'), 200);
     await tester.tap(find.text('Start prayer'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Evening prayer').last);
     await tester.pumpAndSettle();
-    expect(started, ['personal']);
-    await tester.tap(find.text('Calendar'));
+    expect(started, ['church', 'personal']);
+    await tester.tap(find.text('Add to calendar'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Church family prayer').last);
+    await tester.tap(find.text('Evening prayer').last);
     await tester.pumpAndSettle();
-    expect(exported, ['church']);
+    expect(exported, ['church', 'personal']);
     expect(tester.takeException(), isNull);
   });
 
@@ -386,29 +392,24 @@ void main() {
         body: content(
             starting: const {'church', 'personal'},
             updating: const {'personal'}))));
-    await tester.pumpAndSettle();
+    await tester.pump();
     expect(
         tester
             .widget<PrayerReminderSwitch>(find.byType(PrayerReminderSwitch))
             .onChanged,
         isNull);
+    expect(find.text('Pray now'), findsNothing);
     expect(
         tester
             .widget<FilledButton>(
-                find.widgetWithText(FilledButton, 'Start prayer'))
+                find.widgetWithText(FilledButton, 'Starting'))
             .onPressed,
         isNull);
     expect(find.byTooltip('Edit Church family prayer'), findsNothing);
-    expect(
-        tester
-            .widget<IconButton>(find.byWidgetPredicate((widget) =>
-                widget is IconButton &&
-                widget.tooltip == 'Start Church family prayer'))
-            .onPressed,
-        isNull);
   });
 
-  testWidgets('prayer matches reference gutters and full-width actions',
+  testWidgets(
+      'prayer keeps reference gutters, 48px targets and the New alert pill',
       (tester) async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetPhysicalSize);
@@ -419,30 +420,30 @@ void main() {
         tester.view.physicalSize = Size(width, 1194);
         await tester.pumpWidget(app(
             Scaffold(
-                body: content(alerts: const [personal], onBack: () => backs++)),
+                body: content(
+                    alerts: const [personal],
+                    onAdd: () {},
+                    onBack: () => backs++)),
             brightness: brightness));
         await tester.pumpAndSettle();
         final gutter = width < 600 ? 20.0 : 32.0;
         final pageWidth = width >= 900 ? 820.0 : width;
         final left = (width - pageWidth) / 2 + gutter;
-        final header = tester.getRect(find.byType(MemberPageHeader));
-        expect(header.topLeft, Offset(left, 20));
-        expect(header.width, pageWidth - 2 * gutter);
-        for (final button in [
-          find.widgetWithText(FilledButton, 'Start prayer'),
-          find.widgetWithText(TextButton, 'Calendar'),
-        ]) {
-          final surface = find
-              .descendant(of: button, matching: find.byType(Material))
-              .first;
-          expect(tester.getSize(surface), Size(header.width, 48));
-        }
-        expect(tester.getSize(find.byType(PrayerAlertRow)).height,
-            greaterThanOrEqualTo(76));
+        final back = tester.getRect(find.byTooltip('Back'));
+        expect(back.topLeft, Offset(left, 20));
+        // The title clears the Back button on the same row.
+        final title = tester.getRect(find.text('Prayer alerts'));
+        expect(title.left, greaterThanOrEqualTo(back.right));
+        final pill =
+            tester.getRect(find.widgetWithText(FilledButton, 'New alert'));
+        expect(pill.height, greaterThanOrEqualTo(48));
+        expect(pill.center.dx, closeTo(width / 2, .5));
+        expect(pill.bottom, lessThan(1194 - 60));
+        final row = find.byType(PrayerAlertRow);
+        expect(tester.getSize(row).height, greaterThanOrEqualTo(76));
+        expect(tester.getRect(row).bottom, lessThan(pill.top));
         expect(tester.getSize(find.byType(PrayerReminderSwitch)),
             const Size(51, 56));
-        expect(find.text('My prayer alerts'), findsNothing);
-        expect(find.text('Church prayer alerts'), findsNothing);
         await tester.tap(find.byTooltip('Back'));
         expect(tester.takeException(), isNull);
       }
@@ -463,16 +464,19 @@ void main() {
       onEnablePush: () => actions.add('push'),
     ))));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Add prayer alert'));
+    await tester.tap(find.text('New alert'));
+    await tester.tap(find.text('Turn on'));
     await tester.scrollUntilVisible(find.text('Start prayer'), 200);
     await tester.tap(find.text('Start prayer'));
-    await tester.scrollUntilVisible(find.text('Calendar'), 100);
+    await tester.scrollUntilVisible(find.text('Add to calendar'), 100);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Calendar'));
-    await tester.scrollUntilVisible(find.text('Enable push reminders'), 200);
+    await tester.tap(find.text('Add to calendar'));
+    expect(actions, ['add', 'push', 'start:personal', 'calendar:personal']);
+    // The reminders banner can be dismissed for the session.
+    await tester.scrollUntilVisible(find.text('Turn on reminders'), -300);
+    await tester.tap(find.byTooltip('Dismiss reminders banner'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Enable push reminders'));
-    expect(actions, ['add', 'start:personal', 'calendar:personal', 'push']);
+    expect(find.text('Turn on reminders'), findsNothing);
   });
 
   testWidgets('devotional routes retain actual post and prayer destinations',
@@ -603,7 +607,7 @@ void main() {
       onToggle: (_, __) {},
     ))));
     await tester.pump();
-    expect(find.byType(MemberSkeleton), findsOneWidget);
+    expect(find.byType(MemberShimmer), findsOneWidget);
     expect(find.text('Prayer alerts'), findsOneWidget);
     var retries = 0;
     await tester.pumpWidget(app(Scaffold(
@@ -619,7 +623,9 @@ void main() {
     expect(retries, 1);
     await tester.pumpWidget(app(Scaffold(body: content(alerts: const []))));
     await tester.pumpAndSettle();
-    expect(find.text('No prayer alerts'), findsOneWidget);
+    expect(find.text('No alerts yet'), findsOneWidget);
+    expect(find.text('Add your first alert'), findsOneWidget);
+    expect(find.text('New alert'), findsNothing);
     expect(find.text('Start prayer'), findsNothing);
     expect(PrayerAlertRow.time(const {}), '--:--');
     expect(PrayerAlertRow.time(const {'local_time': '99:80'}), '--:--');

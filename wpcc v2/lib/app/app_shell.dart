@@ -237,8 +237,10 @@ class _DockSelectionState extends State<_DockSelection>
           animation: position,
           builder: (context, _) => Align(
             alignment: Alignment(-1 + position.value.clamp(0, 4) * .5, 0),
-            child: Opacity(
+            child: AnimatedOpacity(
               opacity: widget.selected < 0 ? 0 : 1,
+              duration: AppMotion.duration(context, AppMotion.tab),
+              curve: AppMotion.curve,
               child: Transform.scale(
                 scaleX: reduceMotion
                     ? 1
@@ -454,7 +456,7 @@ class _PersistentMediaPlayer extends StatelessWidget {
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: 11,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),

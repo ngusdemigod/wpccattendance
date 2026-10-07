@@ -39,7 +39,7 @@ class _ClassesPageState extends State<ClassesPage> {
               children: [
                 const Text('Profile',
                     style:
-                        TextStyle(fontSize: 24, fontWeight: FontWeight.w600)),
+                        TextStyle(fontSize: 22, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 15),
                 const ProfileTabs(index: 1),
                 const SizedBox(height: 20),
@@ -101,7 +101,7 @@ class _ClassesPageState extends State<ClassesPage> {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             Text(v,
                 style:
-                    const TextStyle(fontSize: 20, fontWeight: FontWeight.w600)),
+                    const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
             const SizedBox(height: 4),
             Text(l,
                 maxLines: 1,
@@ -147,7 +147,7 @@ class _ClassesPageState extends State<ClassesPage> {
                   Text(
                     r['title']?.toString() ?? 'Class',
                     style: const TextStyle(
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -228,7 +228,7 @@ class ProfileTabs extends StatelessWidget {
                   child: Column(mainAxisSize: MainAxisSize.min, children: [
                     Text(label,
                         style: TextStyle(
-                            fontSize: 14,
+                            fontSize: 12,
                             fontWeight: value == index
                                 ? FontWeight.w600
                                 : FontWeight.w500,

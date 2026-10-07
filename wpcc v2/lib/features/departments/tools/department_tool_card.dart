@@ -1,7 +1,6 @@
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 
 import '../../../core/theme/member_material.dart';
 
@@ -95,35 +94,37 @@ class _DepartmentToolCardState extends State<DepartmentToolCard> {
             padding: large || tablet
                 ? const EdgeInsets.all(21)
                 : const EdgeInsets.symmetric(horizontal: 15, vertical: 19),
-            child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                      height: 28,
-                      child: Row(children: [
-                        Icon(widget.icon,
-                            size: 26, color: DepartmentToolStyle.ink(context)),
-                        const Spacer(),
-                        Icon(PhosphorIconsRegular.arrowRight,
-                            size: 16,
-                            color: DepartmentToolStyle.muted(context)),
-                      ])),
-                  SizedBox(height: large ? 16 : 20),
-                  Text(widget.title,
-                      style: DepartmentToolStyle.text(context, 15,
-                          weight: FontWeight.w600, height: 1.4)),
-                  const SizedBox(height: 8),
-                  Text(widget.description,
-                      style:
-                          DepartmentToolStyle.text(context, 13, muted: true)),
-                  if (widget.unavailable) ...[
+            // Icon on top, text pinned to the bottom of the card. The
+            // intrinsic height lets the Spacer fill whatever height the grid
+            // gives the card, and collapses to the gap when there is none.
+            child: IntrinsicHeight(
+              child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                        height: 28,
+                        child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Icon(widget.icon,
+                                size: 26,
+                                color: DepartmentToolStyle.ink(context)))),
+                    SizedBox(height: large ? 16 : 20),
+                    const Spacer(),
+                    Text(widget.title,
+                        style: DepartmentToolStyle.text(context, 15,
+                            weight: FontWeight.w600, height: 1.4)),
                     const SizedBox(height: 8),
-                    Text('Not available yet',
+                    Text(widget.description,
                         style:
-                            DepartmentToolStyle.text(context, 12, muted: true)),
-                  ],
-                ]),
+                            DepartmentToolStyle.text(context, 13, muted: true)),
+                    if (widget.unavailable) ...[
+                      const SizedBox(height: 8),
+                      Text('Not available yet',
+                          style: DepartmentToolStyle.text(context, 12,
+                              muted: true)),
+                    ],
+                  ]),
+            ),
           ),
         ),
       ),

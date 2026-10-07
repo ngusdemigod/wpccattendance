@@ -147,7 +147,7 @@ void main() {
       final base = buildWpccTheme(brightness: brightness);
       final member = buildMemberTheme(base);
       expect(base.textTheme.headlineSmall!.fontSize, 23);
-      expect(member.textTheme.headlineSmall!.fontSize, 28);
+      expect(member.textTheme.headlineSmall!.fontSize, 24);
       expect(base.scaffoldBackgroundColor, Colors.transparent);
       expect(member.scaffoldBackgroundColor, Colors.transparent);
       for (final style in [

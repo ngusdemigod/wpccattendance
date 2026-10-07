@@ -9,6 +9,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/member_theme.dart';
 import '../../core/widgets/member_components.dart';
 import 'souls_repository.dart';
+import '../../core/widgets/member_back.dart';
 
 class SoulsPage extends StatefulWidget {
   const SoulsPage({super.key, this.loadSouls});
@@ -155,13 +156,8 @@ class SoulDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Scaffold(
         backgroundColor: Theme.of(context).colorScheme.surface,
-        appBar: AppBar(
-          leading: IconButton(
-            tooltip: 'Back to my souls',
-            onPressed: () => context.pop(),
-            icon: Icon(PhosphorIcons.caretLeft()),
-          ),
-          title: const Text('Soul details'),
+        appBar: MemberAppBar(
+title: const Text('Soul details'),
         ),
         body: FutureBuilder<Map<String, dynamic>?>(
           future: seed == null

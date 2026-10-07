@@ -7,7 +7,9 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../core/theme/app_motion.dart';
 import '../../core/theme/member_material.dart';
 import '../../core/theme/member_theme.dart';
+import '../../core/widgets/member_choice.dart';
 import '../../core/widgets/member_glass.dart';
+import '../../core/widgets/member_reveal.dart';
 import '../../core/widgets/member_components.dart';
 import '../../core/widgets/member_sheet.dart';
 import 'give_repository.dart';
@@ -218,7 +220,7 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                             const Expanded(
                                 child: Text('Service days',
                                     style: TextStyle(
-                                        fontSize: 20,
+                                        fontSize: 17,
                                         fontWeight: FontWeight.w600))),
                             TextButton(
                                 onPressed: () {
@@ -378,7 +380,7 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                               child: ConstrainedBox(
                                 constraints:
                                     const BoxConstraints(maxWidth: 456),
-                                child: _paymentControls(),
+                                child: _paymentControls(context),
                               ),
                             ),
                           ),
@@ -414,13 +416,19 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                                                       .spaceBetween,
                                               children: [
                                                 Column(children: [
-                                                  Row(children: [
+                                                  MemberReveal(
+                                                      child: Row(children: [
                                                     Expanded(
                                                         child: Text('Give',
                                                             style: Theme.of(
                                                                     context)
                                                                 .textTheme
-                                                                .titleSmall?.copyWith(fontSize: 20, height: 1.3))),
+                                                                .titleSmall
+                                                                ?.copyWith(
+                                                                    fontSize:
+                                                                        17,
+                                                                    height:
+                                                                        1.3))),
                                                     MemberIconButton(
                                                         icon:
                                                             PhosphorIconsRegular
@@ -429,38 +437,43 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                                                         plain: true,
                                                         onPressed: () => context
                                                             .go('/give')),
-                                                  ]),
+                                                  ])),
                                                   const SizedBox(height: 12),
-                                                  SingleChildScrollView(
-                                                    scrollDirection:
-                                                        Axis.horizontal,
-                                                    child: Row(children: [
-                                                      for (final type in {
-                                                        'offering': 'Offerings',
-                                                        'tithe': 'Tithe',
-                                                        'prophet_offering':
-                                                            'Prophet offering',
-                                                      }.entries)
-                                                        Padding(
-                                                          padding:
-                                                              const EdgeInsets
-                                                                  .only(
-                                                                  right: 8),
-                                                          child: ChoiceChip(
-                                                            label: Text(
-                                                                type.value),
-                                                            selected:
-                                                                givingType ==
-                                                                    type.key,
-                                                            showCheckmark:
-                                                                false,
-                                                            selectedColor:
-                                                                Theme.of(
+                                                  MemberReveal(
+                                                      index: 1,
+                                                      child:
+                                                          SingleChildScrollView(
+                                                        scrollDirection:
+                                                            Axis.horizontal,
+                                                        child: Row(children: [
+                                                          for (final type in {
+                                                            'offering':
+                                                                'Offerings',
+                                                            'tithe': 'Tithe',
+                                                            'prophet_offering':
+                                                                'Prophet offering',
+                                                          }.entries)
+                                                            Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .only(
+                                                                      right: 8),
+                                                              child:
+                                                                  AppPressMotion(
+                                                                      child:
+                                                                          ChoiceChip(
+                                                                label: Text(
+                                                                    type.value),
+                                                                selected:
+                                                                    givingType ==
+                                                                        type.key,
+                                                                showCheckmark:
+                                                                    false,
+                                                                selectedColor: Theme.of(
                                                                         context)
                                                                     .colorScheme
                                                                     .onSurface,
-                                                            labelStyle:
-                                                                Theme.of(
+                                                                labelStyle: Theme.of(
                                                                         context)
                                                                     .textTheme
                                                                     .labelMedium
@@ -475,16 +488,15 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                                                                               .colorScheme
                                                                               .onSurface,
                                                                     ),
-                                                            onSelected: busy
-                                                                ? null
-                                                                : (_) =>
-                                                                    selectType(
+                                                                onSelected: busy
+                                                                    ? null
+                                                                    : (_) => selectType(
                                                                         context,
                                                                         type.key),
-                                                          ),
-                                                        ),
-                                                    ]),
-                                                  ),
+                                                              )),
+                                                            ),
+                                                        ]),
+                                                      )),
                                                   if (givingType == 'project')
                                                     Padding(
                                                       padding:
@@ -507,114 +519,139 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
                                                       ),
                                                     ),
                                                   const SizedBox(height: 24),
-                                                  Text('Enter amount',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .bodySmall),
-                                                  const SizedBox(height: 10),
-                                                  Semantics(
-                                                      liveRegion: true,
-                                                      child: FittedBox(
-                                                          fit: BoxFit.scaleDown,
-                                                          child: Text(
-                                                              amountText,
-                                                              key: const ValueKey(
-                                                                  'giving-amount'),
-                                                              style: Theme
-                                                                      .of(
-                                                                          context)
+                                                  MemberReveal(
+                                                      index: 2,
+                                                      child: Text(
+                                                          'Enter amount',
+                                                          style:
+                                                              Theme.of(context)
                                                                   .textTheme
-                                                                  .headlineLarge
-                                                                  ?.copyWith(
-                                                                      fontSize:
-                                                                          48,
-                                                                      height:
-                                                                          1.18,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w600,
-                                                                      letterSpacing:
-                                                                          0)))),
-                                                  const SizedBox(height: 8),
-                                                  Text('Minimum ₦100',
-                                                      style: Theme.of(context)
-                                                          .textTheme
-                                                          .bodySmall),
-                                                  const SizedBox(height: 24),
-                                                  Wrap(
-                                                      spacing: 8,
-                                                      runSpacing: 4,
-                                                      alignment:
-                                                          WrapAlignment.center,
-                                                      children: [
-                                                        for (final amount in [
-                                                          1000,
-                                                          5000,
-                                                          10000,
-                                                          20000
-                                                        ])
-                                                          TextButton(
-                                                              onPressed: busy
-                                                                  ? null
-                                                                  : () => preset(
-                                                                      amount),
-                                                              style: TextButton.styleFrom(
-                                                                  minimumSize:
-                                                                      const Size(
-                                                                          72, 48),
-                                                                  padding: const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          10),
-                                                                  backgroundColor: Theme.of(context)
-                                                                      .colorScheme
-                                                                      .surfaceContainerLow,
-                                                                  textStyle: Theme.of(context)
+                                                                  .bodySmall)),
+                                                  const SizedBox(height: 10),
+                                                  MemberReveal(
+                                                      index: 2,
+                                                      child: Semantics(
+                                                          liveRegion: true,
+                                                          child: FittedBox(
+                                                              fit: BoxFit
+                                                                  .scaleDown,
+                                                              child: Text(
+                                                                  amountText,
+                                                                  key: const ValueKey(
+                                                                      'giving-amount'),
+                                                                  style: Theme
+                                                                          .of(
+                                                                              context)
                                                                       .textTheme
-                                                                      .labelMedium),
-                                                              child: Text(NumberFormat.currency(locale: 'en_NG', symbol: '₦', decimalDigits: 0)
-                                                                  .format(amount))),
-                                                      ]),
+                                                                      .headlineLarge
+                                                                      ?.copyWith(
+                                                                          fontSize:
+                                                                              48,
+                                                                          height:
+                                                                              1.18,
+                                                                          fontWeight: FontWeight
+                                                                              .w600,
+                                                                          letterSpacing:
+                                                                              0))))),
+                                                  const SizedBox(height: 8),
+                                                  MemberReveal(
+                                                      index: 2,
+                                                      child: Text(
+                                                          'Minimum ₦100',
+                                                          style:
+                                                              Theme.of(context)
+                                                                  .textTheme
+                                                                  .bodySmall)),
+                                                  const SizedBox(height: 24),
+                                                  MemberReveal(
+                                                      index: 3,
+                                                      child: Wrap(
+                                                          spacing: 8,
+                                                          runSpacing: 4,
+                                                          alignment:
+                                                              WrapAlignment
+                                                                  .center,
+                                                          children: [
+                                                            for (final amount
+                                                                in [
+                                                              1000,
+                                                              5000,
+                                                              10000,
+                                                              20000
+                                                            ])
+                                                              MemberChoice(
+                                                                  label: NumberFormat.currency(
+                                                                          locale:
+                                                                              'en_NG',
+                                                                          symbol:
+                                                                              '₦',
+                                                                          decimalDigits:
+                                                                              0)
+                                                                      .format(
+                                                                          amount),
+                                                                  selected:
+                                                                      digits ==
+                                                                          amount
+                                                                              .toString(),
+                                                                  minWidth: 72,
+                                                                  onTap: busy
+                                                                      ? null
+                                                                      : () => preset(
+                                                                          amount)),
+                                                          ])),
                                                   const SizedBox(height: 16),
-                                                  SwitchListTile.adaptive(
-                                                    contentPadding:
-                                                        EdgeInsets.zero,
-                                                    title:
-                                                        const Text('Auto give'),
-                                                    subtitle: Text(
-                                                        autoGive
-                                                            ? 'Repeat after this payment'
-                                                            : 'Off · One-time payment',
-                                                        style: Theme.of(context)
-                                                            .textTheme
-                                                            .bodySmall),
-                                                    value: autoGive,
-                                                    onChanged: busy
-                                                        ? null
-                                                        : (value) =>
-                                                            setState(() {
-                                                              autoGive = value;
-                                                              error = null;
-                                                            }),
-                                                  ),
-                                                  _disclosure(context),
-                                                  if (error != null) ...[
-                                                    const SizedBox(height: 12),
-                                                    Semantics(
-                                                        liveRegion: true,
-                                                        child: Text(error!,
+                                                  MemberReveal(
+                                                      index: 4,
+                                                      child: SwitchListTile
+                                                          .adaptive(
+                                                        contentPadding:
+                                                            EdgeInsets.zero,
+                                                        title: const Text(
+                                                            'Auto give'),
+                                                        subtitle: Text(
+                                                            autoGive
+                                                                ? 'Repeat after this payment'
+                                                                : 'Off · One-time payment',
                                                             style: Theme.of(
                                                                     context)
                                                                 .textTheme
-                                                                .bodySmall
-                                                                ?.copyWith(
-                                                                    color: Theme.of(
-                                                                            context)
-                                                                        .colorScheme
-                                                                        .error))),
-                                                  ],
+                                                                .bodySmall),
+                                                        value: autoGive,
+                                                        onChanged: busy
+                                                            ? null
+                                                            : (value) =>
+                                                                setState(() {
+                                                                  autoGive =
+                                                                      value;
+                                                                  error = null;
+                                                                }),
+                                                      )),
+                                                  _disclosure(context),
+                                                  MemberSwap(
+                                                      animateSize: false,
+                                                      child: error == null
+                                                          ? const SizedBox(
+                                                              width: double
+                                                                  .infinity)
+                                                          : Padding(
+                                                              padding:
+                                                                  const EdgeInsets
+                                                                      .only(
+                                                                      top: 12),
+                                                              child: Semantics(
+                                                                  liveRegion:
+                                                                      true,
+                                                                  child: Text(
+                                                                      error!,
+                                                                      style: Theme.of(
+                                                                              context)
+                                                                          .textTheme
+                                                                          .bodySmall
+                                                                          ?.copyWith(
+                                                                              color: Theme.of(context).colorScheme.error))))),
                                                 ]),
                                                 if (!_dockKeypad(context))
-                                                  _paymentControls(),
+                                                  _paymentControls(context),
                                               ])),
                                     ),
                                   ),
@@ -629,21 +666,27 @@ class _GivePaymentPageState extends State<GivePaymentPage> {
       MediaQuery.sizeOf(context).height >= 720 &&
       MediaQuery.textScalerOf(context).scale(14) <= 18.2;
 
-  Widget _paymentControls() =>
+  Widget _paymentControls(BuildContext context) =>
       Column(mainAxisSize: MainAxisSize.min, children: [
         const SizedBox(height: 16),
         _Keypad(onKey: busy ? null : press),
         const SizedBox(height: 20),
         SizedBox(
           width: double.infinity,
-          child: FilledButton(
+          child: AppPressMotion(
+              child: FilledButton(
             onPressed: canSubmit ? submit : null,
-            child: busy
-                ? const SizedBox.square(
-                    dimension: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Continue'),
-          ),
+            child: AnimatedSwitcher(
+                duration: AppMotion.duration(context, AppMotion.tab),
+                switchInCurve: AppMotion.curve,
+                switchOutCurve: AppMotion.curve.flipped,
+                child: busy
+                    ? const SizedBox.square(
+                        key: ValueKey('busy'),
+                        dimension: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text('Continue', key: ValueKey('label'))),
+          )),
         ),
       ]);
 }
@@ -678,7 +721,7 @@ class _AutoGiveSettings extends StatelessWidget {
                   alignment: Alignment.centerLeft,
                   child: Text('Repeat days',
                       style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500))),
+                          fontSize: 11, fontWeight: FontWeight.w500))),
               const SizedBox(height: 8),
               Align(
                   alignment: Alignment.centerLeft,
@@ -754,7 +797,7 @@ class _ScheduleRow extends StatelessWidget {
                     children: [
                   Text(title,
                       style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500)),
+                          fontSize: 11, fontWeight: FontWeight.w500)),
                   Text(value,
                       style: TextStyle(
                           fontSize: 10,
@@ -772,7 +815,7 @@ class _GroupLabel extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
       padding: const EdgeInsets.fromLTRB(10, 14, 10, 6),
       child: Text(label,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)));
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)));
 }
 
 class _Keypad extends StatelessWidget {
@@ -812,7 +855,8 @@ class _Keypad extends StatelessWidget {
                                 ? 'Delete last digit'
                                 : keyValue,
                             excludeSemantics: true,
-                            child: InkWell(
+                            child: AppPressMotion(
+                                child: InkWell(
                               borderRadius: BorderRadius.circular(16),
                               onTap:
                                   onKey == null ? null : () => onKey!(keyValue),
@@ -835,11 +879,11 @@ class _Keypad extends StatelessWidget {
                                           size: 22)
                                       : Text(keyValue,
                                           style: const TextStyle(
-                                              fontSize: 26,
+                                              fontSize: 20,
                                               fontWeight: FontWeight.w500)),
                                 ),
                               ),
-                            )),
+                            ))),
                       ),
                     );
                   }),

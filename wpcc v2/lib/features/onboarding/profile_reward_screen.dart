@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'onboarding_style.dart';
 
 /// Award presentation from mobile onboarding prototype v3.
 /// Entitlement is supplied by the parent after checking the server ledger.
@@ -157,11 +158,10 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                 if (!reduced) ...[
                   for (final shadow in [
                     const BoxShadow(
-                        color: Color(0x6b000000),
+                        color: Color(0x660b0910),
                         offset: Offset(0, 24),
                         blurRadius: 36),
-                    const BoxShadow(color: Color(0x294cede9), blurRadius: 22),
-                    const BoxShadow(color: Color(0x29d6238b), blurRadius: 24)
+                    const BoxShadow(color: Color(0x338b6cf6), blurRadius: 28)
                   ])
                     Transform.translate(
                         offset: shadow.offset,
@@ -229,14 +229,12 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                       decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: RadialGradient(radius: .70710678, colors: [
-                            Color(0x427759ff),
-                            Color(0x1fd6238b),
-                            Color(0x1450a536),
+                            Color(0x428b6cf6),
+                            Color(0x188b6cf6),
                             Colors.transparent
                           ], stops: [
                             0,
-                            .35,
-                            .5,
+                            .45,
                             .72
                           ])))))),
       builder: (context, child) {
@@ -266,7 +264,7 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
             opacity: closing ? 0 : 1,
             duration: Duration(milliseconds: reduced ? 0 : 180),
             child: Material(
-                color: const Color(0xff02030b),
+                color: Onb.canvas,
                 child: Stack(fit: StackFit.expand, children: [
                   AnimatedBuilder(
                       animation: entry,
@@ -310,16 +308,12 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                                                   : 'Reward on its way',
                                               key: const Key('reward-title'),
                                               textAlign: TextAlign.center,
-                                              style: GoogleFonts.manrope(
-                                                  fontSize: short ? 28 : 31,
-                                                  height: 1.06,
-                                                  fontWeight: FontWeight.w800,
-                                                  letterSpacing:
-                                                      -(short ? 28 : 31) * .05,
-                                                  color: Colors.white,
-                                                  decoration:
-                                                      TextDecoration.none)),
-                                          const SizedBox(height: 13),
+                                              style: Onb.heading(short ? 30 : 34,
+                                                      height: 1.08)
+                                                  .copyWith(
+                                                      decoration:
+                                                          TextDecoration.none)),
+                                          const SizedBox(height: Onb.s12),
                                           ConstrainedBox(
                                               constraints: const BoxConstraints(
                                                   maxWidth: 320),
@@ -328,23 +322,30 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                                                       ? "You've been awarded 15WP for completing your profile."
                                                       : 'Your details are saved. Your one-time reward is being processed securely. You can continue using the app.',
                                                   textAlign: TextAlign.center,
-                                                  style: body(14,
-                                                          alpha: .7,
-                                                          weight:
-                                                              FontWeight.w400)
+                                                  style: Onb.body(15, alpha: .78)
                                                       .copyWith(
-                                                          height: 1.42,
-                                                          letterSpacing:
-                                                              -.21))),
+                                                          decoration:
+                                                              TextDecoration
+                                                                  .none))),
                                         ])),
                                     1020,
                                     760),
                                 const Spacer(),
-                                const SizedBox(height: 24),
+                                const SizedBox(height: Onb.s24),
                                 revealChild(
                                     ConstrainedBox(
                                         constraints:
-                                            const BoxConstraints(maxWidth: 330),
+                                            const BoxConstraints(maxWidth: 420),
+                                        child: OnbPrimaryButton(
+                                            label: 'Continue',
+                                            onPressed: close)),
+                                    1300,
+                                    740),
+                                const SizedBox(height: Onb.s12),
+                                revealChild(
+                                    ConstrainedBox(
+                                        constraints:
+                                            const BoxConstraints(maxWidth: 340),
                                         child: FocusableActionDetector(
                                             actions: {
                                               ActivateIntent: CallbackAction<
@@ -369,7 +370,7 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                                                               ? 'More ways to earn WP coming soon'
                                                               : 'Learn more',
                                                           recognizer: link,
-                                                          style: body(10,
+                                                          style: body(12,
                                                                   alpha: .97,
                                                                   weight:
                                                                       FontWeight
@@ -379,8 +380,7 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                                                                       TextDecoration
                                                                           .underline,
                                                                   decorationColor:
-                                                                      Colors
-                                                                          .white)),
+                                                                      Onb.ink)),
                                                       const TextSpan(
                                                           text:
                                                               ' on what those points are used for'),
@@ -388,14 +388,8 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                                                     key: const Key(
                                                         'reward-footer'),
                                                     textAlign: TextAlign.center,
-                                                    style: body(short ? 13 : 10,
-                                                            alpha: .86)
-                                                        .copyWith(
-                                                            letterSpacing:
-                                                                -(short
-                                                                        ? 13
-                                                                        : 10) *
-                                                                    .015))))),
+                                                    style: body(12, alpha: .72)
+                                                        .copyWith(height: 1.45))))),
                                     1300,
                                     740),
                               ]))))),
@@ -404,19 +398,20 @@ class _ProfileRewardScreenState extends State<ProfileRewardScreen>
                       right: 20 + safe.right,
                       child: revealChild(
                           SizedBox(
-                              width: 42,
-                              height: 42,
+                              width: Onb.minTarget,
+                              height: Onb.minTarget,
                               child: IconButton(
                                   tooltip: 'Close reward',
                                   onPressed: close,
                                   padding: EdgeInsets.zero,
                                   style: IconButton.styleFrom(
-                                      backgroundColor:
-                                          Colors.white.withValues(alpha: .08),
-                                      foregroundColor: Colors.white,
+                                      backgroundColor: Onb.inkAlpha(.08),
+                                      foregroundColor: Onb.ink,
+                                      shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                              Onb.radiusControl)),
                                       side: BorderSide(
-                                          color: Colors.white
-                                              .withValues(alpha: .14))),
+                                          color: Onb.inkAlpha(.14))),
                                   icon: Icon(PhosphorIcons.x(), size: 20))),
                           720,
                           500,
@@ -438,8 +433,8 @@ class _RewardBackground extends CustomPainter {
           ..shader = const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xff091451), Color(0xff05071c), Color(0xff02030a)],
-              stops: [0, .46, 1]).createShader(rect));
+              colors: [Color(0xff161338), Color(0xff0d0b1f), Color(0xff0b0910)],
+              stops: [0, .5, 1]).createShader(rect));
     void radial(double y, List<Color> colors, List<double> stops) {
       final center = Offset(size.width * .5, size.height * y);
       final far = math.sqrt(math.pow(size.width / 2, 2) +
@@ -448,12 +443,8 @@ class _RewardBackground extends CustomPainter {
           Paint()..shader = ui.Gradient.radial(center, far, colors, stops));
     }
 
-    radial(
-        1.12,
-        [const Color(0x1fd6238b), const Color(0x1450a536), Colors.transparent],
-        [0, .3, .58]);
-    radial(.25, [const Color(0x38843fff), const Color(0x00843fff)], [0, .34]);
-    radial(-.08, [const Color(0x574658ff), const Color(0x004658ff)], [0, .38]);
+    radial(.34, [const Color(0x2e8b6cf6), const Color(0x008b6cf6)], [0, .4]);
+    radial(-.08, [const Color(0x293f4fd6), const Color(0x003f4fd6)], [0, .38]);
   }
 
   @override
@@ -469,7 +460,7 @@ class _RewardStars extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final fade =
         Curves.ease.transform(((entry.value * 2400 - 180) / 750).clamp(0, 1));
-    for (var n = 1; n <= 28; n++) {
+    for (var n = 1; n <= 20; n++) {
       final duration = 7.5 + (n % 6) * 1.15;
       final delay = (n * 1.37) % 9.5;
       final t = ((clock.value + delay) % duration) / duration;
@@ -484,11 +475,7 @@ class _RewardStars extends CustomPainter {
       final point = Offset(((n * 37 + 3) % 94) / 100 * size.width,
           size.height + 18 - 1.12 * size.height * t);
       final radius = (2 + n % 4) / 2 * (.7 + .45 * t);
-      final color = n % 5 == 0
-          ? const Color(0xffe05fff)
-          : n % 3 == 0
-              ? const Color(0xff78e5ff)
-              : const Color(0xffb69aff);
+      final color = n % 3 == 0 ? Onb.ink : Onb.accentLight;
       canvas.drawCircle(
           point,
           radius + 3,

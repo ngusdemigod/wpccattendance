@@ -14,7 +14,6 @@ import 'package:wpcc_community/core/widgets/member_components.dart';
 import 'package:wpcc_community/core/widgets/member_sheet.dart';
 import 'package:wpcc_community/features/data/providers.dart';
 import 'package:wpcc_community/features/home/home_page.dart';
-import 'package:wpcc_community/features/search/search_page.dart';
 
 void main() {
   testWidgets('quick links use solid surfaces in high contrast',
@@ -27,7 +26,7 @@ void main() {
     ));
     await tester.pumpAndSettle();
     expect(find.byType(BackdropFilter), findsNothing);
-    expect(find.byTooltip('Departments'), findsOneWidget);
+    expect(find.byTooltip('Prayer'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
   testWidgets('Home preserves reference search and latest artwork geometry',
@@ -134,31 +133,13 @@ void main() {
   });
   testWidgets('quick links use reference order and keep real destinations',
       (tester) async {
-    expect(HomePage.actions.map((action) => action.$1), [
-      'Departments',
-      'Prayer',
-      'Devotional',
-      'Souls',
-      'Give',
-      'Service tools',
-      'Classes',
-      'Counselling'
-    ]);
-    expect(HomePage.actions.map((action) => action.$2), [
-      '/departments',
-      '/prayer-alerts',
-      '/devotional',
-      '/souls',
-      '/give',
-      '/resources/department-tools',
-      '/profile/classes',
-      '/counselling'
-    ]);
+    expect(HomePage.actions.map((action) => action.$1), ['Prayer', 'Devotional', 'Souls', 'Service tools', 'Classes']);
+    expect(HomePage.actions.map((action) => action.$2), ['/prayer-alerts', '/devotional', '/souls', '/resources/department-tools', '/profile/classes']);
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(390, 844);
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
-    for (final action in HomePage.actions.take(5)) {
+    for (final action in HomePage.actions.take(4)) {
       final router = GoRouter(initialLocation: '/home', routes: [
         GoRoute(
             path: '/home',
@@ -202,7 +183,7 @@ void main() {
           await tester.scrollUntilVisible(art, 80,
               scrollable: find.byType(Scrollable));
           await tester.pumpAndSettle();
-          expect(tester.getSize(art), Size.square(size.width < 600 ? 70 : 78));
+          expect(tester.getSize(art), Size.square(size.width < 600 ? 54 : 64));
           expect(find.ancestor(of: art, matching: find.byType(ClipOval)),
               findsOneWidget);
           final painter = tester.widget<CustomPaint>(art).painter!;
@@ -210,7 +191,7 @@ void main() {
           final icon = tester.widget<Icon>(
               find.descendant(of: art, matching: find.byType(Icon)));
           expect(icon.icon, action.$3);
-          expect(icon.size, 24);
+          expect(icon.size, 22);
           expect(
               icon.color, Theme.of(tester.element(art)).colorScheme.onSurface);
 
@@ -405,7 +386,7 @@ void main() {
         child: MaterialApp(
             home: Scaffold(body: HomePage(loadLatest: () async => [])))));
     await tester.pumpAndSettle();
-    for (final label in ['Classes', 'Counselling']) {
+    for (final label in ['Classes']) {
       final ink = tester.widget<InkWell>(
           find.ancestor(of: find.text(label), matching: find.byType(InkWell)));
       expect(ink.onTap, isNull);

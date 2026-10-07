@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
-import '../../core/services/receipt_export_service.dart';
 import '../../core/widgets/section_empty_state.dart';
 import 'give_repository.dart';
+import 'receipt_actions.dart';
 import '../../core/widgets/member_skeleton.dart';
 import '../../core/widgets/member_sheet.dart';
+import '../../core/widgets/member_back.dart';
 
 typedef GivingHistoryLoader = Future<List<Map<String, dynamic>>> Function(
     {required int limit, required int offset});
@@ -96,14 +96,10 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
         backgroundColor: Colors.transparent,
         appBar: widget.embedded
             ? null
-            : AppBar(
-                leading: IconButton(
-                  onPressed: () => context.pop(),
-                  icon: Icon(PhosphorIcons.caretLeft(), size: 20),
-                ),
-                title: const Text(
+            : MemberAppBar(
+title: const Text(
                   'Giving history',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
                 ),
               ),
         body: RefreshIndicator(
@@ -249,7 +245,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                   Text(
                     _label(tx['giving_type']),
                     style: const TextStyle(
-                      fontSize: 14,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -272,7 +268,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                 Text(
                   _amount(tx),
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -281,7 +277,7 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
                       ? 'Processing'
                       : _label(tx['status']),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: color,
                       ),
                 ),
@@ -340,7 +336,6 @@ class _GivingHistoryPageState extends State<GivingHistoryPage> {
 class _InvoiceSheet extends StatelessWidget {
   const _InvoiceSheet({required this.tx});
   final Map<String, dynamic> tx;
-  static const exporter = ReceiptExportService();
 
   @override
   Widget build(BuildContext context) {
@@ -415,28 +410,7 @@ class _InvoiceSheet extends StatelessWidget {
             tx['source_summary'] ?? tx['payment_channel'] ?? 'Paystack',
           ),
           const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  onPressed: () => exporter.downloadPdf(tx),
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  icon: Icon(PhosphorIcons.filePdf(), size: 17),
-                  label: const Text('PDF'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () => exporter.downloadImage(tx),
-                  icon: Icon(PhosphorIcons.image(), size: 17),
-                  label: const Text('Image'),
-                ),
-              ),
-            ],
-          ),
+          ReceiptActions(transaction: tx, filledPdf: true),
         ],
       ),
     );
@@ -452,7 +426,7 @@ class _InvoiceSheet extends StatelessWidget {
               child: Text(
                 label,
                 style: TextStyle(
-                    fontSize: 13,
+                    fontSize: 12,
                     color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ),
@@ -461,7 +435,7 @@ class _InvoiceSheet extends StatelessWidget {
                 (value?.toString() ?? '—').replaceAll('_', ' '),
                 textAlign: TextAlign.right,
                 style:
-                    const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                    const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               ),
             ),
           ],

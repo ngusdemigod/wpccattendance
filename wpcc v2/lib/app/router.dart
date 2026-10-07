@@ -27,6 +27,7 @@ import '../features/reports/anonymous_reports_page.dart';
 import '../features/media/media_page.dart';
 import '../features/media/media_album_detail_page.dart';
 import '../features/media/media_episode_detail_page.dart';
+import '../features/media/media_video_page.dart';
 import '../features/prayer/prayer_alert_edit_page.dart';
 import '../features/prayer/prayer_alerts_page.dart';
 import '../features/prayer/prayer_session_page.dart';
@@ -37,6 +38,7 @@ import '../features/souls/souls_page.dart';
 import 'app_shell.dart';
 import '../core/theme/member_theme.dart';
 import '../core/theme/app_motion.dart';
+import '../core/widgets/member_back.dart';
 
 class AuthRefreshListenable extends ChangeNotifier {
   AuthRefreshListenable() {
@@ -122,6 +124,14 @@ GoRouter buildRouter() {
                         state,
                         MediaAlbumDetailPage(
                             albumId: state.pathParameters['id']!,
+                            seed: state.extra as Map<String, dynamic>?))),
+                GoRoute(
+                    path: 'video/:id',
+                    pageBuilder: (context, state) => _slide(
+                        context,
+                        state,
+                        MediaVideoPage(
+                            videoId: state.pathParameters['id']!,
                             seed: state.extra as Map<String, dynamic>?))),
               ]),
           GoRoute(
@@ -294,9 +304,11 @@ GoRouter buildRouter() {
                   AppMotion.duration(context, AppMotion.exit),
               child: MemberTheme(
                   route: state.uri.path,
-                  child: PrayerSessionPage(
-                      payload: Map<String, dynamic>.from(
-                          (state.extra as Map?) ?? const {}))),
+                  child: MemberBackHost(
+                      path: state.uri.path,
+                      child: PrayerSessionPage(
+                          payload: Map<String, dynamic>.from(
+                              (state.extra as Map?) ?? const {})))),
               transitionsBuilder: (context, animation, __, child) =>
                   AppRouteMotion(
                       animation: animation,
@@ -333,10 +345,9 @@ CustomTransitionPage<void> _memberPage(
                 route: state.uri.path,
                 media: state.uri.path.startsWith('/media'),
                 child: child),
-            transitionDuration:
-                AppMotion.duration(context, const Duration(milliseconds: 320)),
+            transitionDuration: AppMotion.duration(context, AppMotion.page),
             reverseTransitionDuration:
-                AppMotion.duration(context, const Duration(milliseconds: 240)),
+                AppMotion.duration(context, AppMotion.exit),
             transitionsBuilder: (context, animation, secondary, child) =>
                 AppRouteMotion(
                     animation: animation, offset: Offset.zero, child: child));
@@ -347,7 +358,9 @@ CustomTransitionPage<void> _fade(
       key: state.pageKey,
       transitionDuration: AppMotion.duration(context, AppMotion.page),
       reverseTransitionDuration: AppMotion.duration(context, AppMotion.exit),
-      child: MemberTheme(route: state.uri.path, child: child),
+      child: MemberTheme(
+          route: state.uri.path,
+          child: MemberBackHost(path: state.uri.path, child: child)),
       transitionsBuilder: (context, animation, secondary, child) {
         if (MediaQuery.disableAnimationsOf(context)) return child;
         return AppRouteMotion(
@@ -368,7 +381,10 @@ CustomTransitionPage<void> _slide(
         AppMotion.duration(context, const Duration(milliseconds: 280)),
     reverseTransitionDuration:
         AppMotion.duration(context, const Duration(milliseconds: 200)),
-    child: MemberTheme(route: state.uri.path, child: child),
+    // Every non-tab member page gets the shared sticky top-left back button.
+    child: MemberTheme(
+        route: state.uri.path,
+        child: MemberBackHost(path: state.uri.path, child: child)),
     transitionsBuilder: (context, animation, secondary, child) {
       if (MediaQuery.disableAnimationsOf(context)) return child;
       if (origin != null) {

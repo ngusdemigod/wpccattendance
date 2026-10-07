@@ -88,6 +88,12 @@ class MediaPlayerController extends ValueNotifier<MediaPlayerState> {
   }
 
   void togglePlayback() => SpotifyPlaybackBridge.instance.togglePlay();
+
+  /// Pauses audio if it is playing, keeping the mini player available. Used
+  /// when a video starts so two sources never play at once.
+  void pause() {
+    if (value.isPlaying) SpotifyPlaybackBridge.instance.pause();
+  }
   void seek(int positionMs) {
     SpotifyPlaybackBridge.instance.seek(positionMs);
     value = MediaPlayerState(

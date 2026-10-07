@@ -27,7 +27,16 @@ class SwrCache {
     }
     _client = client;
     clear();
-    _authSubscription = client.auth.onAuthStateChange.listen((_) => clear());
+    // A token refresh keeps the same member, and keys are already scoped by user
+    // id, so it must not discard warm data (it happens about hourly and every
+    // time the app returns from the background with an expired token).
+    _authSubscription = client.auth.onAuthStateChange.listen((state) {
+      if (state.event == AuthChangeEvent.tokenRefreshed ||
+          state.event == AuthChangeEvent.initialSession) {
+        return;
+      }
+      clear();
+    });
     _channel = client
         .channel('wpcc-swr-invalidation')
         .onPostgresChanges(

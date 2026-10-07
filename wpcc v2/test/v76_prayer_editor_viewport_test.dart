@@ -29,13 +29,17 @@ void main() {
       await tester.pump();
 
       expect(find.text('New prayer alert'), findsOneWidget);
-      expect(find.text('Test prayer alert'), findsOneWidget);
-      expect(find.byType(ChoiceChip), findsNWidgets(7));
-      for (final chip in find.byType(ChoiceChip).evaluate()) {
-        final rect = tester.getRect(find.byWidget(chip.widget));
+      expect(find.byType(PrayerDayToggle), findsNWidgets(7));
+      for (final toggle in find.byType(PrayerDayToggle).evaluate()) {
+        final rect = tester.getRect(find.byWidget(toggle.widget));
         expect(rect.left, greaterThanOrEqualTo(0));
         expect(rect.right, lessThanOrEqualTo(width));
       }
+      // Save stays anchored on screen; the test action is further down.
+      expect(find.widgetWithText(FilledButton, 'Save'), findsOneWidget);
+      await tester.drag(find.byType(ListView), const Offset(0, -700));
+      await tester.pumpAndSettle();
+      expect(find.text('Test prayer alert'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });
   }

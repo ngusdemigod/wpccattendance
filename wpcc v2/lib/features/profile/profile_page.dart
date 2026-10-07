@@ -177,7 +177,7 @@ class _ProfilePageState extends State<ProfilePage> {
         Text(profile['full_name']?.toString() ?? 'WPCC Member',
             textAlign: TextAlign.center,
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontSize: 24, height: 1.3, fontWeight: FontWeight.w600)),
+                fontSize: 22, height: 1.3, fontWeight: FontWeight.w600)),
         const SizedBox(height: 6),
         if (role.isNotEmpty)
           Text(role,
@@ -185,13 +185,13 @@ class _ProfilePageState extends State<ProfilePage> {
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(fontSize: 13, height: 21 / 13)),
+                  ?.copyWith(fontSize: 12, height: 21 / 13)),
         if ((profile['membership_code']?.toString() ?? '').isNotEmpty)
           Text('Member ID: ${profile['membership_code']}',
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
-                  ?.copyWith(fontSize: 13, height: 21 / 13)),
+                  ?.copyWith(fontSize: 12, height: 21 / 13)),
       ]),
     ]);
   }
@@ -284,7 +284,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ? value.toString()
                         : 'Not set',
                     style: const TextStyle(
-                      fontSize: 15,
+                      fontSize: 13,
                       height: 1.4,
                       fontWeight: FontWeight.w500,
                     ),

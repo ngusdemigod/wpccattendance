@@ -13,6 +13,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/widgets/adaptive_layout.dart';
 import '../../core/utils/wpcc_time.dart';
 import '../../core/widgets/member_components.dart';
+import '../announcements/announcement_palette.dart';
 import '../data/providers.dart';
 import '../media/media_repository.dart';
 import '../media/media_player_controller.dart';
@@ -22,14 +23,11 @@ class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key, this.loadLatest});
   final Future<List<Map<String, dynamic>>> Function()? loadLatest;
   static final actions = <(String, String, IconData)>[
-    ('Departments', '/departments', PhosphorIcons.users()),
     ('Prayer', '/prayer-alerts', PhosphorIcons.bell()),
     ('Devotional', '/devotional', PhosphorIcons.bookOpen()),
     ('Souls', '/souls', PhosphorIcons.heart()),
-    ('Give', '/give', PhosphorIcons.gift()),
     ('Service tools', '/resources/department-tools', PhosphorIcons.listChecks()),
     ('Classes', '/profile/classes', PhosphorIcons.graduationCap()),
-    ('Counselling', '/counselling', PhosphorIcons.chatCircle()),
   ];
 
   @override
@@ -283,8 +281,8 @@ class HomeQuickLinks extends StatelessWidget {
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 4,
-          mainAxisExtent: (tablet ? 78 : 70) + 8 + 34 * scale,
+          crossAxisCount: 5,
+          mainAxisExtent: (tablet ? 64 : 54) + 8 + 34 * scale,
           crossAxisSpacing: 8,
           mainAxisSpacing: 16),
       itemCount: HomePage.actions.length,
@@ -301,7 +299,7 @@ class _Shortcut extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
-    final soon = action.$2 == '/profile/classes' || action.$2 == '/counselling';
+    final soon = action.$2 == '/profile/classes';
     final label = action.$1;
     return Semantics(
       button: true,
@@ -319,20 +317,25 @@ class _Shortcut extends StatelessWidget {
             child: Column(children: [
               Opacity(
                   opacity: soon ? .45 : 1,
-                  child: SizedBox(
-                    width: tablet ? 78 : 70,
-                    height: tablet ? 78 : 70,
-                    child: ClipOval(
-                        child: MemberGlass(
-                            radius: 100,
-                            child: CustomPaint(
-                                key:
-                                    ValueKey('quick-link-pattern:${action.$2}'),
-                                painter: _QuickLinkPatternPainter(action.$2,
-                                    opacity: 0),
-                                child: Icon(action.$3,
-                                    size: 24, color: colors.onSurface)))),
-                  )),
+                  // Keep the circle round: never wider than its grid cell.
+                  child: LayoutBuilder(builder: (context, constraints) {
+                    final diameter =
+                        (tablet ? 64.0 : 54.0).clamp(0.0, constraints.maxWidth);
+                    return SizedBox(
+                      width: diameter,
+                      height: diameter,
+                      child: ClipOval(
+                          child: MemberGlass(
+                              radius: 100,
+                              child: CustomPaint(
+                                  key: ValueKey(
+                                      'quick-link-pattern:${action.$2}'),
+                                  painter: _QuickLinkPatternPainter(action.$2,
+                                      opacity: 0),
+                                  child: Icon(action.$3,
+                                      size: 22, color: colors.onSurface)))),
+                    );
+                  })),
               const SizedBox(height: 8),
               LayoutBuilder(builder: (context, constraints) {
                 final captionWidth = constraints.maxWidth + 12;
@@ -529,6 +532,9 @@ class _EventRail extends StatelessWidget {
 }
 
 void _showAnnouncement(BuildContext context, Map<String, dynamic> row) {
+  final style = AnnouncementPalette.byKey(row['background_style']);
+  final title = row['title']?.toString() ?? 'Announcement';
+  final content = (row['content'] ?? row['body'] ?? '').toString();
   showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -537,15 +543,44 @@ void _showAnnouncement(BuildContext context, Map<String, dynamic> row) {
       builder: (context) => SafeArea(
           child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-              child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(row['title']?.toString() ?? 'Announcement',
-                        style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 16),
-                    Text((row['content'] ?? row['body'] ?? '').toString()),
-                  ]))));
+              child: style == null
+                  ? Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          Text(title,
+                              style: Theme.of(context).textTheme.titleLarge),
+                          const SizedBox(height: 16),
+                          Text(content),
+                        ])
+                  : DecoratedBox(
+                      decoration: BoxDecoration(
+                          gradient: style.gradient,
+                          borderRadius: BorderRadius.circular(20)),
+                      child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(title,
+                                    textAlign: TextAlign.center,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                            color: style.foreground,
+                                            fontWeight: FontWeight.w700)),
+                                const SizedBox(height: 16),
+                                Text(content,
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                        color: style.foreground,
+                                        fontSize:
+                                            AnnouncementPalette.statusFontSize(
+                                                content),
+                                        height: 1.3,
+                                        fontWeight: FontWeight.w700)),
+                              ]))))));
 }
 
 class _AnnouncementStack extends StatelessWidget {
@@ -587,67 +622,78 @@ class _AnnouncementStack extends StatelessWidget {
                               itemCount: rows.length,
                               itemBuilder: (context, index) {
                                 final row = rows[index];
+                                final style = AnnouncementPalette.byKey(
+                                    row['background_style']);
+                                final card = Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                        onTap: () =>
+                                            _showAnnouncement(context, row),
+                                        child: Padding(
+                                            padding: const EdgeInsets.all(24),
+                                            child: Column(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                      row['department_name']
+                                                              ?.toString() ??
+                                                          'Announcement',
+                                                      maxLines: 1,
+                                                      overflow:
+                                                          TextOverflow.ellipsis,
+                                                      style: Theme.of(context)
+                                                          .textTheme
+                                                          .bodySmall
+                                                          ?.copyWith(
+                                                              color: style
+                                                                  ?.mutedForeground)),
+                                                  const SizedBox(height: 12),
+                                                  Flexible(
+                                                      child: Text(
+                                                          row['title']
+                                                                  ?.toString() ??
+                                                              'Announcement',
+                                                          textAlign:
+                                                              TextAlign.center,
+                                                          maxLines: 3,
+                                                          overflow: TextOverflow
+                                                              .ellipsis,
+                                                          style: TextStyle(
+                                                              color: style
+                                                                  ?.foreground,
+                                                              fontSize: 22,
+                                                              fontWeight: style ==
+                                                                      null
+                                                                  ? FontWeight
+                                                                      .w500
+                                                                  : FontWeight
+                                                                      .w700))),
+                                                  const SizedBox(height: 12),
+                                                  Text('Read announcement',
+                                                      style: TextStyle(
+                                                          color: style
+                                                              ?.mutedForeground,
+                                                          fontSize: 12)),
+                                                ]))));
                                 return Padding(
                                     padding: const EdgeInsets.symmetric(
                                         horizontal: 1),
-                                    child: MemberGlass(
-                                        outlined: false,
-                                        frosted: true,
-                                        radius: 20,
-                                        child: Material(
-                                            color: Colors.transparent,
-                                            child: InkWell(
-                                                onTap: () => _showAnnouncement(
-                                                    context, row),
-                                                child: Padding(
-                                                    padding:
-                                                        const EdgeInsets.all(
-                                                            24),
-                                                    child: Column(
-                                                        mainAxisAlignment:
-                                                            MainAxisAlignment
-                                                                .center,
-                                                        children: [
-                                                          Text(
-                                                              row['department_name']
-                                                                      ?.toString() ??
-                                                                  'Announcement',
-                                                              maxLines: 1,
-                                                              overflow:
-                                                                  TextOverflow
-                                                                      .ellipsis,
-                                                              style: Theme.of(
-                                                                      context)
-                                                                  .textTheme
-                                                                  .bodySmall),
-                                                          const SizedBox(
-                                                              height: 12),
-                                                          Flexible(
-                                                              child: Text(
-                                                                  row['title']
-                                                                          ?.toString() ??
-                                                                      'Announcement',
-                                                                  textAlign:
-                                                                      TextAlign
-                                                                          .center,
-                                                                  maxLines: 3,
-                                                                  overflow:
-                                                                      TextOverflow
-                                                                          .ellipsis,
-                                                                  style: const TextStyle(
-                                                                      fontSize:
-                                                                          22,
-                                                                      fontWeight:
-                                                                          FontWeight
-                                                                              .w500))),
-                                                          const SizedBox(
-                                                              height: 12),
-                                                          const Text(
-                                                              'Read announcement',
-                                                              style: TextStyle(
-                                                                  fontSize:
-                                                                      12)),
-                                                        ]))))));
+                                    child: style == null
+                                        ? MemberGlass(
+                                            outlined: false,
+                                            frosted: true,
+                                            radius: 20,
+                                            child: card)
+                                        : DecoratedBox(
+                                            decoration: BoxDecoration(
+                                                gradient: style.gradient,
+                                                borderRadius:
+                                                    BorderRadius.circular(20)),
+                                            child: ClipRRect(
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                child: card)));
                               }))),
                 ]));
           })));
@@ -710,13 +756,13 @@ class _ResourceCards extends StatelessWidget {
                                 Text(tool.$1,
                                     style: const TextStyle(
                                         fontFamily: 'DM Sans',
-                                        fontSize: 16,
+                                        fontSize: 14,
                                         height: 1.35,
                                         fontWeight: FontWeight.w600)),
                                 const SizedBox(height: 10),
                                 Text(tool.$2,
                                     style:
-                                        Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'DM Sans', fontSize: 13, height: 1.5)),
+                                        Theme.of(context).textTheme.bodySmall?.copyWith(fontFamily: 'DM Sans', fontSize: 12, height: 1.5)),
                                 const SizedBox(height: 10),
                                 const Spacer(),
                                 Align(
@@ -738,8 +784,8 @@ class _ResourceCards extends StatelessWidget {
           return height;
         }
         final height = 86 + measure(tool.$1, const TextStyle(fontFamily: 'DM Sans',
-            fontSize: 16, height: 1.35, fontWeight: FontWeight.w600)) +
-            measure(tool.$2, const TextStyle(fontFamily: 'DM Sans', fontSize: 13, height: 1.5));
+            fontSize: 14, height: 1.35, fontWeight: FontWeight.w600)) +
+            measure(tool.$2, const TextStyle(fontFamily: 'DM Sans', fontSize: 12, height: 1.5));
         if (height > result) result = height;
       }
       return result;

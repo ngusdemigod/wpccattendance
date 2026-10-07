@@ -6,15 +6,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:wpcc_community/app/app_shell.dart';
-import 'package:wpcc_community/core/widgets/member_components.dart';
 import 'package:wpcc_community/core/theme/app_theme.dart';
 import 'package:wpcc_community/core/theme/member_theme.dart';
 import 'package:wpcc_community/features/media/media_episode_detail_page.dart';
 import 'package:wpcc_community/features/media/media_page.dart';
 import 'package:wpcc_community/features/media/media_album_detail_page.dart';
 import 'package:wpcc_community/features/media/media_player_controller.dart';
+import 'package:wpcc_community/features/media/media_shelves.dart';
 
 const episode = <String, dynamic>{
   'id': 'message-1',
@@ -43,58 +42,7 @@ Widget app(Widget child,
     );
 
 void main() {
-  testWidgets('collection section spacing matches the stacked reference',
-      (tester) async {
-    tester.view.devicePixelRatio = 1;
-    addTearDown(tester.view.resetDevicePixelRatio);
-    addTearDown(tester.view.resetPhysicalSize);
-    for (final brightness in Brightness.values) {
-      for (final width in [390.0, 834.0, 963.0, 964.0, 1024.0]) {
-        tester.view.physicalSize = Size(width, 1194);
-        await tester.pumpWidget(app(
-            MediaPage(
-                key: UniqueKey(),
-                loadEpisodes: () async => [],
-                loadAlbums: () async => [
-                      {'id': 'first', 'title': 'Featured album'},
-                      {'id': 'second', 'title': 'Second album'},
-                    ],
-                loadAlbumTracks: (_) async => [
-                      {'track_number': 1, 'episode': episode}
-                    ]),
-            brightness: brightness));
-        await tester.pumpAndSettle();
-        final featured = find.ancestor(
-            of: find.text('Featured album'), matching: find.byType(Material));
-        final heading = find.text('More collections');
-        final introduction = find.text(
-            'The Word for everyday life. Teachings from Word Power Christian Centre.');
-        expect(
-            tester.getTopLeft(featured.first).dy -
-                tester.getBottomLeft(introduction).dy,
-            20);
-        expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
-        expect(find.text('Church life'), findsNothing);
-        if (width < 964) {
-          expect(
-              tester.getTopLeft(heading).dy -
-                  tester.getBottomLeft(featured.first).dy,
-              25);
-        } else {
-          expect(tester.getTopLeft(heading).dy,
-              tester.getTopLeft(featured.first).dy);
-          expect(
-              tester.getTopLeft(heading).dx -
-                  tester.getTopRight(featured.first).dx,
-              36);
-        }
-        expect(tester.takeException(), isNull);
-        await tester.pumpWidget(const SizedBox());
-      }
-    }
-  });
-
-  testWidgets('collection captions and latest section match reference geometry',
+  testWidgets('album circles sit right under the tabs, then the filter chips',
       (tester) async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -106,45 +54,40 @@ void main() {
           await tester.pumpWidget(app(
               MediaPage(
                   key: UniqueKey(),
+                  shelfSeed: 1,
+                  loadVideos: () async => [],
                   loadEpisodes: () async => [episode],
                   loadAlbums: () async => [
                         {'id': 'featured', 'title': 'Featured album'},
                         {
                           'id': 'faith',
                           'title': 'Faith, Growth & Spiritual Alignment',
-                          'media_album_tracks': [
-                            {'count': 6}
-                          ]
                         },
                         {'id': 'power', 'title': 'Power Touch 2025'},
-                      ],
-                  loadAlbumTracks: (_) async => [
-                        {'track_number': 1, 'episode': episode}
                       ]),
               brightness: brightness,
               scale: scale));
           await tester.pumpAndSettle();
-          await tester.ensureVisible(find.text('More collections'));
-          await tester.pumpAndSettle();
-          final rail = find.byWidgetPredicate((widget) =>
-              widget is ListView && widget.scrollDirection == Axis.horizontal);
-          expect(rail, findsOneWidget);
-          expect(tester.getSize(rail).height,
-              181 + (40 * scale).ceilToDouble() + (18 * scale).ceilToDouble());
-          final caption = tester
-              .widget<Text>(find.text('Faith, Growth & Spiritual Alignment'));
-          expect(caption.style!.fontSize, 14);
-          expect(caption.style!.height, 20 / 14);
-          expect(caption.maxLines, 2);
-          final count = tester.widget<Text>(find.text('6 messages'));
-          expect(count.style!.fontSize, 12);
-          expect(count.style!.height, 18 / 12);
-          await tester.ensureVisible(find.text('Latest message'));
-          await tester.pumpAndSettle();
-          expect(
-              tester.getTopLeft(find.text('Latest message')).dy -
-                  tester.getBottomLeft(rail).dy,
-              closeTo(25, .01));
+          // The removed introduction line stays gone.
+          expect(find.textContaining('The Word for everyday life'), findsNothing);
+          final rail = find.byType(MediaStoryRail);
+          final circles = find.descendant(
+              of: rail, matching: find.byType(MediaThumb));
+          expect(circles, findsNWidgets(3));
+          expect(tester.getSize(circles.first), const Size(76, 76));
+          final label = tester.widget<Text>(
+              find.text('Faith, Growth & Spiritual Alignment'));
+          expect(label.maxLines, 2);
+          // Order down the page: tabs, circles, filters, then the feed.
+          final tabs = tester.getTopLeft(find.text('Gallery')).dy;
+          final circle = tester.getTopLeft(rail).dy;
+          final chips = tester.getTopLeft(find.byType(MediaFilterChips)).dy;
+          final feed = tester.getTopLeft(find.text('Videos')).dy;
+          expect(tabs < circle && circle < chips && chips < feed, isTrue,
+              reason: '$brightness/$size/$scale');
+          expect(tester.getSize(find.byType(MediaFilterChips)).height, 48);
+          expect(find.text('All'), findsOneWidget);
+          expect(find.text('Audio'), findsWidgets);
           expect(tester.takeException(), isNull,
               reason: '$brightness/$size/$scale');
           await tester.pumpWidget(const SizedBox());
@@ -167,7 +110,7 @@ void main() {
             routes: [
               GoRoute(
                   path: '/media',
-                  builder: (_, __) => MediaPage(
+                  builder: (_, __) => MediaPage(loadVideos: () async => [], 
                       loadEpisodes: () async => [episode],
                       loadAlbums: () async => [
                             {
@@ -178,9 +121,6 @@ void main() {
                                 {'count': 4}
                               ]
                             }
-                          ],
-                      loadAlbumTracks: (_) async => [
-                            {'track_number': 1, 'episode': episode}
                           ])),
               GoRoute(
                   path: '/media/albums/:id',
@@ -402,6 +342,7 @@ void main() {
 
   testWidgets('message detail matches reference reading and artwork bounds',
       (tester) async {
+    addTearDown(MediaPlayerController.instance.close);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
     addTearDown(tester.view.resetPhysicalSize);
@@ -433,7 +374,7 @@ void main() {
         await tester.scrollUntilVisible(find.text('In this collection'), 100,
             scrollable: find.byType(Scrollable).first);
         final heading = tester.widget<Text>(find.text('In this collection'));
-        expect(heading.style!.fontSize, 17);
+        expect(heading.style!.fontSize, 15);
         expect(heading.style!.height, 24 / 17);
         expect(heading.style!.fontWeight, FontWeight.w600);
         expect(tester.takeException(), isNull);
@@ -468,10 +409,10 @@ void main() {
         findsOneWidget);
     expect(tester.getSize(find.byType(MediaCollectionTracks)).height, 210);
     final title = tester.widget<Text>(find.text('Track 1'));
-    expect(title.style!.fontSize, 13);
-    expect(title.style!.height, 18 / 13);
-    expect(title.style!.fontFamily,
-        GoogleFonts.dmSans(fontWeight: FontWeight.w500).fontFamily);
+    expect(title.style!.fontSize, 12);
+    expect(title.style!.height, 18 / 12);
+    expect(title.style!.fontFamily, 'DM Sans');
+    expect(title.style!.fontWeight, FontWeight.w500);
     final play = find.byTooltip('Play message').first;
     expect(tester.getSize(play), const Size(48, 48));
     expect(
@@ -535,7 +476,7 @@ void main() {
                       ? 1194
                       : 1000);
           await tester.pumpWidget(app(
-              MediaPage(
+              MediaPage(loadVideos: () async => [], 
                 key: UniqueKey(),
                 loadEpisodes: () async => [
                   episode,
@@ -567,30 +508,12 @@ void main() {
                     ]
                   },
                 ],
-                loadAlbumTracks: (_) async => [
-                  for (var i = 0; i < 4; i++)
-                    {
-                      'track_number': i + 1,
-                      'episode': {
-                        ...episode,
-                        'id': 'track-$i',
-                        'title': 'Message ${i + 1}'
-                      }
-                    },
-                ],
               ),
               brightness: brightness,
               scale: scale));
           await tester.pumpAndSettle();
           expect(tester.takeException(), isNull,
               reason: '$brightness/$width/$scale Messages');
-          final artwork =
-              find.byWidgetPredicate((w) => w is MemberArtwork && w.size == 64);
-          expect(artwork, findsNWidgets(2));
-          for (final item in tester.widgetList<MemberArtwork>(artwork)) {
-            expect(item.size, 64);
-            expect(item.height, 66);
-          }
           if (Platform.environment['CAPTURE_MEMBER_UI'] == 'true' &&
               (width == 393 || width == 390 || width == 834) &&
               scale == 1) {
@@ -616,34 +539,21 @@ void main() {
     }
   });
 
-  testWidgets(
-      'featured collection previews only three tracks and preserves playback',
+  testWidgets('the Audio filter lists every message and keeps playback working',
       (tester) async {
-    final tracks = [
-      for (var i = 0; i < 4; i++)
-        {
-          'track_number': i + 1,
-          'episode': {...episode, 'id': 'track-$i', 'title': 'Track ${i + 1}'}
-        }
-    ];
     await tester.pumpWidget(app(MediaPage(
-      loadEpisodes: () async => [episode],
-      loadAlbums: () async => [
-        {
-          'id': 'collection',
-          'title': 'Church collection',
-          'featured_image': '',
-          'media_album_tracks': [
-            {'count': 4}
-          ]
-        }
+      shelfSeed: 1,
+      loadVideos: () async => [],
+      loadEpisodes: () async => [
+        for (var i = 0; i < 6; i++)
+          {...episode, 'id': 'track-$i', 'title': 'Track ${i + 1}'}
       ],
-      loadAlbumTracks: (_) async => tracks,
+      loadAlbums: () async => [],
     )));
     await tester.pumpAndSettle();
-    expect(find.text('Featured collection'), findsOneWidget);
-    expect(find.text('Track 3'), findsOneWidget);
-    expect(find.text('Track 4'), findsNothing);
+    await tester.tap(find.descendant(of: find.byType(MediaFilterChips), matching: find.text('Audio')));
+    await tester.pumpAndSettle();
+    expect(find.text('Track 1'), findsOneWidget);
     await tester.ensureVisible(find.byTooltip('Play message').first);
     await tester.pumpAndSettle();
     await tester.tap(find.byTooltip('Play message').first);
@@ -651,7 +561,6 @@ void main() {
     expect(MediaPlayerController.instance.value.episode?.id, 'track-0');
     expect(find.byTooltip('Pause message'), findsOneWidget);
     MediaPlayerController.instance.close();
-    expect(find.text('Track 4'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -686,7 +595,7 @@ void main() {
     final router = GoRouter(routes: [
       GoRoute(
           path: '/',
-          builder: (_, __) => MediaPage(
+          builder: (_, __) => MediaPage(loadVideos: () async => [], 
                 loadAlbums: () async => [],
                 loadEpisodes: () async {
                   calls++;
@@ -712,14 +621,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text(episode['title'] as String));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.byTooltip('Play message'), 180,
-        scrollable: find.byType(Scrollable).first);
-    expect(find.text('Play message'), findsNothing);
-    expect(tester.getSize(find.byTooltip('Play message')), const Size(56, 56));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip('Play message'));
-    await tester.pump();
+    // Opening a message from the list starts it playing.
     expect(MediaPlayerController.instance.value.episode?.id, 'message-1');
+    await tester.scrollUntilVisible(find.byTooltip('Pause message'), 180,
+        scrollable: find.byType(Scrollable).first);
+    expect(find.text('Pause message'), findsNothing);
+    expect(tester.getSize(find.byTooltip('Pause message')), const Size(56, 56));
+    await tester.pumpAndSettle();
     MediaPlayerController.instance.close();
   });
 }

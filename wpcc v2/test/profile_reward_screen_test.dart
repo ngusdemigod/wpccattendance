@@ -148,4 +148,27 @@ void main() {
 
     await tester.pumpWidget(const SizedBox());
   });
+  testWidgets('the Continue action closes like the close control', (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    var closed = 0;
+    await tester.pumpWidget(MaterialApp(
+        home: MediaQuery(
+            data: const MediaQueryData(
+                size: Size(390, 844), disableAnimations: true),
+            child: ProfileRewardScreen(
+                awarded: false, onClose: () => closed++))));
+    await tester.pumpAndSettle();
+    expect(find.byType(FilledButton), findsOneWidget);
+    expect(
+        tester.getSize(find.byType(FilledButton)).height, greaterThanOrEqualTo(56));
+    expect(tester.getSize(find.byTooltip('Close reward')), const Size(48, 48));
+    await tester.tap(find.text('Continue'));
+    await tester.pump();
+    expect(closed, 1);
+    expect(find.text('+15WP'), findsNothing);
+    await tester.pumpWidget(const SizedBox());
+  });
 }

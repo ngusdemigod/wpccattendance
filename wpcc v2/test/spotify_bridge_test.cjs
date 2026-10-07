@@ -5,9 +5,7 @@ const vm = require('node:vm');
 const path = require('node:path');
 
 function bridge() {
-  const html = fs.readFileSync(path.join(__dirname, '../web/index.html'), 'utf8');
-  const script = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)]
-    .map(match => match[1]).find(source => source.includes('wpccSpotifyLoadAndPlay'));
+  const script = fs.readFileSync(path.join(__dirname, '../web/wpcc-spotify.js'), 'utf8');
   const window = {};
   vm.runInNewContext(script, { window, document: { getElementById: () => ({}) } });
   const calls = [];
