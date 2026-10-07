@@ -2,8 +2,10 @@
   "name": "wpcc-auto-give-cron",
   "private": true,
   "scripts": {
-    "check": "wrangler deploy --dry-run",
-    "deploy": "wrangler deploy"
+    "check": "wrangler deploy --dry-run --env-file ../.env",
+    "check:account": "node ../scripts/assert-account.mjs",
+    "predeploy": "node ../scripts/assert-account.mjs",
+    "deploy": "wrangler deploy --env-file ../.env"
   },
   "devDependencies": {
     "wrangler": "^4.134.0"

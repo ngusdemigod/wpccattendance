@@ -1,9 +1,8 @@
 {
-  "name": "wpcc-rewards",
+  "name": "wpcc-media-sync",
   "private": true,
   "type": "module",
   "scripts": {
-    "types": "wrangler types --env-file ../.env",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "check:account": "node ../scripts/assert-account.mjs",
@@ -11,13 +10,10 @@
     "deploy": "wrangler deploy --env-file ../.env"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/workers-types": "5.20261006.1",
+    "@types/node": "^26.6.4",
     "typescript": "5.9.3",
     "vitest": "4.1.11",
-    "wrangler": "4.134.0",
-    "@types/node": "26.6.2"
-  },
-  "overrides": {
-    "sharp": "0.35.4"
+    "wrangler": "4.134.0"
   }
 }

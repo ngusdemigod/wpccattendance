@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "wpcc-auto-give-cron",
+  "account_id": "f2af3248ee00346a8154a052c1757de9",
   "main": "src/index.ts",
   "compatibility_date": "2026-09-18",
   "triggers": {

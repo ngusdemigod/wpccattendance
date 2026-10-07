@@ -1,0 +1,67 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "wpcc-media-sync",
+  "account_id": "f2af3248ee00346a8154a052c1757de9",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-18",
+
+  // One cron, every 30 minutes. It only queues work: each source pulls its
+  // newest window. Images that failed to copy are retried once a day, at 02:00 UTC.
+  "triggers": { "crons": ["*/30 * * * *"] },
+
+  // Public read API for the Media page, on its own hostname so zone rules
+  // (rate limiting) can target it. Requires Workers Routes and DNS permission
+  // on the wisdompowercc.org zone for the deploying token.
+  "routes": [{ "pattern": "media-api.wisdompowercc.org", "custom_domain": true }],
+
+  "vars": {
+    // Everything this worker writes or deletes lives under this prefix of the
+    // existing public "wpcc" bucket (served at https://storage.wisdompowercc.org).
+    "MEDIA_PREFIX": "media-sync",
+    // Browsers calling the API must come from one of these origins.
+    "ALLOWED_ORIGINS": "https://my.wisdompowercc.org,http://localhost:8801,http://127.0.0.1:8801",
+    // Fill these in (not secret). Page id is the numeric Facebook Page id; the
+    // channel id starts with UC. Check Meta's current Graph API version.
+    "FACEBOOK_PAGE_ID": "125738537445836",
+    "FACEBOOK_GRAPH_VERSION": "v24.0",
+    "YOUTUBE_CHANNEL_ID": "UCvXSZF_-ZI83BO_lqK3_VgQ",
+    // Keep only the newest items. Everything older is removed from D1 and R2.
+    // Photos: 1 to 100. Videos: 1 to 50, for Facebook and YouTube each.
+    "MAX_PHOTOS": "50",
+    "MAX_VIDEOS": "50"
+  },
+
+  // Secrets (set after the first deploy; until then each source records
+  // "not configured" in sync_state instead of failing the deploy):
+  //   npx wrangler secret put FACEBOOK_PAGE_ACCESS_TOKEN --env-file ../.env
+  //   npx wrangler secret put YOUTUBE_API_KEY --env-file ../.env
+
+  // Create with: npx wrangler d1 create wpcc-media --env-file ../.env
+  // then add the printed database_id here and run:
+  // npx wrangler d1 migrations apply wpcc-media --remote --env-file ../.env
+  "d1_databases": [{ "binding": "DB", "database_name": "wpcc-media", "database_id": "864b5a57-73c7-4e2e-b842-b59109e70684", "migrations_dir": "migrations" }],
+
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "wpcc" }],
+  "images": { "binding": "IMAGES" },
+
+  // 120 requests per minute per IP. Excess requests get 429 before any D1 work.
+  "ratelimits": [{ "name": "API_LIMITER", "namespace_id": "1001", "simple": { "limit": 120, "period": 60 } }],
+
+  "queues": {
+    "producers": [{ "binding": "QUEUE", "queue": "wpcc-media" }],
+    "consumers": [
+      // One message per invocation: a sync task makes many outbound requests
+      // and needs its own request budget. Image copy jobs are small.
+      {
+        "queue": "wpcc-media",
+        "max_batch_size": 1,
+        "max_batch_timeout": 5,
+        "max_retries": 4,
+        "max_concurrency": 3,
+        "dead_letter_queue": "wpcc-media-failed"
+      },
+      { "queue": "wpcc-media-failed", "max_batch_size": 10, "max_concurrency": 1 }
+    ]
+  },
+  "observability": { "enabled": true }
+}
