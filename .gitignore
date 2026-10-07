@@ -59,3 +59,6 @@ node_modules
 .env*
 !.env.example
 !apps/admin/.env.example
+
+# The old v1 app is kept locally only and is not part of this repository.
+/wpcc v1/
