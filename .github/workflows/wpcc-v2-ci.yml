@@ -1,0 +1,102 @@
+name: WPCC v2 CI
+
+# Checks every change to the app and the media worker. Also called by the deploy
+# workflows, so nothing is deployed that has not passed these checks.
+on:
+  pull_request:
+    paths:
+      - "wpcc v2/**"
+      - ".github/workflows/wpcc-v2-*.yml"
+  push:
+    branches: [v2, dev]
+    paths:
+      - "wpcc v2/**"
+      - ".github/workflows/wpcc-v2-*.yml"
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_VERSION: "3.44.6"
+
+jobs:
+  app:
+    name: App (analyze, test, build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: wpcc v2
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install packages
+        run: flutter pub get
+
+      # Errors fail the build. Lints and warnings are reported but do not.
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+
+      - name: Browser script tests (install gate, Spotify bridge)
+        run: node --test test/install_gate_test.cjs test/spotify_bridge_test.cjs
+
+      - name: Flutter tests
+        run: flutter test
+
+      # The tests run on the Dart VM and cannot see errors in browser-only code,
+      # so the release build is part of CI. The values are the public ones the
+      # app already ships with.
+      - name: Build web release
+        run: >-
+          flutter build web --release
+          --dart-define=SUPABASE_URL=https://api.wisdompowercc.org
+          --dart-define=SUPABASE_PUBLISHABLE_KEY=sb_publishable_M2d6gv3fLQpQjt4Ft5WHhz_uu8383Kv
+
+      - name: Keep the build for deployment
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: wpcc v2/build/web
+          retention-days: 7
+          if-no-files-found: error
+
+  media-worker:
+    name: Media worker (types, tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: wpcc v2/cloudflare/media-sync
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: wpcc v2/cloudflare/media-sync/package-lock.json
+
+      - run: npm ci
+      - run: npm run check
+
+      # Known vulnerabilities in the libraries the worker ships with. Dev tools
+      # such as Wrangler are left to Dependabot (see .github/dependabot.yml).
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+      - run: npm test

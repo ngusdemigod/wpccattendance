@@ -1,0 +1,32 @@
+# Dependabot opens pull requests when a library the project uses has a new
+# version or a known security problem. Each pull request runs the CI workflow, so
+# an update that breaks something shows up before it is merged.
+version: 2
+updates:
+  # The GitHub Actions used by the workflows.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The media worker (Wrangler, TypeScript, Vitest).
+  - package-ecosystem: npm
+    directory: /wpcc v2/cloudflare/media-sync
+    schedule:
+      interval: weekly
+    groups:
+      worker-tooling:
+        update-types: [minor, patch]
+
+  # The Flutter app's Dart packages.
+  - package-ecosystem: pub
+    directory: /wpcc v2
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    groups:
+      flutter-packages:
+        update-types: [minor, patch]

@@ -1,0 +1,90 @@
+name: WPCC v2 deploy (Vercel)
+
+# Every push to v2 that changes the app is checked, built and published to
+# https://my.wisdompowercc.org. It can also be run by hand from the Actions tab.
+on:
+  push:
+    branches: [v2]
+    paths:
+      - "wpcc v2/**"
+      - ".github/workflows/wpcc-v2-*.yml"
+  workflow_dispatch:
+
+# Deployments never overlap, and a running one is never cancelled halfway.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/wpcc-v2-ci.yml
+
+  deploy:
+    name: Deploy to Vercel production
+    needs: checks
+    # Only the v2 branch may publish, even when the workflow is started by hand
+    # from another branch.
+    if: github.ref == 'refs/heads/v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Add required reviewers to this environment in the repository settings if
+    # production deploys should wait for an approval.
+    environment:
+      name: production
+      url: https://my.wisdompowercc.org
+    defaults:
+      run:
+        working-directory: wpcc v2
+    env:
+      # Identify the Vercel team and project. These are identifiers, not secrets.
+      VERCEL_ORG_ID: team_GtKCVCHHn4UDJcZNDnHXaJhQ
+      VERCEL_PROJECT_ID: prj_I7NGhW1ZMQrJ7HEO7aU8yCZJXZ7n
+      VERCEL_SCOPE: igbaniangus-gmailcoms-projects
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Get the build that passed the checks
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: wpcc v2/build/web
+
+      - name: Trim the build (unused icon fonts and CanvasKit)
+        run: node tool/trim_web_build.cjs build/web --drop-unused-canvaskit
+
+      - name: Stage the Vercel output
+        run: node tool/stage_vercel_output.mjs build/web build/vercel-output
+
+      - name: Deploy
+        working-directory: wpcc v2/build/vercel-output
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::The VERCEL_TOKEN secret is not set. See docs/ci-cd.md."
+            exit 1
+          fi
+          npx --yes vercel@59 deploy --prebuilt --prod --yes --token "$VERCEL_TOKEN" --scope "$VERCEL_SCOPE"
+
+      - name: Check the live site
+        run: |
+          set -e
+          for attempt in 1 2 3 4 5; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://my.wisdompowercc.org/ || true)
+            [ "$code" = "200" ] && break
+            sleep 6
+          done
+          echo "site: $code"
+          [ "$code" = "200" ]
+          curl -fsS https://my.wisdompowercc.org/main.dart.js -o /dev/null
+          share=$(curl -s -o /dev/null -w "%{http_code}" "https://my.wisdompowercc.org/s/v/smoke")
+          echo "share-link proxy: $share"
+          [ "$share" = "200" ]

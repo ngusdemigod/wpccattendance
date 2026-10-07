@@ -1,0 +1,13 @@
+name: WPCC v2 CodeQL configuration
+
+# Only the wpcc v2 JavaScript and TypeScript sources. The repository also holds
+# other projects (wpcc v1, supabase) that are scanned separately or not at all.
+paths:
+  - wpcc v2/cloudflare
+  - wpcc v2/web
+  - wpcc v2/tool
+
+paths-ignore:
+  - "**/node_modules"
+  - "**/test"
+  - "wpcc v2/build"

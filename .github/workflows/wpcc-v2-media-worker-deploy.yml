@@ -1,0 +1,87 @@
+name: WPCC media worker deploy (Cloudflare)
+
+# Publishes the media-sync Worker (cron sync, public media API, share-link
+# previews) when its code changes on v2, applying any new D1 migrations first.
+# It can also be run by hand from the Actions tab.
+on:
+  push:
+    branches: [v2]
+    paths:
+      - "wpcc v2/cloudflare/media-sync/**"
+      - "wpcc v2/cloudflare/scripts/**"
+      - ".github/workflows/wpcc-v2-media-worker-deploy.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-media-worker
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy wpcc-media-sync
+    # Only the v2 branch may publish, even when the workflow is started by hand
+    # from another branch.
+    if: github.ref == 'refs/heads/v2'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Add required reviewers to this environment in the repository settings if
+    # worker deploys should wait for an approval.
+    environment:
+      name: production
+    defaults:
+      run:
+        working-directory: wpcc v2/cloudflare/media-sync
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: wpcc v2/cloudflare/media-sync/package-lock.json
+
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+
+      # The project's Wrangler scripts read credentials from cloudflare/.env
+      # (see cloudflare/README and the account guard). That file is git-ignored;
+      # here it is written for this run only, from repository secrets.
+      - name: Provide credentials for this run
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID || 'f2af3248ee00346a8154a052c1757de9' }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::The CLOUDFLARE_API_TOKEN secret is not set. See docs/ci-cd.md."
+            exit 1
+          fi
+          printf 'CLOUDFLARE_API_TOKEN=%s\nCLOUDFLARE_ACCOUNT_ID=%s\n' "$CLOUDFLARE_API_TOKEN" "$CLOUDFLARE_ACCOUNT_ID" > ../.env
+
+      # Refuses to continue if the token belongs to a different Cloudflare account.
+      - name: Check the Cloudflare account
+        run: npm run check:account
+
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply wpcc-media --remote --env-file ../.env
+
+      - name: Deploy
+        run: npm run deploy
+
+      - name: Check the live API
+        run: |
+          set -e
+          sleep 5
+          status=$(curl -s -o /dev/null -w "%{http_code}" https://media-api.wisdompowercc.org/v1/status)
+          echo "status endpoint: $status"
+          [ "$status" = "200" ]
+          share=$(curl -s -o /dev/null -w "%{http_code}" https://media-api.wisdompowercc.org/s/v/smoke)
+          echo "share page: $share"
+          [ "$share" = "200" ]
+
+      - name: Remove credentials
+        if: always()
+        run: rm -f ../.env
